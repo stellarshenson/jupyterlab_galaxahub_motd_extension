@@ -15,17 +15,28 @@ const plugin: JupyterFrontEndPlugin<void> = {
   description: 'jupyterlab_galaxahub_motd_extension',
   autoStart: true,
   optional: [ISettingRegistry],
-  activate: (app: JupyterFrontEnd, settingRegistry: ISettingRegistry | null) => {
-    console.log('JupyterLab extension jupyterlab_galaxahub_motd_extension is activated!');
+  activate: (
+    app: JupyterFrontEnd,
+    settingRegistry: ISettingRegistry | null
+  ) => {
+    console.log(
+      'JupyterLab extension jupyterlab_galaxahub_motd_extension is activated!'
+    );
 
     if (settingRegistry) {
       settingRegistry
         .load(plugin.id)
         .then(settings => {
-          console.log('jupyterlab_galaxahub_motd_extension settings loaded:', settings.composite);
+          console.log(
+            'jupyterlab_galaxahub_motd_extension settings loaded:',
+            settings.composite
+          );
         })
         .catch(reason => {
-          console.error('Failed to load settings for jupyterlab_galaxahub_motd_extension.', reason);
+          console.error(
+            'Failed to load settings for jupyterlab_galaxahub_motd_extension.',
+            reason
+          );
         });
     }
 
