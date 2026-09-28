@@ -132,3 +132,6 @@ dmypy.json
 logs/
 
 tmp/
+
+# Claude Code worktrees
+.claude/worktrees/
