@@ -1,8 +1,28 @@
 {
   "jupyter.lab.shortcuts": [],
-  "title": "jupyterlab_galaxahub_motd_extension",
-  "description": "jupyterlab_galaxahub_motd_extension settings.",
+  "title": "Message of the day",
+  "description": "The GalaxaHub message of the day tab.",
   "type": "object",
-  "properties": {},
+  "properties": {
+    "openOnStart": {
+      "type": "boolean",
+      "title": "Open on start",
+      "description": "Open the Message of the day tab on lab start when the hub has entries or notifications for you.",
+      "default": true
+    },
+    "reopenOnBroadcast": {
+      "type": "boolean",
+      "title": "Reopen on a live broadcast",
+      "description": "Reopen the tab when a broadcast from the hub arrives while the lab is open.",
+      "default": false
+    },
+    "pollMinutes": {
+      "type": "integer",
+      "title": "Pull interval in minutes",
+      "description": "Pull the message of the day again on this interval while the tab is open. 0 never pulls again.",
+      "minimum": 0,
+      "default": 0
+    }
+  },
   "additionalProperties": false
 }

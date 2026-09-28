@@ -135,3 +135,6 @@ tmp/
 
 # Claude Code worktrees
 .claude/worktrees/
+
+# Jest junit reporter output
+junit.xml

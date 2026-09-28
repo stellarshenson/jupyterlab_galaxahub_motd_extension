@@ -3,49 +3,52 @@ import { URLExt } from '@jupyterlab/coreutils';
 import { ServerConnection } from '@jupyterlab/services';
 
 /**
- * Call the server extension
- *
- * @param endPoint API REST end point for the extension
- * @param serverSettings The server settings to use for the request
- * @param init Initial values for the request
- * @returns The response body interpreted as JSON
+ * The route prefix of this extension's server half, the only routes the frontend calls.
  */
-export async function requestAPI<T>(
-  endPoint: string,
-  serverSettings: ServerConnection.ISettings,
-  init: RequestInit = {}
-): Promise<T> {
-  // Make request to Jupyter API
-  const requestUrl = URLExt.join(
-    serverSettings.baseUrl,
-    'jupyterlab-galaxahub-motd-extension', // our server extension's API namespace
-    endPoint
-  );
+export const NAMESPACE = 'jupyterlab-galaxahub-motd-extension';
 
+/**
+ * The two feeds the tab pulls. The terminal route exists for the terminal hook, not for the tab.
+ */
+export type Feed = 'rich' | 'notifications';
+
+/**
+ * One proxy answer as the model reads it: status 0 when the request never got an answer.
+ */
+export interface IAnswer {
+  status: number;
+  etag: string | null;
+  body: unknown;
+}
+
+/**
+ * GET one feed from the proxy. The Etag the model holds goes out as If-None-Match, so an
+ * unchanged feed answers 304 with no body.
+ */
+export async function fetchFeed(
+  feed: Feed,
+  etag: string | null,
+  serverSettings: ServerConnection.ISettings
+): Promise<IAnswer> {
+  const url = URLExt.join(serverSettings.baseUrl, NAMESPACE, feed);
+  const headers: Record<string, string> = etag ? { 'If-None-Match': etag } : {};
   let response: Response;
   try {
     response = await ServerConnection.makeRequest(
-      requestUrl,
-      init,
+      url,
+      { headers },
       serverSettings
     );
-  } catch (error) {
-    throw new ServerConnection.NetworkError(error as any);
+  } catch {
+    return { status: 0, etag: null, body: null };
   }
-
-  let data: any = await response.text();
-
-  if (data.length > 0) {
+  let body: unknown = null;
+  if (response.status === 200) {
     try {
-      data = JSON.parse(data);
-    } catch (error) {
-      console.log('Not a JSON response body.', response);
+      body = await response.json();
+    } catch {
+      body = null;
     }
   }
-
-  if (!response.ok) {
-    throw new ServerConnection.ResponseError(response, data.message || data);
-  }
-
-  return data;
+  return { status: response.status, etag: response.headers.get('Etag'), body };
 }

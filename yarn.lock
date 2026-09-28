@@ -3017,7 +3017,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@lumino/coreutils@npm:^1.11.0 || ^2.0.0, @lumino/coreutils@npm:^1.11.0 || ^2.2.2, @lumino/coreutils@npm:^2.2.2, @lumino/coreutils@npm:^2.2.3":
+"@lumino/coreutils@npm:^1.11.0 || ^2.0.0, @lumino/coreutils@npm:^1.11.0 || ^2.2.2, @lumino/coreutils@npm:^2.2.0, @lumino/coreutils@npm:^2.2.2, @lumino/coreutils@npm:^2.2.3":
   version: 2.2.3
   resolution: "@lumino/coreutils@npm:2.2.3"
   dependencies:
@@ -3943,7 +3943,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:*":
+"@types/node@npm:*, @types/node@npm:^26.6.0":
   version: 26.6.3
   resolution: "@types/node@npm:26.6.3"
   dependencies:
@@ -7630,11 +7630,13 @@ __metadata:
     "@jupyterlab/services": ^7.6.0
     "@jupyterlab/settingregistry": ^4.6.0
     "@jupyterlab/testutils": ^4.6.0
+    "@lumino/coreutils": ^2.2.0
     "@lumino/messaging": ^2.0.0
     "@lumino/signaling": ^2.1.0
     "@lumino/widgets": ^2.8.0
     "@types/jest": ^29.5.0
     "@types/json-schema": ^7.0.0
+    "@types/node": ^26.6.0
     "@types/react": ^18.3.0
     "@types/react-addons-linked-state-mixin": ^0.14.0
     eslint: ^9.39.0
