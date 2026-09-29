@@ -1,6 +1,6 @@
 {
     "name": "jupyterlab_galaxahub_motd_extension",
-    "version": "0.8.5",
+    "version": "0.8.10",
     "description": "jupyterlab_galaxahub_motd_extension",
     "keywords": [
         "jupyter",
