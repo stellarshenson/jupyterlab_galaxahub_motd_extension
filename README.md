@@ -65,6 +65,8 @@ reads `JUPYTERHUB_API_URL` and `JUPYTERHUB_API_TOKEN` from the lab's environment
   and an unset `JUPYTERHUB_API_URL` all answer `204 No Content` with `Cache-Control: no-cache`;
   the server log states which of the three it was
 - Any other hub status, 403 included, passes through unchanged
+- **Hub side** - [docs/design-api.md](docs/design-api.md) states what a hub must answer on the
+  three routes, for a developer who writes the hub side without GalaxaHub
 
 ## Command line
 

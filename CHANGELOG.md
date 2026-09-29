@@ -4,6 +4,13 @@
 
 <!-- <END NEW CHANGELOG ENTRY> -->
 
+## [0.8.5] - 2026-09-29
+
+### Added
+
+- `docs/design-api.md`, the hub API contract: the three routes, their answers, status and Etag handling, HTML page requirements, the tab open conditions, live broadcast timing, and how to add the routes to a stock JupyterHub
+- README link to the hub API contract under Server routes
+
 ## [0.8.4] - 2026-09-29
 
 ### Added
