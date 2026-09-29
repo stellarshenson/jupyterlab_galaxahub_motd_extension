@@ -4,6 +4,13 @@
 
 <!-- <END NEW CHANGELOG ENTRY> -->
 
+## [0.8.12] - 2026-09-29
+
+### Fixed
+
+- `pip install` installs the agent skill at `share/jupyter/agents/skills/jupyterlab-galaxahub-motd-extension/` under the Python environment; before, it was only in the source archive and the repository
+- The README gives the line that links the installed skill into `~/.agents/skills`
+
 ## [0.8.10] - 2026-09-29
 
 ### Added

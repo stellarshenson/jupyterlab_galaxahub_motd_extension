@@ -1,4 +1,4 @@
-"""The agent CLI against a stub hub on a local port (ACC-CLI-40 to ACC-CLI-61).
+"""The agent CLI against a stub hub on a local port (ACC-CLI-40 to ACC-CLI-63).
 
 The workstation's environment carries a live JUPYTERHUB_API_TOKEN and the JUPYTER_SERVER_URL of
 its own lab, so every test replaces the token, removes the lab URL and points the runtime
@@ -417,3 +417,10 @@ def test_agent_skill():
     # ACC-CLI-59: a startup script calls the CLI, never the motd API
     rule = next(line for line in lines if line.startswith("- Lab startup script:"))
     assert "jupyterlab-galaxahub-motd terminal 2>/dev/null" in rule and "Never fetch motd API" in rule
+
+
+def test_pip_install_ships_the_skill():
+    # ACC-CLI-63: the wheel puts SKILL.md under the environment, outside the Python package
+    name = "jupyterlab-galaxahub-motd-extension"
+    installed = Path(sys.prefix, "share", "jupyter", "agents", "skills", name, "SKILL.md")
+    assert installed.read_text() == (ROOT / ".agents" / "skills" / name / "SKILL.md").read_text()

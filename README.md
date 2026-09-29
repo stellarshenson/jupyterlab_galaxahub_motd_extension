@@ -123,8 +123,17 @@ variables and the exit codes, and each command's `--help` carries examples.
 
 The repository carries an agent skill,
 [`.agents/skills/jupyterlab-galaxahub-motd-extension/SKILL.md`](.agents/skills/jupyterlab-galaxahub-motd-extension/SKILL.md).
-Agents that read `.agents/skills` find it in a clone of this repository; to make it available to
-Claude Code everywhere, link it into the skills directory from the clone:
+`pip install` puts a copy in `share/jupyter/agents/skills/` under the Python environment. No agent
+reads that directory, so a lab image links it into the agent skills directory, with the Python that
+runs the lab:
+
+```bash
+mkdir -p ~/.agents/skills
+ln -s "$(python -c 'import sys; print(sys.prefix)')/share/jupyter/agents/skills/jupyterlab-galaxahub-motd-extension" ~/.agents/skills/jupyterlab-galaxahub-motd-extension
+```
+
+Agents that read `.agents/skills` also find it in a clone of this repository; to make it available
+to Claude Code everywhere, link it into the skills directory from the clone:
 
 ```bash
 ln -s "$PWD/.agents/skills/jupyterlab-galaxahub-motd-extension" ~/.claude/skills/jupyterlab-galaxahub-motd-extension

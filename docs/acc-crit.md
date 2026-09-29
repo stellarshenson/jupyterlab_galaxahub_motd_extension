@@ -509,6 +509,12 @@ the jupyterlab-galaxahub-motd command and its agent skill: the motd read from a 
   - test-tags: UNIT
   - log: 2026-09-29T18:51:55Z @kj added
   - log: 2026-09-29T18:58:17Z @kj closed: verified on 0.8.8
+- [x] `ACC-CLI-63` **pip install ships the agent skill** - HIGH; the wheel installs SKILL.md at <sys.prefix>/share/jupyter/agents/skills/jupyterlab-galaxahub-motd-extension/, outside the Python package; the README gives the line that links it into ~/.agents/skills
+  - evidence: make test: test_pip_install_ships_the_skill passed on installed 0.8.11 (failed on 0.8.10); wheel lists .data/data/share/jupyter/agents/skills/.../SKILL.md; README ln line tried in a scratch HOME
+  - test: pytest: the installed SKILL.md under sys.prefix matches .agents/skills in the repository
+  - test-tags: UNIT
+  - log: 2026-09-29T19:53:49Z @kj added
+  - log: 2026-09-29T19:55:42Z @kj closed
 
 ## Server settings `SERVER`
 
