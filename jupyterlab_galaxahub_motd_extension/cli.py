@@ -2,7 +2,8 @@
 
 Reads the three hub feeds - the terminal text, the rich entries of the user's groups and the
 broadcasts sent to the user - with the lab's own API token, the same reads the lab's server
-proxy makes. Needs no running Jupyter server.
+proxy makes. The two hub URLs come from the running lab server this terminal belongs to, so
+whatever configured that lab applies.
 """
 import argparse
 import http.client
@@ -13,11 +14,16 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime
+from pathlib import Path
 
-from .routes import HUB_PATHS
+from jupyter_core.paths import jupyter_runtime_dir
+from jupyter_server.utils import url_path_join
+from traitlets import TraitError
+
+from .routes import NAMESPACE, GalaxaHubMotd
 
 PROG = "jupyterlab-galaxahub-motd"
-NO_MOTD = 3
+NO_MOTD = 1
 HUB_FAILED = 4
 
 
@@ -29,16 +35,50 @@ class Stop(Exception):
         self.code = code
 
 
-def api_url():
-    url = os.environ.get("JUPYTERHUB_API_URL", "")
-    if not url:
-        raise Stop(NO_MOTD, "no motd: JUPYTERHUB_API_URL is not set, so this lab has no hub to ask")
-    return url
+def lab_token(server):
+    """The token a running lab server at `server` wrote to its runtime file, or ''."""
+    for path in Path(jupyter_runtime_dir()).glob("jpserver-*.json"):
+        try:
+            info = json.loads(path.read_text())
+            os.kill(int(info["pid"]), 0)
+        except (OSError, ValueError, KeyError, TypeError):
+            continue
+        if str(info.get("url", "")).rstrip("/") == server.rstrip("/") and info.get("token"):
+            return info["token"]
+    return ""
 
 
-def fetch(name):
+def settings():
+    """The GalaxaHubMotd settings the running lab server holds, from its settings route."""
+    server = os.environ.get("JUPYTER_SERVER_URL", "")
+    if not server:
+        raise Stop(HUB_FAILED, "JUPYTER_SERVER_URL is not set - run this in a terminal of the lab, which sets it")
+    token = lab_token(server) or os.environ.get("JUPYTERHUB_API_TOKEN", "")
+    request = urllib.request.Request(url_path_join(server, NAMESPACE, "settings"),
+                                     headers={"Authorization": f"token {token}"})
+    try:
+        with urllib.request.urlopen(request, timeout=10) as answer:
+            found = json.loads(answer.read())
+        motd = GalaxaHubMotd(motd_api_url=found["motd_api_url"], notifications_api_url=found["notifications_api_url"])
+    except urllib.error.HTTPError as error:
+        # the status only: the body could echo the token
+        raise Stop(HUB_FAILED, f"the lab server at {server} answered {error.code} - run this in a terminal of "
+                               "the running lab, whose server runs jupyterlab_galaxahub_motd_extension")
+    except (OSError, http.client.HTTPException, ValueError, KeyError, TypeError, TraitError) as error:
+        # only the class name for anything but a network error: its text could echo the token
+        why = getattr(error, "reason", error) if isinstance(error, OSError) else type(error).__name__
+        raise Stop(HUB_FAILED, f"cannot read the settings of the lab server at {server}: {why} - "
+                               "run this in a terminal of the running lab")
+    empty = motd.empty()
+    if empty:
+        raise Stop(NO_MOTD, f"no motd: GalaxaHubMotd.{' and GalaxaHubMotd.'.join(empty)} not set in the "
+                            "running lab's config, so this lab has no hub to ask")
+    return motd
+
+
+def fetch(motd, name):
     """The hub's answer body for one feed; b'' for a 204."""
-    url = f"{api_url().rstrip('/')}/{HUB_PATHS[name]}"
+    url = motd.url(name)
     token = os.environ.get("JUPYTERHUB_API_TOKEN", "")
     request = urllib.request.Request(url, headers={"Authorization": f"token {token}"})
     try:
@@ -61,17 +101,17 @@ def fetch(name):
             why = type(error).__name__
         else:
             why = getattr(error, "reason", error)
-        raise Stop(HUB_FAILED, f"cannot reach {url}: {why} - "
-                               "check that JUPYTERHUB_API_URL is the hub api url this lab was started with")
+        raise Stop(HUB_FAILED, f"cannot reach {url}: {why} - check GalaxaHubMotd.motd_api_url and "
+                               "GalaxaHubMotd.notifications_api_url in the lab's config")
 
 
-def rows(name, key):
+def rows(motd, name, key):
     """The list under `key` of one JSON feed; [] for a 204 or an answer without it."""
     try:
-        answer = json.loads(fetch(name) or b"{}")
+        answer = json.loads(fetch(motd, name) or b"{}")
     except ValueError:
-        raise Stop(HUB_FAILED, f"the hub's {name} answer is not JSON - "
-                               "check that JUPYTERHUB_API_URL is the hub api url")
+        raise Stop(HUB_FAILED, f"the hub's {name} answer is not JSON - check GalaxaHubMotd.motd_api_url "
+                               "and GalaxaHubMotd.notifications_api_url in the lab's config")
     found = answer.get(key) if isinstance(answer, dict) else None
     return found if isinstance(found, list) else []
 
@@ -79,25 +119,25 @@ def rows(name, key):
 # The readers keep only the known fields of each row, so nothing else the hub answers reaches
 # the output.
 
-def read_terminal():
-    return fetch("terminal").decode("utf-8", errors="replace")
+def read_terminal(motd):
+    return fetch(motd, "terminal").decode("utf-8", errors="replace")
 
 
-def read_entries():
+def read_entries(motd):
     """The rich entries: markdown with its body, html with the absolute url of its page."""
     entries = []
-    for e in rows("rich", "entries"):
+    for e in rows(motd, "rich", "entries"):
         if not isinstance(e, dict) or not isinstance(e.get("group"), str):
             continue
         if e.get("kind") == "markdown" and isinstance(e.get("body"), str):
             entries.append({"group": e["group"], "kind": "markdown", "body": e["body"]})
         elif e.get("kind") == "html" and isinstance(e.get("url"), str):
-            url = urllib.parse.urljoin(api_url(), e["url"])
+            url = urllib.parse.urljoin(motd.motd_api_url, e["url"])
             entries.append({"group": e["group"], "kind": "html", "url": url})
     return entries
 
 
-def read_notifications():
+def read_notifications(motd):
     """The broadcasts newest first; a row with an unreadable time sorts last."""
     def time(row):
         try:
@@ -107,7 +147,7 @@ def read_notifications():
 
     kept = [
         {"ts": r.get("ts"), "type": r.get("type"), "audience": r.get("audience"), "message": r["message"]}
-        for r in rows("notifications", "notifications")
+        for r in rows(motd, "notifications", "notifications")
         if isinstance(r, dict) and isinstance(r.get("message"), str)
     ]
     return sorted(kept, key=time, reverse=True)
@@ -125,7 +165,8 @@ def notification_lines(notifications):
 
 
 def cmd_show(args):
-    motd = {"terminal": read_terminal(), "entries": read_entries(), "notifications": read_notifications()}
+    hub = args.motd
+    motd = {"terminal": read_terminal(hub), "entries": read_entries(hub), "notifications": read_notifications(hub)}
     if not any(motd.values()):
         raise Stop(NO_MOTD, "no motd: the hub holds no terminal text, no rich entry and no notification for this user")
     if args.json:
@@ -143,7 +184,7 @@ def cmd_show(args):
 
 
 def cmd_terminal(args):
-    text = read_terminal()
+    text = read_terminal(args.motd)
     if not text:
         raise Stop(NO_MOTD, "no motd: the hub holds no terminal text for this user")
     if args.json:
@@ -154,7 +195,7 @@ def cmd_terminal(args):
 
 
 def cmd_rich(args):
-    entries = read_entries()
+    entries = read_entries(args.motd)
     if not entries:
         raise Stop(NO_MOTD, "no motd: the hub holds no rich entry for this user")
     print(json.dumps({"entries": entries}) if args.json else entries_text(entries))
@@ -162,7 +203,7 @@ def cmd_rich(args):
 
 
 def cmd_notifications(args):
-    notifications = read_notifications()
+    notifications = read_notifications(args.motd)
     if not notifications:
         raise Stop(NO_MOTD, "no motd: the hub holds no notification for this user")
     print(json.dumps({"notifications": notifications}) if args.json else notification_lines(notifications))
@@ -170,19 +211,29 @@ def cmd_notifications(args):
 
 
 EPILOG = f"""
+configuration:
+  c.GalaxaHubMotd.motd_api_url           base URL of the motd API; terminal reads <url>/terminal,
+                                         rich reads <url>/rich
+  c.GalaxaHubMotd.notifications_api_url  URL of the broadcasts sent to the user
+  Both are settings of the lab server. The CLI asks the running lab server for them, so
+  whatever configured that lab applies: its config files and its command line. Either one
+  empty means no hub to ask (exit 1).
+
 environment:
-  JUPYTERHUB_API_URL    the hub api url, set by the hub in every lab it starts; unset means
-                        no hub to ask (exit 3)
-  JUPYTERHUB_API_TOKEN  the lab's api token, sent as `Authorization: token ...`; never printed,
-                        also not on errors and not with --json
+  JUPYTER_SERVER_URL    the lab server this terminal belongs to, set by JupyterLab in every
+                        terminal; unset means exit 4
+  JUPYTERHUB_API_TOKEN  the lab's api token, sent as `Authorization: token ...` to the hub,
+                        and to the lab server when its runtime file holds no token; never
+                        printed, also not on errors and not with --json
 
 exit status:
   0  the motd is on stdout
+  1  no motd: a GalaxaHubMotd setting is empty, the hub answered 404 (it does not carry the
+     feed), or the hub holds nothing for this user
   2  an argument the parser rejects
-  3  no motd: JUPYTERHUB_API_URL is unset, the hub answered 404 (it does not carry the feed),
-     or the hub holds nothing for this user
-  4  the hub refused the token (403), answered another error status, or cannot be reached
-Exit 3 and 4 print one line on stderr, naming the cause, and nothing on stdout.
+  4  the lab server or the hub refused the token (403), answered another error status, or
+     cannot be reached; or JUPYTER_SERVER_URL is unset
+Exit 1 and 4 print one line on stderr, naming the cause, and nothing on stdout.
 
 Every command has its own --help with examples: {PROG} show --help
 """
@@ -197,7 +248,7 @@ Print the whole message of the day in three parts, in this order:
   each rich entry under a `## <group>` heading, as `rich` prints it
   `## Notifications`, then one line per broadcast, as `notifications` prints it
 
-A part the hub holds nothing for is left out. Exits 3 when all three are empty, or when any
+A part the hub holds nothing for is left out. Exits 1 when all three are empty, or when any
 of the three feeds answers 404.
 """,
         f"""
@@ -212,12 +263,14 @@ examples:
         "terminal", cmd_terminal, "the terminal text, verbatim",
         """
 Print the terminal texts of the user's groups, joined by the hub, exactly as the hub stores
-them: ANSI escape sequences included and no newline added. Exits 3 when no group of the user
-carries a terminal text.
+them: ANSI escape sequences included and no newline added. Exits 1 when no group of the user
+carries a terminal text. On exit 1 and 4 stdout stays empty, so a lab startup script runs this
+command with stderr sent to /dev/null and needs no motd URL and no token of its own.
 """,
         f"""
 examples:
   {PROG} terminal
+  {PROG} terminal 2>/dev/null                 # in a lab startup script
   {PROG} terminal --json | jq -r .terminal
 """,
         'print one JSON document instead: {"terminal": "<the text>"}',
@@ -227,10 +280,10 @@ examples:
         """
 Print each rich entry of the user's groups, in the hub's order (by group name): a
 `## <group>` heading, a blank line, then the markdown body, or for an html entry the url of
-its page on the hub, made absolute against JUPYTERHUB_API_URL. That is the hub address inside
+its page on the hub, made absolute against motd_api_url. That is the hub address inside
 the lab, which a browser may not reach, and the hub answers it only to an authenticated
 caller; the page itself is read in the lab's Message of the day tab. Entries are separated by
-a blank line. Exits 3 when no group of the user carries a rich entry.
+a blank line. Exits 1 when no group of the user carries a rich entry.
 """,
         f"""
 examples:
@@ -246,7 +299,7 @@ examples:
 Print the broadcasts the hub recorded for the user - those sent to all users and those
 naming the user - one line per broadcast, newest first. Each line holds four fields separated
 by a tab: time (ISO 8601), type, audience (all or direct), message. Whitespace inside a
-message, line breaks included, prints as one space. Exits 3 when the hub holds none.
+message, line breaks included, prints as one space. Exits 1 when the hub holds none.
 """,
         f"""
 examples:
@@ -280,6 +333,7 @@ def parser():
 def main(argv=None):
     args = parser().parse_args(argv)
     try:
+        args.motd = settings()
         return args.func(args)
     except Stop as stop:
         print(f"{PROG}: {stop}", file=sys.stderr)

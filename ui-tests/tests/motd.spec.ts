@@ -1,8 +1,8 @@
 /**
  * The Message of the day tab against a stub hub (docs/acc-crit.md, the Galata-tagged criteria).
  *
- * The lab under test calls the stub through this extension's server proxy; playwright.config.js
- * points JUPYTERHUB_API_URL at it. Pages load only once a test has set the stub's answers.
+ * The lab under test calls the stub through this extension's server proxy;
+ * jupyter_server_test_config.py points the GalaxaHubMotd URLs at it. Pages load only once a test has set the stub's answers.
  */
 import {
   IJupyterLabPageFixture,
@@ -12,6 +12,8 @@ import {
 } from '@jupyterlab/galata';
 
 import { Locator } from '@playwright/test';
+
+import { spawn } from 'child_process';
 
 import { STUB_TOKEN, StubHub, TERMINAL_TEXT } from './stub-hub';
 
@@ -1171,5 +1173,70 @@ test.describe('reopenOnBroadcast default', () => {
     await page.waitForTimeout(3000);
     expect(hub.count(NOTIFICATIONS)).toBe(pulled);
     await expect(tab(page)).toHaveCount(0);
+  });
+});
+
+/**
+ * The installed jupyterlab-galaxahub-motd, spawned as a lab terminal would run it. `env`
+ * entries override the worker's environment; an undefined entry removes the variable.
+ */
+function motdCli(
+  args: string[],
+  env: Record<string, string | undefined>
+): Promise<{ code: number | null; stdout: string; stderr: string }> {
+  const childEnv: NodeJS.ProcessEnv = { ...process.env, ...env };
+  for (const [name, value] of Object.entries(env)) {
+    if (value === undefined) {
+      delete childEnv[name];
+    }
+  }
+  return new Promise(resolve => {
+    const child = spawn('jupyterlab-galaxahub-motd', args, { env: childEnv });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.on('data', data => (stdout += data));
+    child.stderr.on('data', data => (stderr += data));
+    child.on('error', error =>
+      resolve({ code: null, stdout, stderr: `spawn failed: ${error}` })
+    );
+    child.on('close', code => resolve({ code, stdout, stderr }));
+  });
+}
+
+test.describe('command line', () => {
+  // the suite's lab takes the hub URLs from --config jupyter_server_test_config.py on its
+  // command line; the CLI has no other source for them, so a stub hit proves it asked the lab
+  test('the CLI reads the hub through the URLs the running lab holds', async ({
+    baseURL
+  }) => {
+    hub.rich = { status: 200, body: { entries: [MARKDOWN] } };
+    const run = await motdCli(['rich', '--json'], {
+      JUPYTER_SERVER_URL: `${baseURL}/`
+    });
+    expect(run.stderr).toBe('');
+    expect(run.code).toBe(0);
+    expect(JSON.parse(run.stdout)).toEqual({ entries: [MARKDOWN] });
+    expect(hub.count(RICH)).toBe(1);
+  });
+
+  test('the startup script line prints the terminal text, and nothing without a motd', async ({
+    baseURL
+  }) => {
+    const env = { JUPYTER_SERVER_URL: `${baseURL}/` };
+    const run = await motdCli(['terminal'], env);
+    expect(run.code).toBe(0);
+    expect(run.stdout).toBe(TERMINAL_TEXT);
+    hub.rich = { status: 404, body: { message: 'Not Found' } };
+    const none = await motdCli(['rich'], env);
+    expect(none.code).toBe(1);
+    expect(none.stdout).toBe('');
+  });
+
+  test('without the lab server URL the CLI exits 4 and asks no hub', async () => {
+    const run = await motdCli(['show'], { JUPYTER_SERVER_URL: undefined });
+    expect(run.code).toBe(4);
+    expect(run.stdout).toBe('');
+    expect(run.stderr).toContain('JUPYTER_SERVER_URL is not set');
+    expect(hub.count(RICH) + hub.count(NOTIFICATIONS)).toBe(0);
   });
 });

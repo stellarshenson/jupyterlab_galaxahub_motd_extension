@@ -4,6 +4,25 @@
 
 <!-- <END NEW CHANGELOG ENTRY> -->
 
+## [0.8.10] - 2026-09-29
+
+### Added
+
+- Server settings `c.GalaxaHubMotd.motd_api_url` and `c.GalaxaHubMotd.notifications_api_url` in the lab's Jupyter config name the two hub URLs; with either one empty the extension shows nothing
+- Route `GET /jupyterlab-galaxahub-motd-extension/settings` answers the two URLs as the running server holds them
+- The CLI asks the running lab server (`JUPYTER_SERVER_URL`) for the URLs, so whatever configured the lab applies, a `--config` file on its command line included
+- `jupyterlab-galaxahub-motd terminal 2>/dev/null` documented as the lab startup script line, in `--help`, the README and the agent skill
+
+### Changed
+
+- The hub URLs no longer come from `JUPYTERHUB_API_URL`; a lab without the two settings shows no message of the day
+- The CLI exits 1 when there is no motd (was 3); exit 4 also covers a missing, unreachable or refusing lab server
+- `docs/design-api.md` v2 documents the two settings and the settings route
+
+### Fixed
+
+- A trailing slash on `notifications_api_url` no longer drops every broadcast
+
 ## [0.8.5] - 2026-09-29
 
 ### Added

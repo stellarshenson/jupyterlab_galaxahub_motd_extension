@@ -18,5 +18,11 @@ c.LabApp.user_settings_dir = mkdtemp(prefix="galata-settings-")
 # exported-but-empty JUPYTER_TEST_PORT must fall back here too (playwright.config.js)
 c.ServerApp.port = int(os.environ.get("JUPYTER_TEST_PORT") or "8888")
 
+# the two hub URLs point at the stub hub the suite starts (playwright.config.js sets its port)
+if os.environ.get("MOTD_STUB_PORT"):
+    stub = f"http://127.0.0.1:{os.environ['MOTD_STUB_PORT']}/hub/api"
+    c.GalaxaHubMotd.motd_api_url = f"{stub}/extensions/motd"
+    c.GalaxaHubMotd.notifications_api_url = f"{stub}/user-notifications"
+
 # Uncomment to set server log level to debug level
 # c.ServerApp.log_level = "DEBUG"

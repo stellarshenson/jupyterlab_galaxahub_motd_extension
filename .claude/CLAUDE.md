@@ -40,10 +40,12 @@ The hub half is shipped and is the contract - read it before changing any route 
 beyond the pulled answers and the settings.
 
 - **Server** (`jupyterlab_galaxahub_motd_extension/routes.py`) - `MotdProxyHandler` answers
-  `GET /jupyterlab-galaxahub-motd-extension/{terminal,rich,notifications}` by calling the hub at
-  `JUPYTERHUB_API_URL` with `Authorization: token <JUPYTERHUB_API_TOKEN>`; the token never reaches
-  the browser. Etag and `If-None-Match` pass through. A hub 404, an unreachable hub and an unset
-  `JUPYTERHUB_API_URL` all answer `204` - the one documented "no motd here" answer
+  `GET /jupyterlab-galaxahub-motd-extension/{terminal,rich,notifications}` by calling the URLs the
+  lab's Jupyter config sets (`c.GalaxaHubMotd.motd_api_url` plus `/terminal` and `/rich`,
+  `c.GalaxaHubMotd.notifications_api_url`) with `Authorization: token <JUPYTERHUB_API_TOKEN>`; the
+  token never reaches the browser. Etag and `If-None-Match` pass through. A hub 404, an
+  unreachable hub and an empty URL setting all answer `204` - the one documented "no motd here"
+  answer. The CLI asks the running lab server's `settings` route for the same settings
 - **Frontend** (TypeScript) - `src/request.ts` the feed call, `src/model.ts` the pulled answers
   and the pure answer-to-view mapping, `src/panel.ts` the tab, `src/index.ts` the plugin, the
   `Message of the day: Open` command and the settings (`schema/plugin.json`)
@@ -132,5 +134,5 @@ lab. Redirect output to a file instead of `| tee`, which reports tee's exit stat
 - **No screenshot claim without a render** - a statement about the tab's visible behaviour needs a
   real browser session behind it
 - **Never point a test at the real hub** - this workstation's environment carries a live
-  `JUPYTERHUB_API_TOKEN` and `JUPYTERHUB_API_URL`; pytest and the Galata suite override both with
-  a stub
+  `JUPYTERHUB_API_TOKEN` and `JUPYTERHUB_API_URL`; pytest and the Galata suite replace the token
+  and point the `GalaxaHubMotd` URLs at a stub

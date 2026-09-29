@@ -1,6 +1,6 @@
-# GalaxaHub motd extension - Hub API v1
+# GalaxaHub motd extension - Hub API v2
 
-Status: matches extension release 0.8.4, 2026-09-29.
+Status: matches the extension with the two URL settings, 2026-09-29.
 
 ## Contents
 
@@ -38,8 +38,12 @@ and both send the token of the lab server.
 - **Proxy** - the extension's server handler in `routes.py`, which reads the routes for the tab
 - **CLI** - the `jupyterlab-galaxahub-motd` command, which reads the routes in a terminal
 - **Browser** - never calls the three routes and never holds the token
-- **Base URL** - every route is relative to `JUPYTERHUB_API_URL`, which JupyterHub sets in every
-  spawned server, for example `http://hub:8081/hub/api`
+- **URLs** - the lab's Jupyter config sets `c.GalaxaHubMotd.motd_api_url` and
+  `c.GalaxaHubMotd.notifications_api_url`; the proxy reads them at start, and the CLI asks the
+  running lab server for them
+- **Empty URL** - while either setting is empty, neither caller calls the hub
+- **GalaxaHub values** - `<JUPYTERHUB_API_URL>/extensions/motd` and
+  `<JUPYTERHUB_API_URL>/user-notifications`, for example `http://hub:8081/hub/api/extensions/motd`
 - **Token** - `Authorization: token <JUPYTERHUB_API_TOKEN>`, the token of the lab server
 - **User** - the hub finds the owner of the token and answers with that user's data only, so the
   request carries no username
@@ -49,18 +53,18 @@ and both send the token of the lab server.
 
 ## 3. Hub routes
 
-This section lists the three routes and the answer of each. All three are GET routes relative to
-`JUPYTERHUB_API_URL`.
+This section lists the three routes and the answer of each. All three are GET routes at the URLs
+that the two settings name.
 
-| Route                      | Reader   | Answer                |
-| -------------------------- | -------- | --------------------- |
-| `extensions/motd/rich`     | tab, CLI | JSON, welcome entries |
-| `user-notifications`       | tab, CLI | JSON, broadcasts      |
-| `extensions/motd/terminal` | CLI only | plain text            |
+| Route                     | Reader   | Answer                |
+| ------------------------- | -------- | --------------------- |
+| `<motd_api_url>/rich`     | tab, CLI | JSON, welcome entries |
+| `<notifications_api_url>` | tab, CLI | JSON, broadcasts      |
+| `<motd_api_url>/terminal` | CLI only | plain text            |
 
 ### 3.1 Welcome entries
 
-`GET extensions/motd/rich` returns the welcome entries of the user. The answer is a JSON object
+`GET <motd_api_url>/rich` returns the welcome entries of the user. The answer is a JSON object
 with one `entries` list.
 
 ```json
@@ -93,7 +97,7 @@ with one `entries` list.
 
 ### 3.2 Broadcasts
 
-`GET user-notifications` returns the broadcasts sent to the user. The answer is a JSON object with
+`GET <notifications_api_url>` returns the broadcasts sent to the user. The answer is a JSON object with
 one `notifications` list.
 
 ```json
@@ -122,7 +126,7 @@ one `notifications` list.
 
 ### 3.3 Terminal text
 
-`GET extensions/motd/terminal` returns the terminal text of the user. The CLI and the terminal hook
+`GET <motd_api_url>/terminal` returns the terminal text of the user. The CLI and the terminal hook
 of the lab image read it, and the tab does not.
 
 - **Format** - `text/plain; charset=utf-8`, which the CLI prints as received, so ANSI escape
@@ -134,13 +138,13 @@ of the lab image read it, and the tab does not.
 This section states what the extension does with each hub status and which cache headers the hub
 sends. The proxy passes the hub's `Content-Type`, `Etag` and `Cache-Control` headers to the browser.
 
-| Hub status                                         | Extension action                                            |
-| -------------------------------------------------- | ----------------------------------------------------------- |
-| 200                                                | uses the body as the current rows                           |
-| 304                                                | keeps the rows it holds                                     |
-| 404                                                | treats the hub as having no motd, and the proxy answers 204 |
-| no connection, timeout, `JUPYTERHUB_API_URL` unset | same as 404                                                 |
-| any other status, including 403 and 500            | marks the pull as failed and keeps the rows it holds        |
+| Hub status                                | Extension action                                            |
+| ----------------------------------------- | ----------------------------------------------------------- |
+| 200                                       | uses the body as the current rows                           |
+| 304                                       | keeps the rows it holds                                     |
+| 404                                       | treats the hub as having no motd, and the proxy answers 204 |
+| no connection, timeout, empty URL setting | same as 404                                                 |
+| any other status, including 403 and 500   | marks the pull as failed and keeps the rows it holds        |
 
 - **Etag** - optional, and when the hub sends it, the next pull sends it back as `If-None-Match`
 - **304 answer** - optional, because the proxy answers the browser 304 when a 200 answer carries
@@ -175,11 +179,11 @@ This section states what the hub serves for an `html` welcome entry. The browser
 
 This section states when the tab opens on lab start. The tab opens only when both conditions hold:
 
-- `extensions/motd/rich` answered 200 or 304
+- `<motd_api_url>/rich` answered 200 or 304
 - the user has at least one welcome entry or one broadcast
 
 In every other case the extension writes one console line and opens nothing. A 404 on
-`extensions/motd/rich` keeps the tab closed, even when `user-notifications` has rows. The palette
+`<motd_api_url>/rich` keeps the tab closed, even when `<notifications_api_url>` has rows. The palette
 command `Message of the day: Open` opens the tab at any time.
 
 ## 7. Live broadcasts
@@ -189,22 +193,23 @@ receive broadcasts, and `jupyterlab_notifications_extension` shows them in the l
 notifications.
 
 - **Setting** - the tab opens for a live broadcast only when the `reopenOnBroadcast` setting is on
-- **Pulls** - each new lab notification makes the extension pull `user-notifications` 1 s, 5 s and
-  15 s after it
+- **Pulls** - each new lab notification makes the extension pull `<notifications_api_url>` 1 s, 5 s
+  and 15 s after it
 - **Match** - a row with a new `ts` and `message` pair, whose `message` equals the text of the lab
   notification
 - **Result** - on a match, the extension opens the tab behind the current tab when the tab is
   closed
-- **Hub requirement** - the hub records a delivered broadcast in `user-notifications`, with the same
-  message text, no later than 15 s after the lab notification appears
+- **Hub requirement** - the hub records a delivered broadcast in the `<notifications_api_url>`
+  answer, with the same message text, no later than 15 s after the lab notification appears
 
 ## 8. Stock JupyterHub implementation
 
-This section states how to add the three routes to a JupyterHub without GalaxaHub. The routes are
-hub handlers under the hub API prefix, because `JUPYTERHUB_API_URL` points at the hub process.
+This section states how to add the three routes to a JupyterHub without GalaxaHub. The two URL
+settings can point at hub handlers or at a JupyterHub service, and each caller sends the lab
+server's token.
 
-- **Services** - JupyterHub serves a service under `/services/<name>/`, so a service cannot answer
-  at these paths
+- **Lab config** - the lab image sets both URLs, for example from `JUPYTERHUB_API_URL` in
+  `jupyter_server_config.py`, as the README shows
 - **`extra_handlers`** - JupyterHub 6.0.1 mounts `c.JupyterHub.extra_handlers` under the hub prefix,
   before its API 404 handler
 - **Example** - `(r"/api/extensions/motd/rich", RichHandler)` answers at
@@ -212,4 +217,9 @@ hub handlers under the hub API prefix, because `JUPYTERHUB_API_URL` points at th
 - **Deprecation** - `extra_handlers` is deprecated since JupyterHub 3.1 and logs a warning at start
 - **Token authentication** - a handler that subclasses `jupyterhub.apihandlers.base.APIHandler`
   accepts the lab token, and `self.current_user` is the owner of the token
+- **Service** - JupyterHub serves a service under `/services/<name>/`, and `HubAuth` accepts a
+  token only with `access:services!service=<name>` by default
+- **Service scope** - the default server role grants `users:activity!user` and
+  `access:servers!server`, so the hub config adds `access:services!service=<name>` to the `server`
+  role through `c.JupyterHub.load_roles`
 - **HTML route** - the browser loads the HTML pages, so their route accepts the hub login cookie

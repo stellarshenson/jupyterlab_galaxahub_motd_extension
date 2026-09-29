@@ -117,37 +117,50 @@ The palette command that reopens the tab
 
 The server extension that calls the hub with the lab token and answers the frontend
 
-- [x] `ACC-PROXY-14` **Token forwarded to the hub** - CRITICAL; each route calls the hub under JUPYTERHUB_API_URL with Authorization: token <JUPYTERHUB_API_TOKEN>
-  - evidence: pytest 12/12 on 0.1.4 source: test_token_is_forwarded_to_the_hub; Galata open tests go red with a wrong stub token
+- [x] `ACC-PROXY-14` **Token forwarded to the hub** - CRITICAL; each route calls its URL from the server settings with Authorization: token <JUPYTERHUB_API_TOKEN>
+  - evidence: make test on 0.8.6: pytest 29/29, test_token_is_forwarded_to_the_hub; Galata 38/38 with the token and URLs from jupyter_server_test_config.py
   - test: pytest jupyterlab_galaxahub_motd_extension/tests/test_routes.py::test_token_is_forwarded_to_the_hub
   - test-tags: UNIT, FUNCTIONAL
+  - mechanism: 2026-09-29T18:25:05Z @kj one APIHandler class; GalaxaHubMotd built once at extension load from server_app.config and passed to the handler; tornado AsyncHTTPClient
   - mechanism: 2026-09-28T09:19:17Z @kj one APIHandler class, env read per request, tornado AsyncHTTPClient
   - log: 2026-09-28T09:19:17Z @kj added
   - log: 2026-09-28T09:54:14Z @kj closed: verified on 0.1.4
+  - log: 2026-09-29T18:16:43Z @kj amended text "each route calls the hub under JUPYTERHUB_API_URL with Authorization: token <JUPYTERHUB_API_TOKEN>" -> "each route calls its URL from the server settings with Authorization: token <JUPYTERHUB_API_TOKEN>"
+  - log: 2026-09-29T18:16:55Z @kj reopened: hub URLs move from JUPYTERHUB_API_URL to the GalaxaHubMotd server settings; proof retired until the new tests pass; evidence retired: pytest 12/12 on 0.1.4 source: test_token_is_forwarded_to_the_hub; Galata open tests go red with a wrong stub token
+  - log: 2026-09-29T18:26:35Z @kj closed: verified on 0.8.6
 - [x] `ACC-PROXY-15` **Token never reaches the browser** - CRITICAL; no proxy answer carries the token in a header or the body, and the browser calls only the extension's own routes, never the hub api
   - evidence: pytest 12/12 on 0.1.4 source: test_token_never_in_the_answer (red when all hub headers pass); Galata 17/17 on 0.1.4: 'the browser calls only the extension routes'
   - test: pytest jupyterlab_galaxahub_motd_extension/tests/test_routes.py::test_token_never_in_the_answer; Galata ui-tests/tests/motd.spec.ts 'the browser calls only the extension routes'
   - test-tags: UNIT, FUNCTIONAL
   - log: 2026-09-28T09:19:17Z @kj added
   - log: 2026-09-28T09:54:14Z @kj closed: verified on 0.1.4
-- [x] `ACC-PROXY-16` **Three routes, three hub reads** - HIGH; terminal, rich and notifications under /jupyterlab-galaxahub-motd-extension/ call extensions/motd/terminal, extensions/motd/rich and user-notifications under JUPYTERHUB_API_URL; no other route exists
-  - evidence: pytest 12/12 on 0.1.4 source: test_each_route_reaches_its_hub_path, test_no_other_route
+- [x] `ACC-PROXY-16` **Three routes, three hub reads** - HIGH; terminal and rich under /jupyterlab-galaxahub-motd-extension/ call motd_api_url plus /terminal and /rich, notifications calls notifications_api_url, settings answers the two URLs; no other route exists
+  - evidence: make test on 0.8.8: pytest 34/34, test_each_route_reaches_its_hub_path, test_routes_follow_the_settings, test_settings_route_answers_the_server_settings, test_no_other_route
   - test: pytest jupyterlab_galaxahub_motd_extension/tests/test_routes.py::test_each_route_reaches_its_hub_path and ::test_no_other_route
   - test-tags: UNIT
   - log: 2026-09-28T09:19:18Z @kj added
   - log: 2026-09-28T09:54:15Z @kj closed: verified on 0.1.4
+  - log: 2026-09-29T18:16:54Z @kj amended text "terminal, rich and notifications under /jupyterlab-galaxahub-motd-extension/ call extensions/motd/terminal, extensions/motd/rich and user-notifications under JUPYTERHUB_API_URL; no other route exists" -> "terminal and rich under /jupyterlab-galaxahub-motd-extension/ call motd_api_url plus /terminal and /rich, notifications calls notifications_api_url; no other route exists"
+  - log: 2026-09-29T18:16:55Z @kj reopened: hub URLs move from JUPYTERHUB_API_URL to the GalaxaHubMotd server settings; proof retired until the new tests pass; evidence retired: pytest 12/12 on 0.1.4 source: test_each_route_reaches_its_hub_path, test_no_other_route
+  - log: 2026-09-29T18:26:35Z @kj closed: verified on 0.8.6
+  - log: 2026-09-29T18:51:55Z @kj amended text "terminal and rich under /jupyterlab-galaxahub-motd-extension/ call motd_api_url plus /terminal and /rich, notifications calls notifications_api_url; no other route exists" -> "terminal and rich under /jupyterlab-galaxahub-motd-extension/ call motd_api_url plus /terminal and /rich, notifications calls notifications_api_url, settings answers the two URLs; no other route exists"
+  - log: 2026-09-29T18:51:55Z @kj reopened: Star Colonel: the CLI queries the running lab for its config; proof retired until the new tests pass; evidence retired: make test on 0.8.6: test_each_route_reaches_its_hub_path, test_routes_follow_the_settings (lab-motd/v1/terminal, lab-motd/v1/rich, lab-motd/notes), test_no_other_route
+  - log: 2026-09-29T18:58:17Z @kj closed: verified on 0.8.8
 - [x] `ACC-PROXY-17` **Etag pass-through** - HIGH; the hub's Etag and Cache-Control reach the browser, the browser's If-None-Match reaches the hub, a hub 304 passes through, and a hub 200 whose Etag matches If-None-Match answers 304
   - evidence: pytest 12/12 on 0.1.4 source: test_etag_and_cache_control_pass_through, test_hub_304_passes_through, test_matching_etag_answers_304
   - test: pytest jupyterlab_galaxahub_motd_extension/tests/test_routes.py::test_etag_and_cache_control_pass_through, ::test_hub_304_passes_through, ::test_matching_etag_answers_304
   - test-tags: UNIT
   - log: 2026-09-28T09:19:18Z @kj added
   - log: 2026-09-28T09:54:15Z @kj closed: verified on 0.1.4
-- [x] `ACC-PROXY-18` **One answer for an absent hub** - HIGH; a hub 404, a refused connection and an unset JUPYTERHUB_API_URL all answer 204 with Cache-Control: no-cache and no body, and the server log names which
-  - evidence: pytest 12/12 on 0.1.4 source: test_hub_404_answers_204 (red when the 404 branch is removed), test_refused_connection_answers_204, test_unset_hub_url_answers_204
+- [x] `ACC-PROXY-18` **One answer for an absent hub** - HIGH; a hub 404, a refused connection and an empty server setting all answer 204 with Cache-Control: no-cache and no body, and the server log names which
+  - evidence: make test on 0.8.6: test_hub_404_answers_204, test_refused_connection_answers_204, test_empty_setting_answers_204 asserts one server log line per route naming the empty setting
   - test: pytest jupyterlab_galaxahub_motd_extension/tests/test_routes.py::test_hub_404_answers_204, ::test_refused_connection_answers_204, ::test_unset_hub_url_answers_204
   - test-tags: UNIT
   - log: 2026-09-28T09:19:18Z @kj added
   - log: 2026-09-28T09:54:15Z @kj closed: verified on 0.1.4
+  - log: 2026-09-29T18:16:54Z @kj amended text "a hub 404, a refused connection and an unset JUPYTERHUB_API_URL all answer 204 with Cache-Control: no-cache and no body, and the server log names which" -> "a hub 404, a refused connection and an empty server setting all answer 204 with Cache-Control: no-cache and no body, and the server log names which"
+  - log: 2026-09-29T18:16:55Z @kj reopened: hub URLs move from JUPYTERHUB_API_URL to the GalaxaHubMotd server settings; proof retired until the new tests pass; evidence retired: pytest 12/12 on 0.1.4 source: test_hub_404_answers_204 (red when the 404 branch is removed), test_refused_connection_answers_204, test_unset_hub_url_answers_204
+  - log: 2026-09-29T18:26:36Z @kj closed: verified on 0.8.6
 - [x] `ACC-PROXY-19` **Other hub statuses pass through** - MEDIUM; any other hub status, 403 included, reaches the browser unchanged with its body
   - evidence: pytest 12/12 on 0.1.4 source: test_hub_403_passes_through
   - test: pytest jupyterlab_galaxahub_motd_extension/tests/test_routes.py::test_hub_403_passes_through
@@ -357,13 +370,20 @@ the jupyterlab-galaxahub-motd command and its agent skill: the motd read from a 
   - test-tags: UNIT, FUNCTIONAL
   - log: 2026-09-28T14:50:00Z @kj added
   - log: 2026-09-28T15:32:04Z @kj closed
-- [x] `ACC-CLI-41` **Reads the hub with the lab token** - HIGH; every subcommand calls JUPYTERHUB_API_URL plus the hub path with Authorization: token JUPYTERHUB_API_TOKEN, the same three reads the server proxy makes
-  - evidence: make test on 0.1.13: pytest jupyterlab_galaxahub_motd_extension/tests/test_cli.py::test_each_subcommand_reads_its_hub_path_with_the_token passed - show reads the three hub paths in order, each other subcommand its own, every request carries Authorization: token <stub token>
+- [x] `ACC-CLI-41` **Reads the hub with the lab token** - HIGH; every subcommand calls the configured URLs (motd_api_url plus /terminal and /rich, notifications_api_url) with Authorization: token JUPYTERHUB_API_TOKEN, the same three reads the server proxy makes
+  - evidence: make test pytest 35/35: test_each_subcommand_reads_its_hub_path_with_the_token - URLs from the stub lab server's settings route, each request carries Authorization: token <stub token>
   - test: pytest with a stub hub: per subcommand assert the requested path and the token header
   - test-tags: UNIT
+  - mechanism: 2026-09-29T18:58:22Z @kj standard-library urllib; GalaxaHubMotd built from the running lab server's settings route, found through JUPYTER_SERVER_URL; lab token from its runtime file, else JUPYTERHUB_API_TOKEN
+  - mechanism: 2026-09-29T18:25:05Z @kj standard-library urllib; GalaxaHubMotd built from traitlets Application.load_config_file over jupyter_config(_server,_lab) on jupyter_config_path()
   - mechanism: 2026-09-28T14:50:00Z @kj standard-library urllib; hub paths imported from routes.HUB_PATHS
   - log: 2026-09-28T14:50:00Z @kj added
   - log: 2026-09-28T15:32:04Z @kj closed
+  - log: 2026-09-29T18:16:54Z @kj amended text "every subcommand calls JUPYTERHUB_API_URL plus the hub path with Authorization: token JUPYTERHUB_API_TOKEN, the same three reads the server proxy makes" -> "every subcommand calls the configured URLs (motd_api_url plus /terminal and /rich, notifications_api_url) with Authorization: token JUPYTERHUB_API_TOKEN, the same three reads the server proxy makes"
+  - log: 2026-09-29T18:16:55Z @kj reopened: hub URLs move from JUPYTERHUB_API_URL to the GalaxaHubMotd server settings; proof retired until the new tests pass; evidence retired: make test on 0.1.13: pytest jupyterlab_galaxahub_motd_extension/tests/test_cli.py::test_each_subcommand_reads_its_hub_path_with_the_token passed - show reads the three hub paths in order, each other subcommand its own, every request carries Authorization: token <stub token>
+  - log: 2026-09-29T18:26:36Z @kj closed: verified on 0.8.6
+  - log: 2026-09-29T19:21:16Z @kj reopened: review round 7 DEFER-R1-01: evidence cites the superseded config-file mechanism; evidence retired: make test on 0.8.6: test_each_subcommand_reads_its_hub_path_with_the_token, URLs from a jupyter_server_config.json in the patched config path
+  - log: 2026-09-29T19:21:16Z @kj closed: verified on source after 0.8.8
 - [x] `ACC-CLI-42` **show prints the whole motd** - HIGH; show prints the terminal text, then each rich entry under its group name (markdown body, or the absolute url of an html page), then the notifications newest first
   - evidence: make test on 0.1.13: pytest jupyterlab_galaxahub_motd_extension/tests/test_cli.py::test_show_prints_the_whole_motd passed - terminal text, then ## analysts with its markdown, ## ops with the absolute url, then ## Notifications newest first, in that order
   - test: pytest with a stub hub: assert the three parts in that order and their content
@@ -396,18 +416,27 @@ the jupyterlab-galaxahub-motd command and its agent skill: the motd read from a 
   - log: 2026-09-28T15:32:04Z @kj closed
   - log: 2026-09-28T18:49:14Z @kj edited test "pytest: stub hub echoes the Authorization header in a 403 body and in a 200 body; assert the token is absent from stdout and stderr" -> "pytest: stub hub echoes the Authorization header in a 403 body and in a 200 body; a raw stub echoes it in a malformed status line (test_token_never_printed_from_a_malformed_status_line); assert the token is absent from stdout and stderr"
   - log: 2026-09-28T18:52:52Z @kj edited evidence "make test on 0.1.13: pytest jupyterlab_galaxahub_motd_extension/tests/test_cli.py::test_token_never_printed passed - stub echoes the Authorization header in 200 bodies (exit 0) and 403 bodies (exit 4); the token is absent from stdout and stderr for all four subcommands, text and --json" -> "0.1.19: test_token_never_printed (echo in 403 and 200 bodies) and test_token_never_printed_from_a_malformed_status_line (echo in the status line, stub confirmed it sent) pass; token absent from stdout and stderr for every subcommand, plain and --json; pytest 24/24"
-- [x] `ACC-CLI-47` **Exit 3 when there is no motd** - HIGH; an unset JUPYTERHUB_API_URL, a hub 404 or empty answers exit 3 with one stderr line naming the cause
-  - evidence: make test on 0.1.13: pytest jupyterlab_galaxahub_motd_extension/tests/test_cli.py::test_no_motd_exits_3 passed - empty answers, a hub 404 and an unset JUPYTERHUB_API_URL each exit 3 with empty stdout and one stderr line
-  - test: pytest: each of the three cases exits 3 with one stderr line
+- [x] `ACC-CLI-47` **Exit 1 when there is no motd** - HIGH; an empty server setting, a hub 404 or empty answers exit 1 with one stderr line naming the cause
+  - evidence: make test on 0.8.7: test_no_motd_exits_1 - empty answers, a hub 404, one setting empty and both empty each exit 1 with one stderr line; installed CLI with an empty config dir exits 1, stdout empty
+  - test: pytest: each of the three cases exits 1 with one stderr line
   - test-tags: UNIT
   - log: 2026-09-28T14:50:00Z @kj added
   - log: 2026-09-28T15:32:04Z @kj closed
+  - log: 2026-09-29T18:16:55Z @kj amended text "an unset JUPYTERHUB_API_URL, a hub 404 or empty answers exit 3 with one stderr line naming the cause" -> "an empty server setting, a hub 404 or empty answers exit 3 with one stderr line naming the cause"
+  - log: 2026-09-29T18:16:55Z @kj reopened: hub URLs move from JUPYTERHUB_API_URL to the GalaxaHubMotd server settings; proof retired until the new tests pass; evidence retired: make test on 0.1.13: pytest jupyterlab_galaxahub_motd_extension/tests/test_cli.py::test_no_motd_exits_3 passed - empty answers, a hub 404 and an unset JUPYTERHUB_API_URL each exit 3 with empty stdout and one stderr line
+  - log: 2026-09-29T18:26:36Z @kj closed: verified on 0.8.6
+  - log: 2026-09-29T18:43:15Z @kj amended title "Exit 3 when there is no motd" -> "Exit 1 when there is no motd"; text "an empty server setting, a hub 404 or empty answers exit 3 with one stderr line naming the cause" -> "an empty server setting, a hub 404 or empty answers exit 1 with one stderr line naming the cause"
+  - log: 2026-09-29T18:43:15Z @kj edited test "pytest: each of the three cases exits 3 with one stderr line" -> "pytest: each of the three cases exits 1 with one stderr line"
+  - log: 2026-09-29T18:43:15Z @kj reopened: Star Colonel: no motd exits 1, not 3; proof retired until the tests pass; evidence retired: make test on 0.8.6: test_no_motd_exits_3 - empty answers, a hub 404, one setting empty and both empty each exit 3 with one stderr line; no request with a setting empty
+  - log: 2026-09-29T18:44:42Z @kj closed: verified on 0.8.7
 - [x] `ACC-CLI-48` **Exit 4 when the hub refuses or fails** - HIGH; a 403, any other non-2xx answer or an unreachable hub exit 4 with one stderr line naming the cause and the next step
-  - evidence: make test on 0.1.13: pytest jupyterlab_galaxahub_motd_extension/tests/test_cli.py::test_refusal_or_failure_exits_4 passed - stub 403 (names JUPYTERHUB_API_TOKEN), stub 500 (try again) and a closed port (names JUPYTERHUB_API_URL) each exit 4 with one stderr line
+  - evidence: make test pytest 35/35: test_refusal_or_failure_exits_4 - hub 403 names JUPYTERHUB_API_TOKEN, 500 says try again, closed port says cannot reach and names GalaxaHubMotd.motd_api_url; each exit 4, one stderr line
   - test: pytest: stub 403, stub 500 and a closed port each exit 4 with one stderr line
   - test-tags: UNIT
   - log: 2026-09-28T14:50:00Z @kj added
   - log: 2026-09-28T15:32:04Z @kj closed
+  - log: 2026-09-29T19:21:16Z @kj reopened: review round 7 DEFER-R1-01: evidence cites the superseded config-file mechanism; evidence retired: make test on 0.1.13: pytest jupyterlab_galaxahub_motd_extension/tests/test_cli.py::test_refusal_or_failure_exits_4 passed - stub 403 (names JUPYTERHUB_API_TOKEN), stub 500 (try again) and a closed port (names JUPYTERHUB_API_URL) each exit 4 with one stderr line
+  - log: 2026-09-29T19:21:16Z @kj closed: verified on source after 0.8.8
 - [x] `ACC-CLI-49` **--help written for agents** - MEDIUM; top-level help lists each subcommand, the environment variables and the exit codes; each subcommand's help has a description, help on every flag and 1-3 examples
   - evidence: make test on 0.1.13: pytest jupyterlab_galaxahub_motd_extension/tests/test_cli.py::test_help_written_for_agents passed - top-level help names both variables, exit codes 0 2 3 4 and the four subcommands; each subcommand has a description, 1-3 examples and help on every flag
   - test: pytest: capture every help text; assert the variable names, the exit codes and an examples section per subcommand
@@ -432,3 +461,87 @@ the jupyterlab-galaxahub-motd command and its agent skill: the motd read from a 
   - log: 2026-09-28T15:32:05Z @kj closed
   - log: 2026-09-28T16:01:00Z @kj reopened: the README names the skill path; the path changes with the rename in ACC-CLI-50; evidence retired: grep README.md: line 82 links .agents/skills/jupyterlab-galaxahub-motd/SKILL.md, line 87 gives ln -s "$PWD/.agents/skills/jupyterlab-galaxahub-motd" ~/.claude/skills/jupyterlab-galaxahub-motd
   - log: 2026-09-28T16:07:48Z @kj closed: README follows the rename
+- [x] `ACC-CLI-56` **CLI asks the running lab for its settings** - HIGH; the CLI takes both URLs from the lab server named by JUPYTER_SERVER_URL, through its settings route, so whatever configured the running lab applies, a --config file on the lab's command line included; it reads no config file and not JUPYTERHUB_API_URL
+  - evidence: make test on 0.8.8: test_asks_the_running_lab, test_cli_asks_the_running_lab against a real server; Galata 41/41: installed CLI reads the stub hub through the suite's lab, which holds the URLs from --config jupyter_server_test_config.py
+  - related: ACC-SERVER-60 - the route the CLI asks
+  - test: pytest: a lab server holding the URLs in its config, the CLI in a thread reads the stub hub; Galata 'command line': the installed CLI reads the stub hub through the suite's lab, which gets the URLs from --config jupyter_server_test_config.py
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-09-29T18:16:55Z @kj added
+  - log: 2026-09-29T18:26:36Z @kj closed: verified on 0.8.6
+  - log: 2026-09-29T18:51:55Z @kj amended title "CLI reads the lab's config files" -> "CLI asks the running lab for its settings"; text "the CLI takes both settings from jupyter_server_config and jupyter_lab_config on the Jupyter config path, jupyter_lab_config taking precedence, and does not read JUPYTERHUB_API_URL" -> "the CLI takes both URLs from the lab server named by JUPYTER_SERVER_URL, through its settings route, so whatever configured the running lab applies, a --config file on the lab's command line included; it reads no config file and not JUPYTERHUB_API_URL"
+  - log: 2026-09-29T18:51:55Z @kj edited test "pytest: config path pointed at a temp dir holding jupyter_server_config.json and jupyter_lab_config.py; the CLI calls the stub at the jupyter_lab_config URLs" -> "pytest: a lab server holding the URLs in its config, the CLI in a thread with JUPYTER_SERVER_URL at it reads the stub hub; manual: lab started with --config file, CLI reads its URLs"
+  - log: 2026-09-29T18:51:55Z @kj reopened: Star Colonel: the CLI queries the running lab for its config; proof retired until the new tests pass; evidence retired: make test on 0.8.6: test_reads_the_lab_config_files - jupyter_lab_config.py wins over jupyter_server_config.json and JUPYTERHUB_API_URL; red when jupyter_lab_config is not loaded
+  - log: 2026-09-29T18:57:38Z @kj edited test "pytest: a lab server holding the URLs in its config, the CLI in a thread with JUPYTER_SERVER_URL at it reads the stub hub; manual: lab started with --config file, CLI reads its URLs" -> "pytest: a lab server holding the URLs in its config, the CLI in a thread reads the stub hub; Galata 'command line': the installed CLI reads the stub hub through the suite's lab, which gets the URLs from --config jupyter_server_test_config.py"; test-tags "UNIT" -> "UNIT, FUNCTIONAL"
+  - log: 2026-09-29T19:00:35Z @kj closed: verified on 0.8.8
+- [x] `ACC-CLI-57` **Startup script gets the motd from the CLI** - HIGH; a lab startup script runs jupyterlab-galaxahub-motd terminal (or show, rich, notifications, each with --json) and holds no motd URL and no token; the CLI takes the URLs from the running lab server and the token from the environment; with no motd stdout stays empty
+  - evidence: make test on 0.8.8: test_startup_script_line - new process, JUPYTER_SERVER_URL at a stub lab: text byte for byte, exit 0; after a 204, exit 1, empty stdout; Galata 41/41 'command line': terminal prints the stub text, no motd exits 1 with empty stdout
+  - related: ACC-CLI-44 - every command also prints its feed as one JSON document; ACC-CLI-56 - the config files it reads
+  - test: pytest: new process, JUPYTER_SERVER_URL at a stub lab server: terminal prints the stub text byte for byte, exit 0; after a 204, exit 1 with empty stdout; Galata 'command line': terminal 2>/dev/null against the suite's lab prints the stub terminal text
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-09-29T18:41:25Z @kj added
+  - log: 2026-09-29T18:42:46Z @kj closed: verified on source after 0.8.6
+  - log: 2026-09-29T18:43:15Z @kj edited test "pytest: new process, JUPYTER_CONFIG_DIR holding the stub URLs: terminal prints the stub text byte for byte, exit 0; after the stub answers 204, exit 3 with empty stdout" -> "pytest: new process, JUPYTER_CONFIG_DIR holding the stub URLs: terminal prints the stub text byte for byte, exit 0; after the stub answers 204, exit 1 with empty stdout"
+  - log: 2026-09-29T18:43:16Z @kj reopened: Star Colonel: no motd exits 1, not 3; proof retired until the tests pass; evidence retired: make test: pytest 30/30, test_startup_script_line - new process with JUPYTER_CONFIG_DIR: terminal prints the stub text byte for byte, exit 0; after a 204, exit 3 and empty stdout; red when the config search misses JUPYTER_CONFIG_DIR
+  - log: 2026-09-29T18:44:42Z @kj closed: verified on 0.8.7
+  - log: 2026-09-29T18:51:55Z @kj amended text "a lab startup script runs jupyterlab-galaxahub-motd terminal (or show, rich, notifications, each with --json) and holds no motd URL and no token; the CLI takes both from the lab's Jupyter config and environment; with no motd stdout stays empty" -> "a lab startup script runs jupyterlab-galaxahub-motd terminal (or show, rich, notifications, each with --json) and holds no motd URL and no token; the CLI takes the URLs from the running lab server and the token from the environment; with no motd stdout stays empty"
+  - log: 2026-09-29T18:51:55Z @kj edited test "pytest: new process, JUPYTER_CONFIG_DIR holding the stub URLs: terminal prints the stub text byte for byte, exit 0; after the stub answers 204, exit 1 with empty stdout" -> "pytest: new process, JUPYTER_SERVER_URL at a stub lab server: terminal prints the stub text byte for byte, exit 0; after the stub answers 204, exit 1 with empty stdout"
+  - log: 2026-09-29T18:51:55Z @kj reopened: Star Colonel: the CLI queries the running lab for its config; proof retired until the new tests pass; evidence retired: make test on 0.8.7: test_startup_script_line - new process with JUPYTER_CONFIG_DIR: terminal prints the stub text byte for byte, exit 0; after a 204, exit 1 and empty stdout
+  - log: 2026-09-29T18:57:38Z @kj edited test "pytest: new process, JUPYTER_SERVER_URL at a stub lab server: terminal prints the stub text byte for byte, exit 0; after the stub answers 204, exit 1 with empty stdout" -> "pytest: new process, JUPYTER_SERVER_URL at a stub lab server: terminal prints the stub text byte for byte, exit 0; after a 204, exit 1 with empty stdout; Galata 'command line': terminal 2>/dev/null against the suite's lab prints the stub terminal text"
+  - log: 2026-09-29T19:00:35Z @kj closed: verified on 0.8.8
+- [x] `ACC-CLI-58` **--help shows the startup script line** - MEDIUM; terminal --help says stdout stays empty on exit 1 and 4 and gives jupyterlab-galaxahub-motd terminal 2>/dev/null as the lab startup script example
+  - evidence: make test on 0.8.7: test_help_written_for_agents asserts exit codes 0, 1, 2, 4, the terminal 2>/dev/null example and the exit 1 and 4 empty-stdout sentence
+  - test: pytest: terminal help holds the example line and the empty-stdout sentence
+  - test-tags: UNIT
+  - log: 2026-09-29T18:41:25Z @kj added
+  - log: 2026-09-29T18:42:46Z @kj closed: verified on source after 0.8.6
+  - log: 2026-09-29T18:43:15Z @kj amended text "terminal --help says stdout stays empty on exit 3 and 4 and gives jupyterlab-galaxahub-motd terminal 2>/dev/null as the lab startup script example" -> "terminal --help says stdout stays empty on exit 1 and 4 and gives jupyterlab-galaxahub-motd terminal 2>/dev/null as the lab startup script example"
+  - log: 2026-09-29T18:43:16Z @kj reopened: Star Colonel: no motd exits 1, not 3; proof retired until the tests pass; evidence retired: make test: test_help_written_for_agents asserts the terminal 2>/dev/null example and the empty-stdout sentence in terminal --help
+  - log: 2026-09-29T18:44:42Z @kj closed: verified on 0.8.7
+- [x] `ACC-CLI-59` **Skill sends startup scripts to the CLI** - MEDIUM; the agent skill tells an agent writing a lab startup script to call the CLI and never to fetch the motd API itself
+  - evidence: make test: test_agent_skill asserts the Lab startup script rule; SKILL.md 20 lines
+  - test: pytest: SKILL.md holds the startup script rule and stays under 30 lines
+  - test-tags: UNIT
+  - log: 2026-09-29T18:41:26Z @kj added
+  - log: 2026-09-29T18:42:46Z @kj closed: verified on source after 0.8.6
+- [x] `ACC-CLI-61` **Exit 4 without the lab server** - MEDIUM; JUPYTER_SERVER_URL unset, a lab server that cannot be reached, or one that refuses the token exits 4 with one stderr line naming the lab server and the next step; the lab token is never printed
+  - evidence: make test on 0.8.8: test_lab_server_failures_exit_4 - a 403 echoing the token, non-JSON, a null URL, a closed port and unset JUPYTER_SERVER_URL each exit 4 with one stderr line, no token, no hub request
+  - test: pytest: unset JUPYTER_SERVER_URL, a closed port and a 403 echoing the token each exit 4 with one stderr line and no token
+  - test-tags: UNIT
+  - log: 2026-09-29T18:51:55Z @kj added
+  - log: 2026-09-29T18:58:17Z @kj closed: verified on 0.8.8
+
+## Server settings `SERVER`
+
+The two hub URLs the lab's Jupyter config sets for the extension
+
+- [x] `ACC-SERVER-53` **Two server settings** - HIGH; GalaxaHubMotd.motd_api_url and GalaxaHubMotd.notifications_api_url are Jupyter server settings, both empty by default
+  - evidence: make test on 0.8.6: test_settings_are_empty_by_default - both traits configurable, default empty, no other config trait
+  - test: pytest: GalaxaHubMotd() has both traits, configurable, default empty
+  - test-tags: UNIT
+  - log: 2026-09-29T18:16:55Z @kj added
+  - log: 2026-09-29T18:26:36Z @kj closed: verified on 0.8.6
+- [x] `ACC-SERVER-54` **One empty setting stops all three routes** - CRITICAL; when either setting is empty, all three routes answer 204 and call no URL, so the tab stays closed
+  - evidence: make test on 0.8.6: test_empty_setting_answers_204 for motd_api_url, notifications_api_url and both left out: three routes 204, stub records no request; red when empty() checks motd_api_url only
+  - test: pytest with a stub hub, each setting left out in turn and both: three routes answer 204, the stub records no request
+  - test-tags: UNIT
+  - log: 2026-09-29T18:16:55Z @kj added
+  - log: 2026-09-29T18:26:36Z @kj closed: verified on 0.8.6
+- [x] `ACC-SERVER-55` **Settings read from both config files** - HIGH; the settings apply from jupyter_server_config and from jupyter_lab_config
+  - evidence: installed 0.8.6, one lab per JUPYTER_CONFIG_DIR against a stub hub: jupyter_lab_config.py, jupyter_server_config.py and .json answer rich 200 with 2 entries; jupyter_server_config.d/motd.json and no file answer 204
+  - test: lab started with JUPYTER_CONFIG_DIR holding only jupyter_lab_config.py reaches the stub hub; the Galata suite sets them in its server config file
+  - test-tags: MANUAL, FUNCTIONAL
+  - log: 2026-09-29T18:16:55Z @kj added
+  - log: 2026-09-29T18:26:36Z @kj closed: verified on 0.8.6
+- [x] `ACC-SERVER-60` **Settings route** - HIGH; GET /jupyterlab-galaxahub-motd-extension/settings answers {motd_api_url, notifications_api_url} as the running server holds them, empty strings when unset; it requires authentication like the other routes
+  - evidence: make test on 0.8.8: test_settings_route_answers_the_server_settings, test_settings_route_answers_empty_strings; auth gate: all endpoints of the extension require authentication
+  - test: pytest: the route answers the configured URLs, and empty strings when both are left out; make test auth gate
+  - test-tags: UNIT
+  - log: 2026-09-29T18:51:55Z @kj added
+  - log: 2026-09-29T18:58:17Z @kj closed: verified on 0.8.8
+- [x] `ACC-SERVER-62` **Edge: trailing slash on a URL setting** - MEDIUM; either setting with a trailing slash reads the same hub paths as without it
+  - evidence: make test: test_routes_follow_the_settings with and without trailing slashes reads lab-motd/v1/terminal, lab-motd/v1/rich, lab-motd/notes; red before the fix
+  - related: DEF-SERVER-23 - found by the adversarial review round 7
+  - test: pytest: test_routes_follow_the_settings with and without trailing slashes reads lab-motd/v1/terminal, lab-motd/v1/rich, lab-motd/notes
+  - test-tags: UNIT
+  - log: 2026-09-29T19:20:10Z @kj added
+  - log: 2026-09-29T19:21:16Z @kj closed: verified on source after 0.8.8

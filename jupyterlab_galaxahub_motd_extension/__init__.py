@@ -7,7 +7,7 @@ except ImportError:
     import warnings
     warnings.warn("Importing 'jupyterlab_galaxahub_motd_extension' outside a proper installation.")
     __version__ = "dev"
-from .routes import setup_route_handlers
+from .routes import GalaxaHubMotd, setup_route_handlers
 
 
 def _jupyter_labextension_paths():
@@ -31,6 +31,6 @@ def _load_jupyter_server_extension(server_app):
     server_app: jupyterlab.labapp.LabApp
         JupyterLab application instance
     """
-    setup_route_handlers(server_app.web_app)
+    setup_route_handlers(server_app.web_app, GalaxaHubMotd(config=server_app.config))
     name = "jupyterlab_galaxahub_motd_extension"
     server_app.log.info(f"Registered {name} server extension")

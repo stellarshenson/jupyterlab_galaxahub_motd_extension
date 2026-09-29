@@ -204,6 +204,13 @@ The Galata and pytest harness around the extension
   - root-cause: 2026-09-28T19:39:36Z @kj configure_jupyter_server moves the workspaces folder and the server root to temporary folders, not the user settings folder
   - log: 2026-09-28T19:39:36Z @kj added
   - log: 2026-09-28T19:42:01Z @kj closed
+- [x] `DEF-TEST-24` **Malformed status line test races its stub thread** - MINOR; test_token_never_printed_from_a_malformed_status_line asserts sent before the stub thread appends the last echoed token; failed once in the make publish test gate with 3 of 4 entries
+  - evidence: the test joins the stub thread before asserting sent; 24 of 24 runs pass, 8 at a time; make test pytest 35/35 with the live environment make publish uses
+  - repro: make publish test gate under load; 0 of 25 isolated runs fail
+  - test-tags: UNIT
+  - root-cause: 2026-09-29T19:29:55Z @kj the stub thread appends to sent after sendall, and the test asserts right after the last CLI run returns, without joining the thread
+  - log: 2026-09-29T19:29:55Z @kj added
+  - log: 2026-09-29T19:32:41Z @kj closed: fixed before the 0.8.10 publish
 
 ## Live broadcasts `LIVE`
 
@@ -216,3 +223,16 @@ How a broadcast reaches an open lab
   - root-cause: 2026-09-28T19:52:19Z @kj the broadcast path calls open(), which runs app.shell.activateById
   - log: 2026-09-28T19:52:19Z @kj added
   - log: 2026-09-28T20:04:02Z @kj closed
+
+## Server settings `SERVER`
+
+The two hub URL settings the lab's Jupyter config sets
+
+- [x] `DEF-SERVER-23` **Trailing slash drops every broadcast** - MAJOR; notifications_api_url ending in / is called as written; the hub route has no trailing slash, answers 404, the proxy answers 204 and the CLI exits 1, so no broadcast shows
+  - evidence: GalaxaHubMotd.url strips the trailing / of notifications_api_url; test_routes_follow_the_settings[hub_paths1] with trailing slashes failed before the fix and passes after; make test pytest 35/35
+  - test-tags: UNIT
+  - repro: c.GalaxaHubMotd.notifications_api_url = '<hub>/user-notifications/' -> notifications route answers 204
+  - root-cause: 2026-09-29T19:20:10Z @kj GalaxaHubMotd.url returns notifications_api_url unchanged while motd_api_url goes through url_path_join
+  - log: 2026-09-29T19:20:10Z @kj added
+  - log: 2026-09-29T19:20:30Z @kj edited test-tags added "UNIT"
+  - log: 2026-09-29T19:21:16Z @kj closed: fixed by review round 7 plan

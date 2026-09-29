@@ -1,24 +1,47 @@
 """The three hub reads, proxied with the lab's API token.
 
 The frontend calls only these routes. The hub is called from here with JUPYTERHUB_API_TOKEN,
-so the token never reaches the browser. The contract is the hub's galaxahub-motd-extension
-(terminal, rich) and its user-notifications rail.
+so the token never reaches the browser. The two hub URLs come from the lab's Jupyter config
+(GalaxaHubMotd); the contract is the hub's galaxahub-motd-extension (terminal, rich) and its
+user-notifications rail.
 """
+import json
 import os
 
 import tornado
 from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
 from tornado.httpclient import AsyncHTTPClient, HTTPClientError, HTTPRequest
+from traitlets import Unicode
+from traitlets.config import Configurable
 
 NAMESPACE = "jupyterlab-galaxahub-motd-extension"
+ROUTES = ("terminal", "rich", "notifications")
 
-# route name -> hub path under JUPYTERHUB_API_URL
-HUB_PATHS = {
-    "terminal": "extensions/motd/terminal",
-    "rich": "extensions/motd/rich",
-    "notifications": "user-notifications",
-}
+
+class GalaxaHubMotd(Configurable):
+    """The two hub URLs, set in jupyter_server_config or jupyter_lab_config. Both are required:
+    with either one empty the extension has no hub to ask and shows nothing."""
+
+    motd_api_url = Unicode(
+        "", config=True,
+        help="Base URL of the motd API: <url>/rich answers the welcome entries (markdown and "
+             "html pages), <url>/terminal the terminal text. Empty: the extension shows nothing.",
+    )
+    notifications_api_url = Unicode(
+        "", config=True,
+        help="URL that answers the broadcasts sent to the user. Empty: the extension shows nothing.",
+    )
+
+    def empty(self):
+        """The names of the settings left empty."""
+        return [name for name in ("motd_api_url", "notifications_api_url") if not getattr(self, name)]
+
+    def url(self, route):
+        """The URL one route reads."""
+        if route == "notifications":
+            return self.notifications_api_url.rstrip("/")
+        return url_path_join(self.motd_api_url, route)
 
 # the hub answer headers the browser receives; nothing else of the hub answer is passed on
 PASSED_HEADERS = ("Content-Type", "Etag", "Cache-Control")
@@ -27,16 +50,19 @@ PASSED_HEADERS = ("Content-Type", "Etag", "Cache-Control")
 class MotdProxyHandler(APIHandler):
     """GET one hub read and answer it unchanged, or 204 when there is no hub to ask.
 
-    A hub 404 (the hub carries no motd extension), a hub that cannot be reached and an unset
-    JUPYTERHUB_API_URL are one answer: 204 with Cache-Control: no-cache. Every other hub
+    A hub 404 (the hub carries no motd extension), a hub that cannot be reached and an empty
+    GalaxaHubMotd setting are one answer: 204 with Cache-Control: no-cache. Every other hub
     status passes through with its body."""
+
+    def initialize(self, motd):
+        self.motd = motd
 
     @tornado.web.authenticated
     async def get(self, name):
-        api_url = os.environ.get("JUPYTERHUB_API_URL", "")
-        if not api_url:
-            return self.absent(name, "JUPYTERHUB_API_URL is not set")
-        url = url_path_join(api_url, HUB_PATHS[name])
+        empty = self.motd.empty()
+        if empty:
+            return self.absent(name, f"GalaxaHubMotd.{' and GalaxaHubMotd.'.join(empty)} not set")
+        url = self.motd.url(name)
         headers = {"Authorization": f"token {os.environ.get('JUPYTERHUB_API_TOKEN', '')}"}
         if "If-None-Match" in self.request.headers:
             headers["If-None-Match"] = self.request.headers["If-None-Match"]
@@ -72,9 +98,26 @@ class MotdProxyHandler(APIHandler):
         self.finish()
 
 
-def setup_route_handlers(web_app):
+class MotdSettingsHandler(APIHandler):
+    """GET the two hub URLs as this server holds them, so the CLI uses the running lab's config."""
+
+    def initialize(self, motd):
+        self.motd = motd
+
+    @tornado.web.authenticated
+    def get(self):
+        self.finish(json.dumps({
+            "motd_api_url": self.motd.motd_api_url,
+            "notifications_api_url": self.motd.notifications_api_url,
+        }))
+
+
+def setup_route_handlers(web_app, motd):
     host_pattern = ".*$"
     base_url = web_app.settings["base_url"]
 
-    route_pattern = url_path_join(base_url, NAMESPACE, f"({'|'.join(HUB_PATHS)})")
-    web_app.add_handlers(host_pattern, [(route_pattern, MotdProxyHandler)])
+    route_pattern = url_path_join(base_url, NAMESPACE, f"({'|'.join(ROUTES)})")
+    web_app.add_handlers(host_pattern, [
+        (route_pattern, MotdProxyHandler, {"motd": motd}),
+        (url_path_join(base_url, NAMESPACE, "settings"), MotdSettingsHandler, {"motd": motd}),
+    ])
