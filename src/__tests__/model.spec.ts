@@ -61,23 +61,26 @@ describe('applyAnswer', () => {
     expect(next).toEqual(previous);
   });
 
-  it('reads the proxy 204 as an absent hub', () => {
+  it('reads the proxy 204 as an absent hub and keeps the held rows and Etag', () => {
     const next = applyAnswer(
       previous,
       { status: 204, etag: null, body: null },
       notificationRows
     );
-    expect(next).toEqual({ state: 'absent', etag: null, rows: [] });
+    expect(next).toEqual({ ...previous, state: 'absent' });
   });
 
-  it.each([403, 500, 0])('reads status %s as failed', status => {
-    const next = applyAnswer(
-      previous,
-      { status, etag: null, body: null },
-      notificationRows
-    );
-    expect(next).toEqual({ state: 'failed', etag: null, rows: [] });
-  });
+  it.each([403, 500, 0])(
+    'reads status %s as failed and keeps the held rows and Etag',
+    status => {
+      const next = applyAnswer(
+        previous,
+        { status, etag: null, body: null },
+        notificationRows
+      );
+      expect(next).toEqual({ ...previous, state: 'failed' });
+    }
+  );
 });
 
 describe('richRows', () => {
@@ -173,11 +176,12 @@ describe('notificationView', () => {
     ]);
   });
 
-  it("gives a styled type the lab's toast class and an unknown type none", () => {
-    const [newest, middle] = notificationView(rows);
-    expect(newest.typeClass).toBe('jp-Notification-Toast-error');
-    expect(middle.type).toBe('default');
-    expect(middle.typeClass).toBe('');
+  it('keeps a lab type and reads an unknown type as default', () => {
+    expect(notificationView(rows).map(r => r.type)).toEqual([
+      'error',
+      'default',
+      'info'
+    ]);
   });
 
   it('marks the audience', () => {

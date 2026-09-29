@@ -24,12 +24,17 @@ export class StubHub {
 
   rich: IStubAnswer = { status: 200, body: { entries: [] } };
   notifications: IStubAnswer = { status: 200, body: { notifications: [] } };
+  /**
+   * The html package pages, by the url path an html entry names.
+   */
+  pages = new Map<string, string>();
   private counts = new Map<string, number>();
   private server: http.Server | null = null;
 
   reset(): void {
     this.rich = { status: 200, body: { entries: [] } };
     this.notifications = { status: 200, body: { notifications: [] } };
+    this.pages.clear();
     this.counts.clear();
   }
 
@@ -73,8 +78,16 @@ export class StubHub {
   }
 
   private answer(req: http.IncomingMessage, res: http.ServerResponse): void {
-    const path = (req.url ?? '').split('?')[0].replace(/^\/hub\/api\//, '');
+    const url = (req.url ?? '').split('?')[0];
+    const path = url.replace(/^\/hub\/api\//, '');
     this.counts.set(path, this.count(path) + 1);
+    // the hub serves a package page to the browser on its cookie, never on the lab token
+    const page = this.pages.get(url);
+    if (page !== undefined) {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(page);
+      return;
+    }
     if (req.headers.authorization !== `token ${STUB_TOKEN}`) {
       res.writeHead(403, { 'Content-Type': 'application/json' });
       res.end('{"message": "Forbidden"}');

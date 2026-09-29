@@ -30,6 +30,7 @@ describe('schema/plugin.json', () => {
     expect(schema.properties.pollMinutes).toMatchObject({
       type: 'integer',
       minimum: 0,
+      maximum: 35791,
       default: 0
     });
   });

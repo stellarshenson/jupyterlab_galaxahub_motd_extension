@@ -1,6 +1,10 @@
 /**
- * The panel's drawing of the model and its polling (ACC-VIEW-6 to 11, ACC-CONFIG-28).
+ * The panel's drawing of the model and its polling (ACC-VIEW-6 to 11, ACC-CONFIG-28,
+ * ACC-LAYOUT-32, 33, 35 and 36).
  */
+import * as fs from 'fs';
+import * as path from 'path';
+
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 
 import { MessageLoop } from '@lumino/messaging';
@@ -16,6 +20,11 @@ import { Feed, IAnswer } from '../request';
  */
 const ago = (minutes: number) =>
   new Date(Date.now() - minutes * 60_000).toISOString();
+
+const CSS = fs.readFileSync(
+  path.resolve(__dirname, '..', '..', 'style', 'base.css'),
+  'utf-8'
+);
 
 /**
  * A rendermime stand-in recording what it was asked to render.
@@ -59,7 +68,7 @@ describe('MotdPanel drawing', () => {
       body: '# Welcome to the analysts lab'
     },
     {
-      group: 'everyone',
+      group: 'interns',
       kind: 'html',
       url: '/hub/api/extensions/motd/rich/p1/index.html'
     }
@@ -89,7 +98,7 @@ describe('MotdPanel drawing', () => {
     const headings = Array.from(
       panel.node.querySelectorAll('.jp-MotdPanel-heading')
     ).map(h => h.textContent);
-    expect(headings).toEqual(['analysts', 'everyone', 'Notifications']);
+    expect(headings).toEqual(['analysts', 'interns', 'Notifications']);
     expect(rendered).toEqual([
       {
         mime: 'text/markdown',
@@ -97,6 +106,54 @@ describe('MotdPanel drawing', () => {
         trusted: false
       }
     ]);
+    panel.dispose();
+  });
+
+  it('draws each entry as a card: a header strip with its group, then the content', async () => {
+    const { model } = modelAnswering(entries, []);
+    await model.pull();
+    const panel = new MotdPanel(model, fakeRendermime().registry);
+    await panel.render();
+
+    const cards = Array.from(
+      panel.node.querySelectorAll(
+        '.jp-MotdPanel-entries > .jp-MotdPanel-section'
+      )
+    );
+    expect(cards).toHaveLength(2);
+    cards.forEach((card, i) => {
+      expect(card.children).toHaveLength(2);
+      const strip = card.children[0];
+      expect(strip.className).toBe('jp-MotdPanel-strip');
+      expect(strip.firstElementChild!.getAttribute('class')).toBe(
+        'jp-MotdPanel-groupIcon'
+      );
+      expect(strip.textContent!.startsWith(entries[i].group)).toBe(true);
+    });
+    const [markdown, html] = cards.map(card => card.children[1]);
+    expect(markdown.classList.contains('jp-MotdPanel-body')).toBe(true);
+    expect(markdown.textContent).toBe(
+      'rendered: # Welcome to the analysts lab'
+    );
+    expect(html.tagName).toBe('IFRAME');
+    panel.dispose();
+  });
+
+  it('labels an html entry HTML page after its group, a markdown entry not', async () => {
+    const { model } = modelAnswering(entries, []);
+    await model.pull();
+    const panel = new MotdPanel(model, fakeRendermime().registry);
+    await panel.render();
+
+    const strips = Array.from(
+      panel.node.querySelectorAll('.jp-MotdPanel-strip')
+    );
+    expect(strips.map(s => s.textContent)).toEqual([
+      'analysts',
+      'interns- HTML page'
+    ]);
+    expect(strips[1].lastElementChild!.className).toBe('jp-MotdPanel-kind');
+    expect(strips[0].querySelector('.jp-MotdPanel-kind')).toBeNull();
     panel.dispose();
   });
 
@@ -110,11 +167,13 @@ describe('MotdPanel drawing', () => {
     expect(frame.getAttribute('src')).toBe(
       '/hub/api/extensions/motd/rich/p1/index.html'
     );
-    expect(frame.getAttribute('sandbox')).toBe('allow-same-origin');
+    expect(frame.getAttribute('sandbox')).toBe(
+      'allow-same-origin allow-popups allow-popups-to-escape-sandbox'
+    );
     panel.dispose();
   });
 
-  it('lists notifications newest first with type class, time and audience', async () => {
+  it('lists notifications newest first with time and audience', async () => {
     const { model } = modelAnswering([], rows);
     await model.pull();
     const panel = new MotdPanel(model, fakeRendermime().registry);
@@ -124,9 +183,6 @@ describe('MotdPanel drawing', () => {
     expect(
       items.map(i => i.querySelector('.jp-MotdPanel-message')!.textContent)
     ).toEqual(['newer', 'older']);
-    expect(items[0].classList.contains('jp-Notification-Toast-warning')).toBe(
-      true
-    );
     expect(items[0].querySelector('.jp-MotdPanel-audience')!.textContent).toBe(
       'Direct'
     );
@@ -134,6 +190,104 @@ describe('MotdPanel drawing', () => {
       'All users'
     );
     expect(items[0].querySelector('time')!.textContent).toBe('5 minutes ago');
+    panel.dispose();
+  });
+
+  it('starts each row with the icon of its type, coloured by the lab variable of the type', async () => {
+    const variables: Record<string, string> = {
+      info: '--jp-info-color1',
+      success: '--jp-success-color1',
+      warning: '--jp-warn-color1',
+      error: '--jp-error-color1',
+      'in-progress': '--jp-brand-color1',
+      default: '--jp-ui-font-color2'
+    };
+    const types = Object.keys(variables);
+    const { model } = modelAnswering(
+      [],
+      types.map((type, i) => ({
+        ts: ago(i),
+        message: type,
+        type,
+        audience: 'all'
+      }))
+    );
+    await model.pull();
+    const panel = new MotdPanel(model, fakeRendermime().registry);
+    await panel.render();
+
+    const items = Array.from(
+      panel.node.querySelectorAll<HTMLElement>('.jp-MotdPanel-row')
+    );
+    expect(items.map(i => i.dataset.type)).toEqual(types);
+    const icons = items.map(item => {
+      const icon = item.firstElementChild!;
+      expect(icon.tagName).toBe('svg');
+      expect(icon.getAttribute('class')).toBe('jp-MotdPanel-icon');
+      expect(icon.getAttribute('aria-hidden')).toBe('true');
+      // the stylesheet colours the icon by the row's data-type
+      const rule = CSS.match(
+        new RegExp(
+          `\\.jp-MotdPanel-row\\[data-type='${item.dataset.type}'\\] > \\.jp-MotdPanel-icon \\{\\s*color: var\\((--[\\w-]+)\\);`
+        )
+      );
+      expect(rule?.[1]).toBe(variables[item.dataset.type!]);
+      return icon.innerHTML;
+    });
+    // one icon of its own per type
+    expect(new Set(icons).size).toBe(types.length);
+    panel.dispose();
+  });
+
+  it('names the type of each row for screen readers, except the default type', async () => {
+    const labels: Record<string, string | undefined> = {
+      info: 'Info',
+      success: 'Success',
+      warning: 'Warning',
+      error: 'Error',
+      'in-progress': 'In progress',
+      default: undefined
+    };
+    const { model } = modelAnswering(
+      [],
+      Object.keys(labels).map((type, i) => ({
+        ts: ago(i),
+        message: type,
+        type,
+        audience: 'all'
+      }))
+    );
+    await model.pull();
+    const panel = new MotdPanel(model, fakeRendermime().registry);
+    await panel.render();
+
+    for (const item of Array.from(
+      panel.node.querySelectorAll<HTMLElement>('.jp-MotdPanel-row')
+    )) {
+      const label = item.querySelector('.jp-MotdPanel-typeLabel');
+      expect(label?.textContent).toBe(labels[item.dataset.type!]);
+    }
+    // drawn off-screen, not display: none, so screen readers still read it
+    expect(CSS).toMatch(
+      /\.jp-MotdPanel-typeLabel \{[^}]*position: absolute;[^}]*clip-path: inset\(50%\);/
+    );
+    panel.dispose();
+  });
+
+  it('shows the row count in a pill beside the Notifications heading', async () => {
+    const four = [1, 2, 3, 4].map(minutes => ({
+      ...rows[0],
+      ts: ago(minutes)
+    }));
+    const { model } = modelAnswering([], four);
+    await model.pull();
+    const panel = new MotdPanel(model, fakeRendermime().registry);
+    await panel.render();
+
+    const title = panel.node.querySelector('.jp-MotdPanel-title')!;
+    expect(title.children[0].textContent).toBe('Notifications');
+    expect(title.children[1].className).toBe('jp-MotdPanel-count');
+    expect(title.children[1].textContent).toBe('4');
     panel.dispose();
   });
 
@@ -155,17 +309,150 @@ describe('MotdPanel drawing', () => {
     expect(panel.node.querySelector('.jp-MotdPanel-empty')!.textContent).toBe(
       'No notifications'
     );
+    expect(panel.node.querySelector('.jp-MotdPanel-count')).toBeNull();
+    panel.dispose();
+  });
+});
+
+describe('MotdPanel html page frames', () => {
+  it('watches the frame pages with one resize observer, connected on load and disconnected on re-render and dispose', async () => {
+    // jsdom has no layout, so the fitting itself is proven in Galata; this is its wiring
+    const observers: RecordingObserver[] = [];
+    class RecordingObserver {
+      observed: Element[] = [];
+      disconnects = 0;
+      constructor() {
+        observers.push(this);
+      }
+      observe(target: Element) {
+        this.observed.push(target);
+      }
+      unobserve() {
+        // not used by the panel
+      }
+      disconnect() {
+        this.disconnects++;
+      }
+    }
+    const shim = window.ResizeObserver;
+    window.ResizeObserver =
+      RecordingObserver as unknown as typeof ResizeObserver;
+    try {
+      const { model } = modelAnswering(
+        [{ group: 'interns', kind: 'html', url: '/pkg-1/index.html' }],
+        []
+      );
+      await model.pull();
+      const panel = new MotdPanel(model, fakeRendermime().registry);
+      Widget.attach(panel, document.body);
+      await panel.render();
+      expect(observers).toHaveLength(1);
+      const [observer] = observers;
+
+      // jsdom loads no frame page, so the test hands the frame one
+      const frame = panel.node.querySelector('iframe')!;
+      const page = document.implementation.createHTMLDocument('package');
+      Object.defineProperty(frame, 'contentDocument', { value: page });
+      frame.dispatchEvent(new Event('load'));
+      expect(observer.observed).toEqual([page.documentElement]);
+
+      // a pull with new rows rebuilds the cards; their frames join on their own load
+      const disconnects = observer.disconnects;
+      await model.pull();
+      await panel.render();
+      expect(observer.disconnects).toBe(disconnects + 1);
+      panel.dispose();
+      expect(observer.disconnects).toBe(disconnects + 2);
+      expect(observers).toHaveLength(1);
+    } finally {
+      window.ResizeObserver = shim;
+    }
+  });
+});
+
+describe('MotdPanel cards across pulls', () => {
+  it('keeps the cards and their frames when a pull brings no new entries', async () => {
+    const entries: RichEntry[] = [
+      { group: 'analysts', kind: 'markdown', body: 'Welcome' },
+      { group: 'interns', kind: 'html', url: '/pkg-1/index.html' }
+    ];
+    // a 304, the proxy's 204 for an unreachable hub, and a failed pull keep the rows
+    const rich: IAnswer[] = [
+      { status: 200, etag: '"r"', body: { entries } },
+      { status: 304, etag: '"r"', body: null },
+      { status: 204, etag: null, body: null },
+      { status: 500, etag: null, body: null }
+    ];
+    const model = new MotdModel(async (feed): Promise<IAnswer> =>
+      feed === 'rich'
+        ? rich.shift()!
+        : { status: 200, etag: null, body: { notifications: [] } }
+    );
+    const panel = new MotdPanel(model, fakeRendermime().registry);
+    await model.pull();
+    await panel.render();
+    const cards = Array.from(
+      panel.node.querySelectorAll('.jp-MotdPanel-section')
+    );
+    expect(cards).toHaveLength(2);
+
+    for (let i = 0; i < 3; i++) {
+      await model.pull();
+      await panel.render();
+      const now = Array.from(
+        panel.node.querySelectorAll('.jp-MotdPanel-section')
+      );
+      expect(now).toHaveLength(2);
+      expect(now.every((card, j) => card === cards[j])).toBe(true);
+    }
     panel.dispose();
   });
 });
 
 describe('MotdPanel activation', () => {
-  it('takes the focus when activated, so the shell makes it the current widget', () => {
+  // each column scrolls on its own, so the focus goes to the column the page keys should
+  // scroll; focus inside the tab makes the shell take it as the current widget
+
+  it('focuses the entries column when activated with entries', async () => {
+    const { model } = modelAnswering(
+      [{ group: 'analysts', kind: 'markdown', body: 'Welcome' }],
+      []
+    );
+    await model.pull();
+    const panel = new MotdPanel(model, fakeRendermime().registry);
+    await panel.render();
+    Widget.attach(panel, document.body);
+    MessageLoop.sendMessage(panel, Widget.Msg.ActivateRequest);
+    expect(document.activeElement).toBe(
+      panel.node.querySelector('.jp-MotdPanel-entries')
+    );
+    panel.dispose();
+  });
+
+  it('focuses the Notifications column when activated without entries', () => {
     const { model } = modelAnswering([], []);
     const panel = new MotdPanel(model, fakeRendermime().registry);
     Widget.attach(panel, document.body);
     MessageLoop.sendMessage(panel, Widget.Msg.ActivateRequest);
-    expect(document.activeElement).toBe(panel.node);
+    expect(document.activeElement).toBe(
+      panel.node.querySelector('.jp-MotdPanel-notifications')
+    );
+    panel.dispose();
+  });
+
+  it('moves the focus to the entries column when the first cards are drawn after activation', async () => {
+    const { model } = modelAnswering(
+      [{ group: 'analysts', kind: 'markdown', body: 'Welcome' }],
+      []
+    );
+    const panel = new MotdPanel(model, fakeRendermime().registry);
+    Widget.attach(panel, document.body);
+    MessageLoop.sendMessage(panel, Widget.Msg.ActivateRequest);
+    await model.pull();
+    await panel.render();
+    expect(document.activeElement).toBe(
+      panel.node.querySelector('.jp-MotdPanel-entries')
+    );
     panel.dispose();
   });
 });

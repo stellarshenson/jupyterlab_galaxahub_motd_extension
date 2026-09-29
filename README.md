@@ -18,11 +18,13 @@ the welcome content that the user's groups carry and the broadcasts sent to the 
   carries at least one welcome entry or one notification for the user
 - **Silent without a hub** - opens nothing and logs one console line when the hub has no motd
   extension, cannot be reached, or has nothing to show
-- **One section per group** - markdown rendered by the lab's own markdown renderer, an HTML package
-  shown in a sandboxed iframe at its hub address
+- **Two columns** - the entry cards on the left, the Notifications column 380 px wide on the right;
+  a tab narrower than 800 px stacks them
+- **One card per group** - markdown rendered by the lab's own markdown renderer, an HTML package
+  shown in a sandboxed iframe at its hub address, sized to fit its page
 - **Notifications catch-up** - the broadcasts sent to all users and those naming the user, newest
-  first, each in the lab's notification colour for its type, with the relative time and an all or
-  direct marker
+  first, each marked by an icon in its type's colour, with the relative time and an all or direct
+  marker
 - **Palette command** - `Message of the day: Open` reopens the one tab and pulls again
 - **Token stays on the server** - a server extension calls the hub with the lab's API token and
   passes Etags through, so the browser never holds the token and a repeated pull answers 304
@@ -63,6 +65,29 @@ reads `JUPYTERHUB_API_URL` and `JUPYTERHUB_API_TOKEN` from the lab's environment
   and an unset `JUPYTERHUB_API_URL` all answer `204 No Content` with `Cache-Control: no-cache`;
   the server log states which of the three it was
 - Any other hub status, 403 included, passes through unchanged
+
+## Command line
+
+The package installs `jupyterlab-galaxahub-motd`, which prints the same message of the day in a
+lab terminal. It makes the three hub reads itself with `JUPYTERHUB_API_URL` and
+`JUPYTERHUB_API_TOKEN`, which the hub sets for every lab, and needs no running Jupyter server.
+
+```bash
+jupyterlab-galaxahub-motd show                   # terminal text, rich entries, notifications
+jupyterlab-galaxahub-motd notifications --json   # one JSON document
+```
+
+`jupyterlab-galaxahub-motd --help` lists the commands, the environment variables and the exit
+codes, and each command's `--help` carries examples.
+
+The repository carries an agent skill,
+[`.agents/skills/jupyterlab-galaxahub-motd-extension/SKILL.md`](.agents/skills/jupyterlab-galaxahub-motd-extension/SKILL.md).
+Agents that read `.agents/skills` find it in a clone of this repository; to make it available to
+Claude Code everywhere, link it into the skills directory from the clone:
+
+```bash
+ln -s "$PWD/.agents/skills/jupyterlab-galaxahub-motd-extension" ~/.claude/skills/jupyterlab-galaxahub-motd-extension
+```
 
 ## Uninstall
 

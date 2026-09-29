@@ -138,3 +138,6 @@ tmp/
 
 # Jest junit reporter output
 junit.xml
+
+# code graph written by graphify update; never ships
+graphify-out/

@@ -38,7 +38,6 @@ export interface INotificationView {
   message: string;
   ts: string;
   type: string;
-  typeClass: string;
   audience: 'all' | 'direct';
   audienceLabel: string;
 }
@@ -59,14 +58,14 @@ export const DEFAULT_SETTINGS: IMotdSettings = {
 };
 
 /**
- * The notification types JupyterLab styles with a jp-Notification-Toast-<type> class.
+ * The lab's notification types besides default; the tab draws each with its own icon and colour.
  */
 const STYLED_TYPES = ['info', 'success', 'warning', 'error', 'in-progress'];
 
 const UNPULLED = { state: 'unpulled' as const, etag: null, rows: [] };
 
 /**
- * The feed after one answer. A 304 keeps the rows the model already holds.
+ * The feed after one answer. Any answer but a 200 keeps the rows and the Etag the model holds.
  */
 export function applyAnswer<T>(
   previous: IFeedState<T>,
@@ -79,9 +78,9 @@ export function applyAnswer<T>(
     case 304:
       return { ...previous, state: 'ok' };
     case 204:
-      return { state: 'absent', etag: null, rows: [] };
+      return { ...previous, state: 'absent' };
     default:
-      return { state: 'failed', etag: null, rows: [] };
+      return { ...previous, state: 'failed' };
   }
 }
 
@@ -140,8 +139,8 @@ export function silenceLine(rich: IFeedState<RichEntry>): string {
 }
 
 /**
- * The notification rows as the tab draws them: newest first, each with the lab's toast class
- * for its type and the audience marker.
+ * The notification rows as the tab draws them: newest first, each with its type, any type the
+ * lab does not know read as default, and the audience marker.
  */
 export function notificationView(
   rows: INotificationRow[]
@@ -158,9 +157,6 @@ export function notificationView(
         message: r.message,
         ts: r.ts,
         type: STYLED_TYPES.includes(r.type) ? r.type : 'default',
-        typeClass: STYLED_TYPES.includes(r.type)
-          ? `jp-Notification-Toast-${r.type}`
-          : '',
         audience,
         audienceLabel: audience === 'direct' ? 'Direct' : 'All users'
       };

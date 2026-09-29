@@ -21,6 +21,7 @@
       "title": "Pull interval in minutes",
       "description": "Pull the message of the day again on this interval while the tab is open. 0 never pulls again.",
       "minimum": 0,
+      "maximum": 35791,
       "default": 0
     }
   },

@@ -11,6 +11,8 @@ import {
   test
 } from '@jupyterlab/galata';
 
+import { Locator } from '@playwright/test';
+
 import { STUB_TOKEN, StubHub, TERMINAL_TEXT } from './stub-hub';
 
 const PLUGIN = 'jupyterlab_galaxahub_motd_extension:plugin';
@@ -39,7 +41,7 @@ const MARKDOWN = {
 };
 
 const HTML = {
-  group: 'everyone',
+  group: 'interns',
   kind: 'html',
   url: '/hub/api/extensions/motd/rich/pkg-1/index.html'
 };
@@ -120,6 +122,29 @@ function execute(page: IJupyterLabPageFixture, command: string, args = {}) {
   return page.evaluate(
     ([id, a]) => (window as any).jupyterapp.commands.execute(id, a),
     [command, args] as const
+  );
+}
+
+/**
+ * Wait until an html entry frame has loaded its package page and the lab has drawn twice since;
+ * the resize observer that fits the frame reports before the next paint.
+ */
+async function loaded(page: IJupyterLabPageFixture, frame: Locator) {
+  await expect
+    .poll(() =>
+      frame.evaluate(el => {
+        const doc = (el as HTMLIFrameElement).contentDocument;
+        return (
+          doc?.readyState === 'complete' && doc.URL.endsWith('/index.html')
+        );
+      })
+    )
+    .toBe(true);
+  await page.evaluate(
+    () =>
+      new Promise(resolve =>
+        requestAnimationFrame(() => requestAnimationFrame(resolve))
+      )
   );
 }
 
@@ -208,7 +233,7 @@ test.describe('tab content', () => {
         route.fulfill({
           status: 200,
           contentType: 'text/html',
-          body: '<!doctype html><h1 id="pkg">Package welcome</h1>'
+          body: '<!doctype html><h1 id="pkg">Package welcome</h1><p>Read the onboarding notebook first.</p>'
         })
     );
     hub.rich = { status: 200, body: { entries: [HTML] } };
@@ -217,12 +242,70 @@ test.describe('tab content', () => {
 
     const frame = page.locator('.jp-MotdPanel-frame');
     await expect(frame).toHaveAttribute('src', HTML.url);
-    await expect(frame).toHaveAttribute('sandbox', 'allow-same-origin');
+    await expect(frame).toHaveAttribute(
+      'sandbox',
+      'allow-same-origin allow-popups allow-popups-to-escape-sandbox'
+    );
     await expect(
       page.frameLocator('.jp-MotdPanel-frame').locator('#pkg')
     ).toHaveText('Package welcome');
     // shown in the frame, never inlined into the lab page
     await expect(page.locator('.jp-MotdPanel #pkg')).toHaveCount(0);
+    // the frame takes the package's own height, not the 480px default box
+    await expect
+      .poll(() => frame.evaluate(el => el.getBoundingClientRect().height))
+      .toBeLessThan(200);
+  });
+
+  test('opens a target=_blank link of an html page in a new browser tab', async ({
+    page
+  }) => {
+    await page.route(
+      '**/hub/api/extensions/motd/rich/pkg-1/index.html',
+      route =>
+        route.fulfill({
+          status: 200,
+          contentType: 'text/html',
+          body: '<!doctype html><a id="out" href="next.html" target="_blank">Next</a>'
+        })
+    );
+    hub.rich = { status: 200, body: { entries: [HTML] } };
+    await page.goto();
+    await expectOpenAndCurrent(page);
+
+    const opened = page.context().waitForEvent('page');
+    await page.frameLocator('.jp-MotdPanel-frame').locator('#out').click();
+    const popup = await opened;
+    await popup.waitForURL('**/hub/api/extensions/motd/rich/pkg-1/next.html');
+    await popup.close();
+  });
+
+  test('keeps the content of a page laid out to the frame height reachable', async ({
+    page
+  }) => {
+    // an app-shell page: a header, then a main that fills the rest of the frame's viewport
+    // and scrolls its own content
+    await page.route(
+      '**/hub/api/extensions/motd/rich/pkg-1/index.html',
+      route =>
+        route.fulfill({
+          status: 200,
+          contentType: 'text/html',
+          body: '<!doctype html><style>html,body{height:100%;margin:0}body{display:flex;flex-direction:column}header{height:48px}main{flex:1;overflow:auto}</style><header>Welcome</header><main><div style="height:1000px"></div></main>'
+        })
+    );
+    hub.rich = { status: 200, body: { entries: [HTML] } };
+    await page.goto();
+    await expectOpenAndCurrent(page);
+
+    // before load the frame is 480 px and main is tall by accident; wait for the fit
+    await loaded(page, page.locator('.jp-MotdPanel-frame'));
+    expect(
+      await page
+        .frameLocator('.jp-MotdPanel-frame')
+        .locator('main')
+        .evaluate(el => el.clientHeight)
+    ).toBeGreaterThan(0);
   });
 
   test('lists notifications newest first with type style, relative time and audience', async ({
@@ -252,9 +335,9 @@ test.describe('tab content', () => {
       'middle',
       'oldest'
     ]);
-    await expect(rows.nth(0)).toHaveClass(/jp-Notification-Toast-warning/);
-    await expect(rows.nth(1)).toHaveClass(/jp-Notification-Toast-error/);
-    await expect(rows.nth(2)).toHaveClass(/jp-Notification-Toast-info/);
+    await expect(rows.nth(0)).toHaveAttribute('data-type', 'warning');
+    await expect(rows.nth(1)).toHaveAttribute('data-type', 'error');
+    await expect(rows.nth(2)).toHaveAttribute('data-type', 'info');
     await expect(rows.locator('.jp-MotdPanel-audience')).toHaveText([
       'All users',
       'Direct',
@@ -265,9 +348,10 @@ test.describe('tab content', () => {
       '1 hour ago',
       '3 days ago'
     ]);
-    // the type colour is the lab's own: the warning row's top border is --jp-warn-color1
-    const [border, warn] = await rows.nth(0).evaluate(el => [
-      getComputedStyle(el).borderTopColor,
+    // each row starts with its type icon, coloured by the lab's own variable of the type
+    await expect(rows.locator(':scope > svg.jp-MotdPanel-icon')).toHaveCount(3);
+    const [icon, warn] = await rows.nth(0).evaluate(el => [
+      getComputedStyle(el.firstElementChild!).color,
       (() => {
         const probe = document.createElement('div');
         probe.style.color = 'var(--jp-warn-color1)';
@@ -277,7 +361,7 @@ test.describe('tab content', () => {
         return color;
       })()
     ]);
-    expect(border).toBe(warn);
+    expect(icon).toBe(warn);
   });
 
   test('does not render the terminal text', async ({ page }) => {
@@ -330,6 +414,611 @@ test.describe('tab content', () => {
       )
     ).toEqual([]);
     expect(requests.filter(r => r.includes(STUB_TOKEN))).toEqual([]);
+  });
+});
+
+test.describe('two-column layout', () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+
+  const SECOND = {
+    group: 'interns',
+    kind: 'markdown',
+    body: '## Getting started\n\nRead the onboarding notebook first.'
+  };
+
+  const manyRows = (count: number) =>
+    Array.from({ length: count }, (_, i) =>
+      row(`notification ${i + 1}`, i + 1)
+    );
+
+  async function box(page: IJupyterLabPageFixture, selector: string) {
+    const found = await page.locator(selector).boundingBox();
+    expect(found).not.toBeNull();
+    return found!;
+  }
+
+  test('shows the entries left and the Notifications column 380 px wide right', async ({
+    page
+  }) => {
+    hub.rich = { status: 200, body: { entries: [MARKDOWN, SECOND] } };
+    hub.notifications = { status: 200, body: { notifications: manyRows(4) } };
+    await page.goto();
+    await expectOpenAndCurrent(page);
+    await expect(page.locator('.jp-MotdPanel-section')).toHaveCount(2);
+    await expect(page.locator('.jp-MotdPanel-row')).toHaveCount(4);
+
+    const entries = await box(page, '.jp-MotdPanel-entries');
+    const notifications = await box(page, '.jp-MotdPanel-notifications');
+    expect(notifications.x).toBeCloseTo(entries.x + entries.width, 0);
+    expect(notifications.y).toBeCloseTo(entries.y, 0);
+    expect(notifications.width).toBeCloseTo(380, 0);
+  });
+
+  test('lays a row out as the message, then the marker left and the time right', async ({
+    page
+  }) => {
+    hub.rich = { status: 200, body: { entries: [MARKDOWN] } };
+    hub.notifications = {
+      status: 200,
+      body: { notifications: [row('maintenance tonight', 5, 'warning')] }
+    };
+    await page.goto();
+    await expectOpenAndCurrent(page);
+    await expect(page.locator('.jp-MotdPanel-row')).toHaveCount(1);
+
+    const text = await box(page, '.jp-MotdPanel-text');
+    const message = await box(page, '.jp-MotdPanel-message');
+    const marker = await box(page, '.jp-MotdPanel-audience');
+    const time = await box(page, '.jp-MotdPanel-time');
+    expect(marker.x + marker.width).toBeLessThan(time.x);
+    expect(marker.y).toBeGreaterThanOrEqual(message.y + message.height);
+    expect(time.y).toBeGreaterThanOrEqual(message.y + message.height);
+    expect(marker.x).toBeCloseTo(text.x, 0);
+    expect(time.x + time.width).toBeCloseTo(text.x + text.width, 0);
+  });
+
+  test('keeps wide markdown and a long group name inside the card', async ({
+    page
+  }) => {
+    // no break opportunity in either, so neither can wrap to the card width on its own
+    const path = '/srv/' + 'shared_datasets_'.repeat(13).slice(0, 195);
+    const group = 'data_science_team_'.repeat(12).slice(0, 200);
+    const url = '/hub/api/extensions/motd/rich/pkg-2/index.html';
+    await page.route(`**${url}`, route =>
+      route.fulfill({
+        status: 200,
+        contentType: 'text/html',
+        body: '<!doctype html><p>Team page</p>'
+      })
+    );
+    hub.rich = {
+      status: 200,
+      body: {
+        entries: [
+          { ...MARKDOWN, body: `Data lives in \`${path}\`.` },
+          { group, kind: 'html', url }
+        ]
+      }
+    };
+    await page.goto();
+    await expectOpenAndCurrent(page);
+    await expect(page.locator('.jp-MotdPanel-section')).toHaveCount(2);
+
+    // the markdown body scrolls sideways far enough to bring the code's right edge into the card
+    const markdown = '.jp-MotdPanel-section[data-kind="markdown"]';
+    await page.locator(`${markdown} .jp-MotdPanel-body`).evaluate(el => {
+      el.scrollLeft = el.scrollWidth;
+    });
+    const card = await box(page, markdown);
+    const code = await box(page, `${markdown} code`);
+    expect(code.width).toBeGreaterThan(card.width);
+    expect(code.x + code.width).toBeLessThanOrEqual(card.x + card.width);
+
+    // the group name wraps, and the label stays on one line inside the card
+    const html = '.jp-MotdPanel-section[data-kind="html"]';
+    const htmlCard = await box(page, html);
+    const heading = await box(page, `${html} .jp-MotdPanel-heading`);
+    const label = await box(page, `${html} .jp-MotdPanel-kind`);
+    expect(heading.x + heading.width).toBeLessThanOrEqual(
+      htmlCard.x + htmlCard.width
+    );
+    expect(label.x + label.width).toBeLessThanOrEqual(
+      htmlCard.x + htmlCard.width
+    );
+    const fontSize = await page
+      .locator(`${html} .jp-MotdPanel-kind`)
+      .evaluate(el => parseFloat(getComputedStyle(el).fontSize));
+    expect(label.height).toBeLessThan(2 * fontSize);
+    expect(
+      await page
+        .locator(`${html} .jp-MotdPanel-heading`)
+        .evaluate(el => el.scrollWidth <= el.clientWidth)
+    ).toBe(true);
+  });
+
+  test('gives Notifications the full width when there are no entries', async ({
+    page
+  }) => {
+    hub.notifications = { status: 200, body: { notifications: manyRows(2) } };
+    await page.goto();
+    await expectOpenAndCurrent(page);
+    await expect(page.locator('.jp-MotdPanel-row')).toHaveCount(2);
+
+    await expect(page.locator('.jp-MotdPanel-entries')).toBeHidden();
+    const [width, content] = await page
+      .locator('.jp-MotdPanel-notifications')
+      .evaluate(el => [
+        el.getBoundingClientRect().width,
+        el.parentElement!.clientWidth
+      ]);
+    expect(width).toBeCloseTo(content, 0);
+  });
+
+  test('stacks the columns in a tab narrower than 800 px and scrolls the tab as one', async ({
+    page
+  }) => {
+    await page.setViewportSize({ width: 820, height: 600 });
+    hub.rich = { status: 200, body: { entries: [MARKDOWN, SECOND] } };
+    hub.notifications = { status: 200, body: { notifications: manyRows(8) } };
+    await page.goto();
+    await expectOpenAndCurrent(page);
+    await expect(page.locator('.jp-MotdPanel-section')).toHaveCount(2);
+    await expect(page.locator('.jp-MotdPanel-row')).toHaveCount(8);
+
+    const panel = page.locator('.jp-MotdPanel');
+    const panelWidth = await panel.evaluate(el => el.clientWidth);
+    expect(panelWidth).toBeLessThan(800);
+    const entries = await box(page, '.jp-MotdPanel-entries');
+    const notifications = await box(page, '.jp-MotdPanel-notifications');
+    expect(notifications.y).toBeCloseTo(entries.y + entries.height, 0);
+    expect(entries.width).toBeCloseTo(panelWidth, 0);
+    expect(notifications.width).toBeCloseTo(panelWidth, 0);
+    // the tab scrolls, not the columns
+    expect(await panel.evaluate(el => el.scrollHeight > el.clientHeight)).toBe(
+      true
+    );
+    for (const column of [
+      '.jp-MotdPanel-entries',
+      '.jp-MotdPanel-notifications'
+    ]) {
+      expect(
+        await page
+          .locator(column)
+          .evaluate(el => el.scrollHeight > el.clientHeight)
+      ).toBe(false);
+    }
+  });
+
+  test('scrolls a long notification list in its own column', async ({
+    page
+  }) => {
+    hub.rich = { status: 200, body: { entries: [MARKDOWN, SECOND] } };
+    hub.notifications = { status: 200, body: { notifications: manyRows(60) } };
+    await page.goto();
+    await expectOpenAndCurrent(page);
+    await expect(page.locator('.jp-MotdPanel-row')).toHaveCount(60);
+
+    const column = page.locator('.jp-MotdPanel-notifications');
+    await column.hover();
+    await page.mouse.wheel(0, 800);
+    await expect
+      .poll(() => column.evaluate(el => el.scrollTop))
+      .toBeGreaterThan(0);
+    expect(
+      await page.locator('.jp-MotdPanel-entries').evaluate(el => el.scrollTop)
+    ).toBe(0);
+    expect(
+      await page.locator('.jp-MotdPanel').evaluate(el => el.scrollTop)
+    ).toBe(0);
+    // the rows' off-screen type labels stay inside the column, so the tab has nothing to scroll
+    expect(
+      await page
+        .locator('.jp-MotdPanel')
+        .evaluate(el => el.scrollHeight - el.clientHeight)
+    ).toBe(0);
+  });
+
+  test('moves the focus from the entries column to the Notifications column with Tab', async ({
+    page
+  }) => {
+    // no heading, so the card holds no anchor link to stop on
+    hub.rich = {
+      status: 200,
+      body: { entries: [{ ...MARKDOWN, body: 'The **GPU 0** is shared.' }] }
+    };
+    hub.notifications = { status: 200, body: { notifications: manyRows(60) } };
+    await page.goto();
+    await expectOpenAndCurrent(page);
+    await expect(page.locator('.jp-MotdPanel-row')).toHaveCount(60);
+    const focused = () =>
+      page.evaluate(() => document.activeElement?.className);
+    await expect.poll(focused).toBe('jp-MotdPanel-entries');
+
+    await page.keyboard.press('Tab');
+    await expect.poll(focused).toBe('jp-MotdPanel-notifications');
+    await page.keyboard.press('PageDown');
+    await expect
+      .poll(() =>
+        page.locator('.jp-MotdPanel-notifications').evaluate(el => el.scrollTop)
+      )
+      .toBeGreaterThan(0);
+  });
+
+  test('keeps the scroll position of a stacked tab when the palette command activates it', async ({
+    page
+  }) => {
+    await page.setViewportSize({ width: 820, height: 600 });
+    hub.rich = { status: 200, body: { entries: [MARKDOWN, SECOND] } };
+    hub.notifications = { status: 200, body: { notifications: manyRows(8) } };
+    await page.goto();
+    await expectOpenAndCurrent(page);
+    await expect(page.locator('.jp-MotdPanel-row')).toHaveCount(8);
+    const panel = page.locator('.jp-MotdPanel');
+    // scrolled down to the Notifications column, with the focus taken off the entries column
+    const bottom = await panel.evaluate(el => {
+      el.scrollTop = el.scrollHeight - el.clientHeight;
+      (document.activeElement as HTMLElement).blur();
+      return el.scrollTop;
+    });
+    expect(bottom).toBeGreaterThan(0);
+
+    await execute(page, 'galaxahub-motd:open');
+    await expect
+      .poll(() => page.evaluate(() => document.activeElement?.className))
+      .toBe('jp-MotdPanel-entries');
+    expect(await panel.evaluate(el => el.scrollTop)).toBe(bottom);
+  });
+
+  test('scrolls the entries column with Page Down once the tab opens', async ({
+    page
+  }) => {
+    const notes = Array.from(
+      { length: 80 },
+      (_, i) => `Line ${i + 1} of the onboarding notes.`
+    ).join('\n\n');
+    hub.rich = {
+      status: 200,
+      body: { entries: [{ ...MARKDOWN, body: notes }] }
+    };
+    await page.goto();
+    await expectOpenAndCurrent(page);
+    const column = page.locator('.jp-MotdPanel-entries');
+    await expect(column.locator('p').last()).toHaveText(
+      'Line 80 of the onboarding notes.'
+    );
+    expect(await column.evaluate(el => el.scrollHeight > el.clientHeight)).toBe(
+      true
+    );
+
+    await page.keyboard.press('PageDown');
+    await expect
+      .poll(() => column.evaluate(el => el.scrollTop))
+      .toBeGreaterThan(0);
+  });
+
+  test('caps a card at 960 px and a notification row at 760 px in a wide tab', async ({
+    page
+  }) => {
+    await page.setViewportSize({ width: 1920, height: 1000 });
+    hub.rich = { status: 200, body: { entries: [MARKDOWN] } };
+    hub.notifications = { status: 200, body: { notifications: manyRows(1) } };
+    await page.goto();
+    await expectOpenAndCurrent(page);
+    await expect(page.locator('.jp-MotdPanel-section')).toHaveCount(1);
+    const column = await box(page, '.jp-MotdPanel-entries');
+    expect(column.width).toBeGreaterThan(1000);
+    // clientWidth leaves out the card's 1 px border
+    expect(
+      await page.locator('.jp-MotdPanel-section').evaluate(el => el.clientWidth)
+    ).toBe(960);
+
+    hub.rich = { status: 200, body: { entries: [] } };
+    await page.goto();
+    await expectOpenAndCurrent(page);
+    await expect(page.locator('.jp-MotdPanel-entries')).toBeHidden();
+    await expect(page.locator('.jp-MotdPanel-row')).toHaveCount(1);
+    const notifications = await box(page, '.jp-MotdPanel-notifications');
+    expect(notifications.width).toBeGreaterThan(1000);
+    expect((await box(page, '.jp-MotdPanel-row')).width).toBe(760);
+  });
+});
+
+test.describe('html page frame', () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+
+  const SHORT =
+    '<!doctype html><h1>Package welcome</h1><p>Read the onboarding notebook first.</p>';
+
+  /**
+   * The frame of the html entry of a group.
+   */
+  const frameOf = (page: IJupyterLabPageFixture, group = HTML.group) =>
+    page.locator(
+      `.jp-MotdPanel-section[data-group="${group}"] .jp-MotdPanel-frame`
+    );
+
+  /**
+   * The hub serves a package on the lab's own origin, where the frame can read its page; the
+   * lab under test has no /hub route, so the browser's package requests are answered by the
+   * stub hub, once `hold` resolves.
+   */
+  async function servePackages(
+    page: IJupyterLabPageFixture,
+    hold?: Promise<void>
+  ) {
+    await page.route('**/hub/api/extensions/motd/rich/*/**', async route => {
+      await hold;
+      const { pathname } = new URL(route.request().url());
+      await route.fulfill({
+        response: await route.fetch({
+          url: `http://127.0.0.1:${STUB_PORT}${pathname}`
+        })
+      });
+    });
+  }
+
+  /**
+   * The frame's height, and its page's root height, scroll height and viewport height.
+   */
+  function heights(frame: Locator) {
+    return frame.evaluate(el => {
+      const root = (el as HTMLIFrameElement).contentDocument!.documentElement;
+      return {
+        frame: (el as HTMLElement).offsetHeight,
+        page: root.offsetHeight,
+        scroll: root.scrollHeight,
+        viewport: root.clientHeight
+      };
+    });
+  }
+
+  /**
+   * Wait until the frame is its page's height plus its 2 px of borders, below the 480 px box.
+   */
+  async function expectFitted(frame: Locator) {
+    await expect
+      .poll(async () => {
+        const { frame: height, page } = await heights(frame);
+        return height < 480 && height - page;
+      })
+      .toBe(2);
+  }
+
+  /**
+   * The mouse wheel over the frame scrolls the page inside it.
+   */
+  async function expectScrollsInside(
+    page: IJupyterLabPageFixture,
+    frame: Locator
+  ) {
+    await frame.hover();
+    await page.mouse.wheel(0, 400);
+    await expect
+      .poll(() =>
+        frame.evaluate(
+          el =>
+            (el as HTMLIFrameElement).contentDocument!.scrollingElement!
+              .scrollTop
+        )
+      )
+      .toBeGreaterThan(0);
+  }
+
+  test('fits the frame to a short page', async ({ page }) => {
+    hub.pages.set(HTML.url, SHORT);
+    hub.rich = { status: 200, body: { entries: [HTML] } };
+    await servePackages(page);
+    await page.goto();
+    await expectOpenAndCurrent(page);
+
+    await expectFitted(frameOf(page));
+  });
+
+  test('fits the frame again when its page grows after load', async ({
+    page
+  }) => {
+    hub.pages.set(
+      HTML.url,
+      '<!doctype html><details><summary id="more">Onboarding steps</summary><div style="height:300px">Step one</div></details>'
+    );
+    hub.rich = { status: 200, body: { entries: [HTML] } };
+    await servePackages(page);
+    await page.goto();
+    await expectOpenAndCurrent(page);
+    const frame = frameOf(page);
+    await expectFitted(frame);
+    const closed = await heights(frame);
+
+    await page.frameLocator('.jp-MotdPanel-frame').locator('#more').click();
+    await expect
+      .poll(async () => (await heights(frame)).page)
+      .toBeGreaterThan(closed.page + 250);
+    await expectFitted(frame);
+  });
+
+  test('fits the frame again when its text wraps after the tab narrows', async ({
+    page
+  }) => {
+    const sentence =
+      'The lab restarts tonight for maintenance, and every running kernel stops. ';
+    hub.pages.set(HTML.url, `<!doctype html><p>${sentence.repeat(12)}</p>`);
+    hub.rich = { status: 200, body: { entries: [HTML] } };
+    await servePackages(page);
+    await page.goto();
+    await expectOpenAndCurrent(page);
+    const frame = frameOf(page);
+    await expectFitted(frame);
+    const wide = await heights(frame);
+    const wideWidth = await frame.evaluate(el => el.clientWidth);
+
+    // 140 px off the tab keeps both columns and narrows the entries column
+    await page.setViewportSize({ width: 1300, height: 900 });
+    await expect
+      .poll(() => frame.evaluate(el => el.clientWidth))
+      .toBeLessThan(wideWidth);
+    await expect
+      .poll(async () => (await heights(frame)).page)
+      .toBeGreaterThan(wide.page);
+    await expectFitted(frame);
+  });
+
+  test('fits the frame to a page that loaded behind another tab once the tab is shown', async ({
+    page
+  }) => {
+    hub.pages.set(HTML.url, SHORT);
+    hub.rich = { status: 200, body: { entries: [HTML] } };
+    let release!: () => void;
+    await servePackages(
+      page,
+      new Promise<void>(resolve => (release = resolve))
+    );
+    await page.goto();
+    await expectOpenAndCurrent(page);
+
+    // a Launcher takes the main area before the package page arrives
+    await execute(page, 'launcher:create');
+    await expect(page.locator('.jp-MotdPanel')).toBeHidden();
+    release();
+    const frame = frameOf(page);
+    await loaded(page, frame);
+    expect((await heights(frame)).frame).toBe(0);
+
+    await page.evaluate(() =>
+      (window as any).jupyterapp.shell.activateById('galaxahub-motd')
+    );
+    await expectFitted(frame);
+  });
+
+  test('fits the frame to a tall page in quirks mode', async ({ page }) => {
+    // no doctype: the page renders in quirks mode, where the body holds the viewport height
+    hub.pages.set(HTML.url, '<div style="height:700px">Package welcome</div>');
+    hub.rich = { status: 200, body: { entries: [HTML] } };
+    await servePackages(page);
+    await page.goto();
+    await expectOpenAndCurrent(page);
+    const frame = frameOf(page);
+
+    // 700 px block + 8 px body margin above and below + 2 px of frame borders
+    await expect.poll(async () => (await heights(frame)).frame).toBe(718);
+    expect(
+      await frame.evaluate(
+        el => (el as HTMLIFrameElement).contentDocument!.compatMode
+      )
+    ).toBe('BackCompat');
+  });
+
+  test('fits the frame to a page whose content reaches past its root', async ({
+    page
+  }) => {
+    hub.pages.set(
+      HTML.url,
+      '<!doctype html><style>html{margin:20px}</style><div style="height:700px">Package welcome</div>'
+    );
+    hub.rich = { status: 200, body: { entries: [HTML] } };
+    await servePackages(page);
+    await page.goto();
+    await expectOpenAndCurrent(page);
+    const frame = frameOf(page);
+
+    // 716 px root (700 px block + 16 px body margins) + 40 px html margin + 2 px of frame borders
+    await expect.poll(async () => (await heights(frame)).frame).toBe(758);
+    const { scroll, viewport } = await heights(frame);
+    expect(scroll).toBe(viewport);
+  });
+
+  test('fits the frame again when its page grows by exactly the content past its root', async ({
+    page
+  }) => {
+    hub.pages.set(
+      HTML.url,
+      '<!doctype html><style>html{margin:20px}</style><details><summary id="more">Onboarding steps</summary><div style="height:40px">Step one</div></details>'
+    );
+    hub.rich = { status: 200, body: { entries: [HTML] } };
+    await servePackages(page);
+    await page.goto();
+    await expectOpenAndCurrent(page);
+    const frame = frameOf(page);
+    // root + 40 px html margin + 2 px of frame borders
+    const pastRoot = async () => {
+      const { frame: height, page: root } = await heights(frame);
+      return height - root;
+    };
+    await expect.poll(pastRoot).toBe(42);
+    const closed = await heights(frame);
+
+    // the opened block is as tall as the html margin, so the new root equals the old viewport
+    await page.frameLocator('.jp-MotdPanel-frame').locator('#more').click();
+    await expect
+      .poll(async () => (await heights(frame)).page)
+      .toBe(closed.page + 40);
+    await expect.poll(pastRoot).toBe(42);
+  });
+
+  test('keeps the 480 px box and scrolls inside it for a page with html and body height 100%', async ({
+    page
+  }) => {
+    hub.pages.set(
+      HTML.url,
+      '<!doctype html><style>html,body{height:100%;margin:0}</style><div style="height:1000px">Package welcome</div>'
+    );
+    hub.rich = { status: 200, body: { entries: [HTML] } };
+    await servePackages(page);
+    await page.goto();
+    await expectOpenAndCurrent(page);
+    const frame = frameOf(page);
+    await loaded(page, frame);
+
+    const { frame: height, scroll, viewport } = await heights(frame);
+    expect(height).toBe(480);
+    expect(scroll).toBeGreaterThan(viewport);
+    await expectScrollsInside(page, frame);
+  });
+
+  test('keeps the 480 px box for a page of only absolute or fixed content, the absolute one scrolling inside it', async ({
+    page
+  }) => {
+    const absolute = {
+      group: 'absolute',
+      kind: 'html',
+      url: '/hub/api/extensions/motd/rich/pkg-absolute/index.html'
+    };
+    const fixed = {
+      group: 'fixed',
+      kind: 'html',
+      url: '/hub/api/extensions/motd/rich/pkg-fixed/index.html'
+    };
+    // the default 8 px body margin: the root is 8 px tall and holds none of the content
+    hub.pages.set(
+      absolute.url,
+      '<!doctype html><div style="position:absolute;top:0;left:0;right:0"><div style="height:1000px">Package welcome</div></div>'
+    );
+    hub.pages.set(
+      fixed.url,
+      '<!doctype html><div style="position:fixed;inset:0;display:grid;place-items:center"><div id="card" style="height:300px">Package welcome</div></div>'
+    );
+    hub.rich = { status: 200, body: { entries: [absolute, fixed] } };
+    await servePackages(page);
+    await page.goto();
+    await expectOpenAndCurrent(page);
+
+    const absoluteFrame = frameOf(page, absolute.group);
+    await loaded(page, absoluteFrame);
+    const { frame, scroll, viewport } = await heights(absoluteFrame);
+    expect(frame).toBe(480);
+    expect(scroll).toBeGreaterThan(viewport);
+    await expectScrollsInside(page, absoluteFrame);
+
+    const fixedFrame = frameOf(page, fixed.group);
+    await loaded(page, fixedFrame);
+    expect((await heights(fixedFrame)).frame).toBe(480);
+    // the card lies inside the frame's viewport
+    const [top, bottom, height] = await fixedFrame.evaluate(el => {
+      const doc = (el as HTMLIFrameElement).contentDocument!;
+      const card = doc.getElementById('card')!.getBoundingClientRect();
+      return [card.top, card.bottom, doc.documentElement.clientHeight];
+    });
+    expect(top).toBeGreaterThanOrEqual(0);
+    expect(bottom).toBeLessThanOrEqual(height);
   });
 });
 
@@ -403,7 +1092,7 @@ test.describe('reopenOnBroadcast on', () => {
     }
   });
 
-  test('reopenOnBroadcast reopens the tab for a recorded broadcast', async ({
+  test('reopenOnBroadcast reopens the tab for a recorded broadcast and leaves the focus in the editor', async ({
     page
   }) => {
     hub.rich = { status: 200, body: { entries: [MARKDOWN] } };
@@ -412,15 +1101,33 @@ test.describe('reopenOnBroadcast on', () => {
     await page.activity.closePanel(TAB);
     await expect(tab(page)).toHaveCount(0);
 
+    // the user types in an editor while the broadcast arrives
+    await page.evaluate(async () => {
+      await (window as any).jupyterapp.commands.execute(
+        'fileeditor:create-new',
+        { cwd: '' }
+      );
+    });
+    const editor = page.locator('.jp-FileEditor .cm-content');
+    await editor.click();
+    await page.keyboard.type('before ');
+
     const message = 'Broadcast: maintenance at 22:00 UTC';
     hub.record(row(message, 0, 'warning'));
     await execute(page, 'apputils:notify', { message, type: 'warning' });
 
     await expect(tab(page)).toHaveCount(1, { timeout: 30_000 });
-    await expectOpenAndCurrent(page);
     await expect(page.locator('.jp-MotdPanel-message').first()).toHaveText(
       message
     );
+    // the tab opened behind the editor, which kept the keyboard
+    await page.keyboard.type('after');
+    await expect(editor).toHaveText('before after');
+    expect(
+      await page.evaluate(
+        () => (window as any).jupyterapp.shell.currentWidget?.title.label
+      )
+    ).not.toBe(TAB);
   });
 
   test('a notification the hub did not record leaves the tab closed', async ({

@@ -1,4 +1,4 @@
-"""The three hub reads the Message of the day tab pulls, proxied with the lab's API token.
+"""The three hub reads, proxied with the lab's API token.
 
 The frontend calls only these routes. The hub is called from here with JUPYTERHUB_API_TOKEN,
 so the token never reaches the browser. The contract is the hub's galaxahub-motd-extension

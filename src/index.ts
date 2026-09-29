@@ -86,7 +86,10 @@ const plugin: JupyterFrontEndPlugin<void> = {
               change.notification.message
             )
           ) {
-            open();
+            // opened behind the current tab, so an editor the user types in keeps the keys
+            if (!panel.isAttached) {
+              app.shell.add(panel, 'main', { activate: false });
+            }
             return;
           }
         }

@@ -1,0 +1,290 @@
+"""jupyterlab-galaxahub-motd - print the GalaxaHub message of the day in a lab terminal.
+
+Reads the three hub feeds - the terminal text, the rich entries of the user's groups and the
+broadcasts sent to the user - with the lab's own API token, the same reads the lab's server
+proxy makes. Needs no running Jupyter server.
+"""
+import argparse
+import http.client
+import json
+import os
+import sys
+import urllib.error
+import urllib.parse
+import urllib.request
+from datetime import datetime
+
+from .routes import HUB_PATHS
+
+PROG = "jupyterlab-galaxahub-motd"
+NO_MOTD = 3
+HUB_FAILED = 4
+
+
+class Stop(Exception):
+    """The one stderr line a run ends with, and its exit code."""
+
+    def __init__(self, code, line):
+        super().__init__(line)
+        self.code = code
+
+
+def api_url():
+    url = os.environ.get("JUPYTERHUB_API_URL", "")
+    if not url:
+        raise Stop(NO_MOTD, "no motd: JUPYTERHUB_API_URL is not set, so this lab has no hub to ask")
+    return url
+
+
+def fetch(name):
+    """The hub's answer body for one feed; b'' for a 204."""
+    url = f"{api_url().rstrip('/')}/{HUB_PATHS[name]}"
+    token = os.environ.get("JUPYTERHUB_API_TOKEN", "")
+    request = urllib.request.Request(url, headers={"Authorization": f"token {token}"})
+    try:
+        with urllib.request.urlopen(request, timeout=10) as answer:
+            return answer.read()
+    except urllib.error.HTTPError as error:
+        # the status only: the hub's body and reason phrase are not ours to print, and could
+        # echo the token
+        if error.code == 404:
+            raise Stop(NO_MOTD, f"no motd: {url} answered 404 - the hub does not carry this feed")
+        if error.code == 403:
+            raise Stop(HUB_FAILED, f"{url} answered 403 - the hub refused JUPYTERHUB_API_TOKEN; "
+                                   "run this in a terminal of the lab, whose server sets the lab's own token")
+        raise Stop(HUB_FAILED, f"{url} answered {error.code} - try again later; if it persists, "
+                               "the hub log holds the cause")
+    except (OSError, http.client.HTTPException) as error:
+        # an http.client error's text is what the hub sent (a broken status line can echo the
+        # token), so only its class name is printed
+        if isinstance(error, http.client.HTTPException):
+            why = type(error).__name__
+        else:
+            why = getattr(error, "reason", error)
+        raise Stop(HUB_FAILED, f"cannot reach {url}: {why} - "
+                               "check that JUPYTERHUB_API_URL is the hub api url this lab was started with")
+
+
+def rows(name, key):
+    """The list under `key` of one JSON feed; [] for a 204 or an answer without it."""
+    try:
+        answer = json.loads(fetch(name) or b"{}")
+    except ValueError:
+        raise Stop(HUB_FAILED, f"the hub's {name} answer is not JSON - "
+                               "check that JUPYTERHUB_API_URL is the hub api url")
+    found = answer.get(key) if isinstance(answer, dict) else None
+    return found if isinstance(found, list) else []
+
+
+# The readers keep only the known fields of each row, so nothing else the hub answers reaches
+# the output.
+
+def read_terminal():
+    return fetch("terminal").decode("utf-8", errors="replace")
+
+
+def read_entries():
+    """The rich entries: markdown with its body, html with the absolute url of its page."""
+    entries = []
+    for e in rows("rich", "entries"):
+        if not isinstance(e, dict) or not isinstance(e.get("group"), str):
+            continue
+        if e.get("kind") == "markdown" and isinstance(e.get("body"), str):
+            entries.append({"group": e["group"], "kind": "markdown", "body": e["body"]})
+        elif e.get("kind") == "html" and isinstance(e.get("url"), str):
+            url = urllib.parse.urljoin(api_url(), e["url"])
+            entries.append({"group": e["group"], "kind": "html", "url": url})
+    return entries
+
+
+def read_notifications():
+    """The broadcasts newest first; a row with an unreadable time sorts last."""
+    def time(row):
+        try:
+            return datetime.fromisoformat(str(row["ts"]).replace("Z", "+00:00")).timestamp()
+        except ValueError:
+            return float("-inf")
+
+    kept = [
+        {"ts": r.get("ts"), "type": r.get("type"), "audience": r.get("audience"), "message": r["message"]}
+        for r in rows("notifications", "notifications")
+        if isinstance(r, dict) and isinstance(r.get("message"), str)
+    ]
+    return sorted(kept, key=time, reverse=True)
+
+
+def entries_text(entries):
+    return "\n\n".join(f"## {e['group']}\n\n" + e.get("body", e.get("url")).rstrip("\n") for e in entries)
+
+
+def notification_lines(notifications):
+    # one line per row: whitespace inside a message, line breaks included, prints as one space
+    return "\n".join(
+        f"{r['ts']}\t{r['type']}\t{r['audience']}\t{' '.join(r['message'].split())}" for r in notifications
+    )
+
+
+def cmd_show(args):
+    motd = {"terminal": read_terminal(), "entries": read_entries(), "notifications": read_notifications()}
+    if not any(motd.values()):
+        raise Stop(NO_MOTD, "no motd: the hub holds no terminal text, no rich entry and no notification for this user")
+    if args.json:
+        print(json.dumps(motd))
+        return 0
+    parts = []
+    if motd["terminal"]:
+        parts.append(motd["terminal"].rstrip("\n"))
+    if motd["entries"]:
+        parts.append(entries_text(motd["entries"]))
+    if motd["notifications"]:
+        parts.append("## Notifications\n\n" + notification_lines(motd["notifications"]))
+    print("\n\n".join(parts))
+    return 0
+
+
+def cmd_terminal(args):
+    text = read_terminal()
+    if not text:
+        raise Stop(NO_MOTD, "no motd: the hub holds no terminal text for this user")
+    if args.json:
+        print(json.dumps({"terminal": text}))
+    else:
+        sys.stdout.write(text)
+    return 0
+
+
+def cmd_rich(args):
+    entries = read_entries()
+    if not entries:
+        raise Stop(NO_MOTD, "no motd: the hub holds no rich entry for this user")
+    print(json.dumps({"entries": entries}) if args.json else entries_text(entries))
+    return 0
+
+
+def cmd_notifications(args):
+    notifications = read_notifications()
+    if not notifications:
+        raise Stop(NO_MOTD, "no motd: the hub holds no notification for this user")
+    print(json.dumps({"notifications": notifications}) if args.json else notification_lines(notifications))
+    return 0
+
+
+EPILOG = f"""
+environment:
+  JUPYTERHUB_API_URL    the hub api url, set by the hub in every lab it starts; unset means
+                        no hub to ask (exit 3)
+  JUPYTERHUB_API_TOKEN  the lab's api token, sent as `Authorization: token ...`; never printed,
+                        also not on errors and not with --json
+
+exit status:
+  0  the motd is on stdout
+  2  an argument the parser rejects
+  3  no motd: JUPYTERHUB_API_URL is unset, the hub answered 404 (it does not carry the feed),
+     or the hub holds nothing for this user
+  4  the hub refused the token (403), answered another error status, or cannot be reached
+Exit 3 and 4 print one line on stderr, naming the cause, and nothing on stdout.
+
+Every command has its own --help with examples: {PROG} show --help
+"""
+
+COMMANDS = [
+    (
+        "show", cmd_show, "the whole motd: terminal text, rich entries, notifications",
+        """
+Print the whole message of the day in three parts, in this order:
+
+  the terminal text, as `terminal` prints it
+  each rich entry under a `## <group>` heading, as `rich` prints it
+  `## Notifications`, then one line per broadcast, as `notifications` prints it
+
+A part the hub holds nothing for is left out. Exits 3 when all three are empty, or when any
+of the three feeds answers 404.
+""",
+        f"""
+examples:
+  {PROG} show
+  {PROG} show --json | jq -r '.entries[].group'
+""",
+        "print one JSON document instead: "
+        '{"terminal": "...", "entries": [...], "notifications": [...]}, each as the command of that name gives it',
+    ),
+    (
+        "terminal", cmd_terminal, "the terminal text, verbatim",
+        """
+Print the terminal texts of the user's groups, joined by the hub, exactly as the hub stores
+them: ANSI escape sequences included and no newline added. Exits 3 when no group of the user
+carries a terminal text.
+""",
+        f"""
+examples:
+  {PROG} terminal
+  {PROG} terminal --json | jq -r .terminal
+""",
+        'print one JSON document instead: {"terminal": "<the text>"}',
+    ),
+    (
+        "rich", cmd_rich, "the rich entries, each under its group name",
+        """
+Print each rich entry of the user's groups, in the hub's order (by group name): a
+`## <group>` heading, a blank line, then the markdown body, or for an html entry the url of
+its page on the hub, made absolute against JUPYTERHUB_API_URL. That is the hub address inside
+the lab, which a browser may not reach, and the hub answers it only to an authenticated
+caller; the page itself is read in the lab's Message of the day tab. Entries are separated by
+a blank line. Exits 3 when no group of the user carries a rich entry.
+""",
+        f"""
+examples:
+  {PROG} rich
+  {PROG} rich --json | jq -r '.entries[] | select(.kind == "html") | .url'
+""",
+        "print one JSON document instead: "
+        '{"entries": [{"group", "kind": "markdown", "body"} or {"group", "kind": "html", "url"}]}',
+    ),
+    (
+        "notifications", cmd_notifications, "the broadcasts sent to the user, newest first",
+        """
+Print the broadcasts the hub recorded for the user - those sent to all users and those
+naming the user - one line per broadcast, newest first. Each line holds four fields separated
+by a tab: time (ISO 8601), type, audience (all or direct), message. Whitespace inside a
+message, line breaks included, prints as one space. Exits 3 when the hub holds none.
+""",
+        f"""
+examples:
+  {PROG} notifications
+  {PROG} notifications | cut -f4
+  {PROG} notifications --json | jq -r '.notifications[0].message'
+""",
+        'print one JSON document instead: {"notifications": [{"ts", "type", "audience", "message"}]}, newest first',
+    ),
+]
+
+
+def parser():
+    p = argparse.ArgumentParser(
+        prog=PROG,
+        description=__doc__,
+        epilog=EPILOG,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    sub = p.add_subparsers(dest="command", required=True, metavar="COMMAND")
+    for name, func, help_, description, epilog, json_help in COMMANDS:
+        s = sub.add_parser(
+            name, help=help_, description=description.strip("\n"), epilog=epilog.strip("\n"),
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+        )
+        s.add_argument("--json", action="store_true", help=json_help)
+        s.set_defaults(func=func)
+    return p
+
+
+def main(argv=None):
+    args = parser().parse_args(argv)
+    try:
+        return args.func(args)
+    except Stop as stop:
+        print(f"{PROG}: {stop}", file=sys.stderr)
+        return stop.code
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
