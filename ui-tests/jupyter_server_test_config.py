@@ -24,5 +24,10 @@ if os.environ.get("MOTD_STUB_PORT"):
     c.GalaxaHubMotd.motd_api_url = f"{stub}/extensions/motd"
     c.GalaxaHubMotd.notifications_api_url = f"{stub}/user-notifications"
 
+# the local page: the file exists only while a local page test runs, and without it the rich
+# route answers as if no local page were set
+if os.environ.get("MOTD_LOCAL_PAGE"):
+    c.GalaxaHubMotd.fallback_html = os.environ["MOTD_LOCAL_PAGE"]
+
 # Uncomment to set server log level to debug level
 # c.ServerApp.log_level = "DEBUG"

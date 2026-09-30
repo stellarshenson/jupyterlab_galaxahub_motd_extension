@@ -4,6 +4,28 @@
 
 <!-- <END NEW CHANGELOG ENTRY> -->
 
+## [1.0.3] - 2026-09-30
+
+### Added
+
+- Lab setting `notificationWindow` (24h default, 3d, 7d): the Notifications column and the CLI list the broadcasts of that window
+- `c.GalaxaHubMotd.fallback_html`: a local HTML page the tab shows when the hub gives no welcome entry; the files in its folder are served beside it
+- A built-in page with the extension version, what it does, its settings and the hub API, shown while `fallback_html` is empty
+- `c.GalaxaHubMotd.label` sets the tab label; `c.GalaxaHubMotd.open_on_start = False` keeps the tab closed on lab start
+- README screenshot of the tab on the Galaxa Dark Steel theme
+
+### Changed
+
+- Notifications alone never open the tab; the open command pulls first; an open tab closes when the hub answers with no entry
+- A hub that is not configured, has no motd extension, cannot be reached or answers an error now shows the local or built-in page instead of nothing
+- Entry cards take 3/4 of the tab width and the Notifications column 1/4
+- Makefile 1.44 installs the `pyproject.toml` test extras when pytest is missing
+
+### Fixed
+
+- A hub URL with no scheme answered 500 instead of the local page
+- In the narrow Notifications column the audience label no longer breaks over two lines, and a wrapped time stays at the right edge
+
 ## [0.8.12] - 2026-09-29
 
 ### Fixed

@@ -7,7 +7,7 @@
     "openOnStart": {
       "type": "boolean",
       "title": "Open on start",
-      "description": "Open the Message of the day tab on lab start when the hub has entries or notifications for you.",
+      "description": "Open the Message of the day tab on lab start.",
       "default": true
     },
     "reopenOnBroadcast": {
@@ -23,6 +23,17 @@
       "minimum": 0,
       "maximum": 35791,
       "default": 0
+    },
+    "notificationWindow": {
+      "type": "string",
+      "title": "Notifications shown",
+      "description": "How far back the Notifications column lists broadcasts. The jupyterlab-galaxahub-motd command line tool follows this setting too.",
+      "oneOf": [
+        { "const": "24h", "title": "Last 24 hours" },
+        { "const": "3d", "title": "Last 3 days" },
+        { "const": "7d", "title": "Last 7 days" }
+      ],
+      "default": "24h"
     }
   },
   "additionalProperties": false

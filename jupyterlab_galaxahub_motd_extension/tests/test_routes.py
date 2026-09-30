@@ -1,5 +1,8 @@
 """The hub proxy against a stub hub on a local port (ACC-PROXY-14 to ACC-PROXY-21, ACC-LIVE-22,
-ACC-SERVER-53, ACC-SERVER-54, ACC-SERVER-60, ACC-CLI-56).
+ACC-SERVER-53, ACC-SERVER-54, ACC-SERVER-60, ACC-CLI-56), the local and built-in pages
+(ACC-LOCAL-67 to ACC-LOCAL-70), the tab label (ACC-SERVER-66) and the open-on-start switch
+(ACC-SERVER-71). Without fallback_html the rich route answers the built-in page where the hub
+gives no entry, so the 204 cases are asserted on the other two routes.
 
 The workstation's environment carries a live JUPYTERHUB_API_TOKEN, so every test replaces it.
 The server config points the two GalaxaHubMotd URLs at a port nothing listens on, or at the
@@ -16,7 +19,7 @@ import tornado.httpserver
 import tornado.testing
 import tornado.web
 
-from jupyterlab_galaxahub_motd_extension import cli
+from jupyterlab_galaxahub_motd_extension import __version__, cli
 from jupyterlab_galaxahub_motd_extension.routes import ROUTES, GalaxaHubMotd
 
 NS = "jupyterlab-galaxahub-motd-extension"
@@ -86,10 +89,31 @@ def left_out():
 
 
 @pytest.fixture
-def jp_server_config(jp_server_config, hub_url, hub_paths, left_out):
+def page_dir(tmp_path):
+    """A local page and an image beside it, and a file outside their directory."""
+    folder = tmp_path / "motd"
+    folder.mkdir()
+    (folder / "index.html").write_text('<!doctype html><h1>Local welcome</h1><img src="logo.svg">')
+    (folder / "logo.svg").write_text('<svg xmlns="http://www.w3.org/2000/svg"/>')
+    (tmp_path / "outside.txt").write_text("not served")
+    return folder
+
+
+@pytest.fixture
+def motd_extra():
+    """GalaxaHubMotd settings a test adds besides the two URLs."""
+    return {}
+
+
+@pytest.fixture
+def jp_server_config(jp_server_config, hub_url, hub_paths, left_out, motd_extra, request):
     motd, notifications = hub_paths
     urls = {"motd_api_url": f"{hub_url}/{motd}", "notifications_api_url": f"{hub_url}/{notifications}"}
-    return {**jp_server_config, "GalaxaHubMotd": {k: v for k, v in urls.items() if k not in left_out}}
+    settings = {k: v for k, v in urls.items() if k not in left_out}
+    # a test that uses `page_dir` sets the local page
+    if "page_dir" in request.fixturenames:
+        settings["fallback_html"] = str(request.getfixturevalue("page_dir") / "index.html")
+    return {**jp_server_config, "GalaxaHubMotd": {**settings, **motd_extra}}
 
 
 @pytest.fixture
@@ -168,8 +192,10 @@ async def test_cli_asks_the_running_lab(jp_fetch, jp_serverapp, jp_http_port, jp
 
 def test_settings_are_empty_by_default():
     motd = GalaxaHubMotd()
-    assert (motd.motd_api_url, motd.notifications_api_url) == ("", "")
-    assert set(GalaxaHubMotd.class_trait_names(config=True)) == {"motd_api_url", "notifications_api_url"}
+    assert (motd.motd_api_url, motd.notifications_api_url, motd.fallback_html) == ("", "", "")
+    assert (motd.label, motd.open_on_start) == ("Message of the day", True)
+    assert set(GalaxaHubMotd.class_trait_names(config=True)) == {
+        "motd_api_url", "notifications_api_url", "fallback_html", "label", "open_on_start"}
 
 
 async def test_no_other_route(jp_fetch, hub):
@@ -204,18 +230,19 @@ async def test_hub_304_passes_through(jp_fetch, hub):
 
 async def test_matching_etag_answers_304(jp_fetch, hub):
     # the hub's rich route answers 200 whatever If-None-Match says
-    hub.answers["extensions/motd/rich"] = (200, {**JSON, "Etag": '"r1"'}, b'{"entries": []}')
+    body = json.dumps({"entries": [{"group": "analysts", "kind": "markdown", "body": "# Hi"}]}).encode()
+    hub.answers["extensions/motd/rich"] = (200, {**JSON, "Etag": '"r1"'}, body)
     response = await _fetch(jp_fetch, "rich", headers={"If-None-Match": '"r1"'})
     assert response.code == 304
     assert response.body == b""
     response = await _fetch(jp_fetch, "rich", headers={"If-None-Match": '"stale"'})
     assert response.code == 200
-    assert json.loads(response.body) == {"entries": []}
+    assert json.loads(response.body) == json.loads(body)
 
 
 async def test_hub_404_answers_204(jp_fetch, hub):
-    hub.answers["extensions/motd/rich"] = (404, JSON, b'{"message": "Not Found"}')
-    response = await _fetch(jp_fetch, "rich")
+    hub.answers["extensions/motd/terminal"] = (404, JSON, b'{"message": "Not Found"}')
+    response = await _fetch(jp_fetch, "terminal")
     assert response.code == 204
     assert response.body == b""
     assert response.headers["Cache-Control"] == "no-cache"
@@ -231,22 +258,25 @@ async def test_refused_connection_answers_204(jp_fetch):
 
 @pytest.mark.parametrize("left_out", [
     ("motd_api_url",), ("notifications_api_url",), ("motd_api_url", "notifications_api_url")])
-async def test_empty_setting_answers_204(jp_fetch, jp_serverapp, hub, left_out):
-    # either setting empty stops all three routes, and the server log names the empty one
+async def test_empty_setting_answers_204(jp_fetch, jp_serverapp, jp_base_url, hub, left_out):
+    # either setting empty stops all three routes, and the server log names the empty one; the
+    # rich route answers the built-in page instead of 204
     records = []
     handler = logging.Handler()
     handler.emit = records.append
     jp_serverapp.log.addHandler(handler)
     try:
-        for name in ROUTES:
+        for name in ("terminal", "notifications"):
             response = await _fetch(jp_fetch, name)
             assert response.code == 204, name
             assert response.body == b""
             assert response.headers["Cache-Control"] == "no-cache"
+        response = await _fetch(jp_fetch, "rich")
+        assert json.loads(response.body) == _about_entry(jp_base_url)
     finally:
         jp_serverapp.log.removeHandler(handler)
     assert hub.requests == []
-    logged = [r.getMessage() for r in records if "answering 204" in r.getMessage()]
+    logged = [r.getMessage() for r in records if "answering" in r.getMessage()]
     assert len(logged) == len(ROUTES)
     assert all(f"GalaxaHubMotd.{setting}" in line for line in logged for setting in left_out)
 
@@ -280,3 +310,137 @@ async def test_token_never_in_the_answer(jp_fetch, hub):
         response = await _fetch(jp_fetch, name)
         assert TOKEN not in response.body.decode(errors="replace"), name
         assert all(TOKEN not in value for _, value in response.headers.get_all()), name
+
+
+def _local_entry(jp_base_url, label="Message of the day"):
+    return {"entries": [{"group": label, "kind": "html", "url": f"{jp_base_url}{NS}/local/index.html"}]}
+
+
+def _about_entry(jp_base_url):
+    return {"entries": [{"group": "Message of the day", "kind": "html", "url": f"{jp_base_url}{NS}/about/index.html"}]}
+
+
+async def test_local_page_when_the_hub_gives_no_entry(jp_fetch, jp_base_url, hub, page_dir):
+    # ACC-LOCAL-67: a 200 with no entry, a 404 and an error status answer the local page
+    for status, body in ((200, b'{"entries": []}'), (404, b'{"message": "Not Found"}'), (500, b"{}"), (403, b"{}")):
+        hub.answers["extensions/motd/rich"] = (status, {**JSON, "Etag": '"r0"'}, body)
+        response = await _fetch(jp_fetch, "rich")
+        assert response.code == 200, status
+        assert json.loads(response.body) == _local_entry(jp_base_url), status
+        assert response.headers["Cache-Control"] == "no-cache", status
+        # the hub's Etag does not travel with the local page; tornado sets its own, of this body
+        assert response.headers.get("Etag") != '"r0"', status
+    # the notifications route stays the hub's
+    hub.answers["user-notifications"] = (404, JSON, b"{}")
+    assert (await _fetch(jp_fetch, "notifications")).code == 204
+
+
+async def test_local_page_when_the_hub_cannot_be_reached(jp_fetch, jp_base_url, page_dir):
+    # ACC-LOCAL-67: no `hub` fixture, the settings point at a port nothing listens on
+    response = await _fetch(jp_fetch, "rich")
+    assert (response.code, json.loads(response.body)) == (200, _local_entry(jp_base_url))
+
+
+@pytest.mark.parametrize("left_out", [("motd_api_url",)])
+@pytest.mark.parametrize("motd_extra", [{"label": "Welcome to the lab"}])
+async def test_local_page_with_an_empty_setting_carries_the_label(jp_fetch, jp_base_url, jp_serverapp, hub,
+                                                                   page_dir, left_out, motd_extra):
+    # ACC-LOCAL-67 and ACC-SERVER-66: no hub to ask, the local page under the configured label
+    response = await _fetch(jp_fetch, "rich")
+    assert json.loads(response.body) == _local_entry(jp_base_url, "Welcome to the lab")
+    assert jp_serverapp.web_app.settings["page_config_data"]["galaxahubMotdLabel"] == "Welcome to the lab"
+    assert hub.requests == []
+
+
+async def test_label_in_the_page_config_by_default(jp_serverapp):
+    # ACC-SERVER-66
+    assert jp_serverapp.web_app.settings["page_config_data"]["galaxahubMotdLabel"] == "Message of the day"
+
+
+async def test_hub_entries_win_over_the_local_page(jp_fetch, hub, page_dir):
+    # ACC-LOCAL-68: entries and a 304 pass through unchanged
+    body = json.dumps({"entries": [{"group": "analysts", "kind": "markdown", "body": "# Hi"}]})
+    hub.answers["extensions/motd/rich"] = (200, {**JSON, "Etag": '"r1"'}, body.encode())
+    response = await _fetch(jp_fetch, "rich")
+    assert (response.code, json.loads(response.body), response.headers["Etag"]) == (200, json.loads(body), '"r1"')
+    hub.answers["extensions/motd/rich"] = (304, {"Etag": '"r1"'}, b"")
+    response = await _fetch(jp_fetch, "rich", headers={"If-None-Match": '"r1"'})
+    assert response.code == 304
+
+
+@pytest.mark.parametrize("motd_extra", [{"fallback_html": "/nonexistent/motd/index.html"}])
+async def test_missing_local_page_answers_as_before(jp_fetch, jp_serverapp, hub, motd_extra):
+    # ACC-LOCAL-68: a fallback_html that names no file changes nothing, and the log names it
+    records = []
+    handler = logging.Handler()
+    handler.emit = records.append
+    jp_serverapp.log.addHandler(handler)
+    try:
+        hub.answers["extensions/motd/rich"] = (404, JSON, b"{}")
+        assert (await _fetch(jp_fetch, "rich")).code == 204
+        hub.answers["extensions/motd/rich"] = (200, JSON, b'{"entries": []}')
+        response = await _fetch(jp_fetch, "rich")
+        assert (response.code, json.loads(response.body)) == (200, {"entries": []})
+    finally:
+        jp_serverapp.log.removeHandler(handler)
+    assert any("/nonexistent/motd/index.html is not a file" in r.getMessage() for r in records)
+
+
+async def test_local_route_serves_the_page_directory_only(jp_fetch, page_dir):
+    # ACC-LOCAL-69
+    response = await _fetch(jp_fetch, "local/index.html")
+    assert response.code == 200
+    assert b"Local welcome" in response.body
+    assert response.headers["Content-Type"].startswith("text/html")
+    assert response.headers["Cache-Control"] == "no-cache"
+    response = await _fetch(jp_fetch, "local/logo.svg")
+    assert (response.code, response.headers["Content-Type"]) == (200, "image/svg+xml")
+    response = await _fetch(jp_fetch, "local/../outside.txt")
+    assert response.code in (403, 404)
+    assert b"not served" not in response.body
+    # no token: nothing of the page
+    response = await _fetch(jp_fetch, "local/index.html", headers={"Authorization": ""}, follow_redirects=False)
+    assert response.code in (302, 403)
+    assert b"Local welcome" not in response.body
+
+
+async def test_local_route_404_without_a_local_page(jp_fetch):
+    # ACC-LOCAL-69
+    assert (await _fetch(jp_fetch, "local/index.html")).code == 404
+
+
+async def test_builtin_page_without_a_local_page(jp_fetch, jp_base_url, hub):
+    # ACC-LOCAL-70: no fallback_html; a 200 with no entry, a 404 and an error answer the built-in page
+    for status, body in ((200, b'{"entries": []}'), (404, b"{}"), (500, b"{}")):
+        hub.answers["extensions/motd/rich"] = (status, JSON, body)
+        response = await _fetch(jp_fetch, "rich")
+        assert (response.code, json.loads(response.body)) == (200, _about_entry(jp_base_url)), status
+    response = await _fetch(jp_fetch, "about/index.html")
+    assert response.code == 200
+    assert response.headers["Cache-Control"] == "no-cache"
+    page = response.body.decode()
+    assert f"jupyterlab_galaxahub_motd_extension {__version__}" in page and "{{version}}" not in page
+    for words in ("c.GalaxaHubMotd.motd_api_url", "c.GalaxaHubMotd.fallback_html", "c.GalaxaHubMotd.open_on_start",
+                  "notificationWindow", "/rich", "/terminal", "JUPYTERHUB_API_TOKEN"):
+        assert words in page, words
+    # no script and no file from elsewhere: the frame sandbox blocks scripts, and the page stands alone
+    assert "<script" not in page and 'src="http' not in page and "<link" not in page
+
+
+@pytest.mark.parametrize("motd_extra", [{"motd_api_url": "/extensions/motd", "notifications_api_url": "/user-notifications"}])
+async def test_local_page_when_a_hub_url_has_no_scheme(jp_fetch, jp_base_url, motd_extra):
+    # ACC-LOCAL-70: a URL with no scheme cannot be fetched; the tab gets the built-in page, not a 500
+    response = await _fetch(jp_fetch, "rich")
+    assert (response.code, json.loads(response.body)) == (200, _about_entry(jp_base_url))
+    assert (await _fetch(jp_fetch, "notifications")).code == 204
+
+
+async def test_open_on_start_in_the_page_config(jp_serverapp):
+    # ACC-SERVER-71
+    assert jp_serverapp.web_app.settings["page_config_data"]["galaxahubMotdOpenOnStart"] is True
+
+
+@pytest.mark.parametrize("motd_extra", [{"open_on_start": False}])
+async def test_open_on_start_off_in_the_page_config(jp_serverapp, motd_extra):
+    # ACC-SERVER-71
+    assert jp_serverapp.web_app.settings["page_config_data"]["galaxahubMotdOpenOnStart"] is False

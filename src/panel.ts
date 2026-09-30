@@ -6,7 +6,13 @@ import { Message } from '@lumino/messaging';
 
 import { Widget } from '@lumino/widgets';
 
-import { MotdModel, RichEntry, notificationView } from './model';
+import {
+  DEFAULT_SETTINGS,
+  MotdModel,
+  NotificationWindow,
+  RichEntry,
+  notificationView
+} from './model';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -143,6 +149,14 @@ export class MotdPanel extends Widget {
   set pollMinutes(minutes: number) {
     this._pollMinutes = minutes;
     this._arm();
+  }
+
+  /**
+   * How far back the Notifications column lists broadcasts; a change redraws the column.
+   */
+  set notificationWindow(span: NotificationWindow) {
+    this._notificationWindow = span;
+    this._notifications.replaceChildren(...this._notificationsContent());
   }
 
   /**
@@ -293,7 +307,10 @@ export class MotdPanel extends Widget {
     const title = document.createElement('div');
     title.className = 'jp-MotdPanel-title';
     title.appendChild(this._heading('Notifications'));
-    const rows = notificationView(this._model.notifications.rows);
+    const rows = notificationView(
+      this._model.notifications.rows,
+      this._notificationWindow
+    );
     if (rows.length === 0) {
       const empty = document.createElement('p');
       empty.className = 'jp-MotdPanel-empty';
@@ -371,5 +388,7 @@ export class MotdPanel extends Widget {
   );
   private _renderToken = 0;
   private _pollMinutes = 0;
+  private _notificationWindow: NotificationWindow =
+    DEFAULT_SETTINGS.notificationWindow;
   private _timer = 0;
 }

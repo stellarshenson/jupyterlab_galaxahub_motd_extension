@@ -1,5 +1,6 @@
 /**
- * The answer-to-view mapping (ACC-START-2 to 4, ACC-VIEW-9 and 10, ACC-VIEW-11, ACC-LIVE-23 and 24).
+ * The answer-to-view mapping (ACC-START-2 to 4, ACC-VIEW-9 and 10, ACC-VIEW-11, ACC-VIEW-64,
+ * ACC-LIVE-23 and 24).
  */
 import {
   IFeedState,
@@ -108,24 +109,19 @@ describe('richRows', () => {
 
 describe('hasContent', () => {
   it('opens for a rich entry', () => {
-    expect(hasContent(ok([ENTRY]), ok([]))).toBe(true);
+    expect(hasContent(ok([ENTRY]))).toBe(true);
   });
 
-  it('opens for notifications alone when the rich feed answered', () => {
-    expect(hasContent(ok([]), ok([ROW]))).toBe(true);
+  it('stays closed without a rich entry, notifications or not', () => {
+    expect(hasContent(ok([]))).toBe(false);
   });
 
-  it('stays closed when the hub has no motd extension, notifications or not', () => {
-    expect(hasContent(absent(), ok([ROW]))).toBe(false);
-  });
-
-  it('stays closed on empty answers', () => {
-    expect(hasContent(ok([]), ok([]))).toBe(false);
-    expect(hasContent(ok([]), absent())).toBe(false);
+  it('stays closed when the hub has no motd extension', () => {
+    expect(hasContent(absent())).toBe(false);
   });
 
   it('stays closed when the rich feed failed', () => {
-    expect(hasContent(failed(), ok([ROW]))).toBe(false);
+    expect(hasContent(failed())).toBe(false);
   });
 });
 
@@ -147,6 +143,7 @@ describe('silenceLine', () => {
 });
 
 describe('notificationView', () => {
+  const NOW = Date.parse('2026-09-29T00:00:00+00:00');
   const rows: INotificationRow[] = [
     {
       ts: '2026-09-27T10:00:00+00:00',
@@ -169,7 +166,7 @@ describe('notificationView', () => {
   ];
 
   it('lists newest first whatever order the answer carried', () => {
-    expect(notificationView(rows).map(r => r.message)).toEqual([
+    expect(notificationView(rows, '7d', NOW).map(r => r.message)).toEqual([
       'newest',
       'middle',
       'oldest'
@@ -177,7 +174,7 @@ describe('notificationView', () => {
   });
 
   it('keeps a lab type and reads an unknown type as default', () => {
-    expect(notificationView(rows).map(r => r.type)).toEqual([
+    expect(notificationView(rows, '7d', NOW).map(r => r.type)).toEqual([
       'error',
       'default',
       'info'
@@ -185,7 +182,7 @@ describe('notificationView', () => {
   });
 
   it('marks the audience', () => {
-    const [newest, middle] = notificationView(rows);
+    const [newest, middle] = notificationView(rows, '7d', NOW);
     expect([newest.audience, newest.audienceLabel]).toEqual([
       'direct',
       'Direct'
@@ -195,6 +192,32 @@ describe('notificationView', () => {
       'All users'
     ]);
   });
+
+  it.each([
+    ['24h', 24],
+    ['3d', 72],
+    ['7d', 168]
+  ] as const)(
+    'lists only the last %s and leaves out a row whose time cannot be read',
+    (span, hours) => {
+      const at = (ms: number, message: string): INotificationRow => ({
+        ...ROW,
+        ts: new Date(ms).toISOString(),
+        message
+      });
+      const edge = hours * 60 * 60 * 1000;
+      const view = notificationView(
+        [
+          at(NOW - edge, 'at the edge'),
+          at(NOW - edge - 60_000, 'one minute older'),
+          { ...ROW, ts: 'yesterday', message: 'unreadable' }
+        ],
+        span,
+        NOW
+      );
+      expect(view.map(r => r.message)).toEqual(['at the edge']);
+    }
+  );
 });
 
 describe('isNewBroadcast', () => {

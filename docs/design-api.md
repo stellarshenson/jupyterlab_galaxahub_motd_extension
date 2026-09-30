@@ -117,8 +117,9 @@ one `notifications` list.
   broadcast addressed only to other users
 - **Limit** - GalaxaHub returns the newest 100 broadcasts
 - **`message`** - required string, and the extension drops a row without it
-- **`ts`** - ISO 8601 timestamp, and the tab sorts the rows newest first, with a `ts` it cannot
-  parse last
+- **`ts`** - ISO 8601 timestamp; the tab shows only the rows inside its `notificationWindow`
+  setting (the last 24 hours, 3 days or 7 days, 24 hours by default), newest first, and leaves
+  out a row whose `ts` it cannot parse
 - **`type`** - one of the lab notification types `info`, `success`, `warning`, `error` and
   `in-progress`, and the tab shows any other value as `default`
 - **`audience`** - `direct` marks a broadcast that named the user, which the tab labels Direct,
@@ -177,14 +178,25 @@ This section states what the hub serves for an `html` welcome entry. The browser
 
 ## 6. Tab open conditions
 
-This section states when the tab opens on lab start. The tab opens only when both conditions hold:
+This section states when the tab opens on lab start. The tab shows the user's welcome entries when
+both conditions hold:
 
 - `<motd_api_url>/rich` answered 200 or 304
-- the user has at least one welcome entry or one broadcast
+- the user has at least one welcome entry
 
-In every other case the extension writes one console line and opens nothing. A 404 on
-`<motd_api_url>/rich` keeps the tab closed, even when `<notifications_api_url>` has rows. The palette
-command `Message of the day: Open` opens the tab at any time.
+In every other case the tab shows a page of the lab instead: the local page
+`c.GalaxaHubMotd.fallback_html` names, or the extension's built-in page while that setting is
+empty. A 404 on `<motd_api_url>/rich`, an error, a hub that cannot be reached and an empty URL
+setting all count as no entry, and so do broadcasts without an entry. The hub side needs nothing
+for it.
+
+- **No tab** - only when `fallback_html` names a file that does not exist; the extension then
+  writes one console line and opens nothing, and an open tab closes when `<motd_api_url>/rich`
+  answers with no entry
+- **Open on start** - `c.GalaxaHubMotd.open_on_start = False`, or the user's `openOnStart` lab
+  setting off, keeps the tab closed on lab start in every case
+- **Palette command** - `Message of the day: Open` pulls again and opens the tab under the same
+  conditions, whatever the two open-on-start switches say
 
 ## 7. Live broadcasts
 
@@ -198,7 +210,7 @@ notifications.
 - **Match** - a row with a new `ts` and `message` pair, whose `message` equals the text of the lab
   notification
 - **Result** - on a match, the extension opens the tab behind the current tab when the tab is
-  closed
+  closed and it has something to show: a welcome entry, or the page of section 6
 - **Hub requirement** - the hub records a delivered broadcast in the `<notifications_api_url>`
   answer, with the same message text, no later than 15 s after the lab notification appears
 

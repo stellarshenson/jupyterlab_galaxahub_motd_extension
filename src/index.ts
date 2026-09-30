@@ -5,6 +5,8 @@ import {
 
 import { ICommandPalette, Notification } from '@jupyterlab/apputils';
 
+import { PageConfig } from '@jupyterlab/coreutils';
+
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
@@ -49,6 +51,9 @@ const plugin: JupyterFrontEndPlugin<void> = {
       fetchFeed(feed, etag, app.serviceManager.serverSettings)
     );
     const panel = new MotdPanel(model, rendermime);
+    // c.GalaxaHubMotd.label, which the server extension puts in the lab page's config
+    panel.title.label =
+      PageConfig.getOption('galaxahubMotdLabel') || panel.title.label;
     let settings = DEFAULT_SETTINGS;
 
     const open = () => {
@@ -60,13 +65,30 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
     app.commands.addCommand(COMMAND_OPEN, {
       label: 'Message of the day: Open',
-      caption: 'Open the Message of the day tab and pull it again from the hub',
+      caption:
+        'Pull the Message of the day from the hub again and open its tab',
       execute: async () => {
-        open();
         await model.pull();
+        if (model.hasContent) {
+          open();
+        } else {
+          console.log(silenceLine(model.rich));
+        }
       }
     });
     palette?.addItem({ command: COMMAND_OPEN, category: 'Message of the day' });
+
+    // the tab never shows notifications alone: it closes when the rich feed answers with no
+    // entry (the local or built-in page the server answers counts as an entry)
+    model.changed.connect(() => {
+      if (
+        panel.isAttached &&
+        model.rich.state === 'ok' &&
+        !model.rich.rows.length
+      ) {
+        panel.close();
+      }
+    });
 
     // live broadcasts arrive as lab notifications through jupyterlab_notifications_extension;
     // one the hub records for this user as a new row is a broadcast, anything else is not
@@ -87,7 +109,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
             )
           ) {
             // opened behind the current tab, so an editor the user types in keeps the keys
-            if (!panel.isAttached) {
+            if (model.hasContent && !panel.isAttached) {
               app.shell.add(panel, 'main', { activate: false });
             }
             return;
@@ -103,6 +125,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
           const apply = () => {
             settings = readSettings(loaded.composite);
             panel.pollMinutes = settings.pollMinutes;
+            panel.notificationWindow = settings.notificationWindow;
           };
           apply();
           loaded.changed.connect(apply);
@@ -118,7 +141,11 @@ const plugin: JupyterFrontEndPlugin<void> = {
         console.log(silenceLine(model.rich));
         return;
       }
-      if (settings.openOnStart) {
+      // the user's openOnStart and the lab's c.GalaxaHubMotd.open_on_start must both be on
+      if (
+        settings.openOnStart &&
+        PageConfig.getOption('galaxahubMotdOpenOnStart') !== 'false'
+      ) {
         open();
       }
     })();

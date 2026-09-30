@@ -10,31 +10,40 @@
 
 Shows the GalaxaHub message of the day in a JupyterLab tab. When the lab starts, the extension pulls
 the welcome content that the user's groups carry and the broadcasts sent to the user. It opens a
-**Message of the day** tab when the hub has something to show, and stays silent when it has not.
+**Message of the day** tab with the hub's entries, or with the local or built-in page when the hub
+has none.
+
+![Message of the day tab](.resources/screenshot.png)
 
 ## Features
 
 - **Welcome tab on start** - opens the Message of the day tab and makes it current when the hub
-  carries at least one welcome entry or one notification for the user
-- **Silent without a hub** - opens nothing and logs one console line when a hub URL setting is
-  empty, or the hub has no motd extension, cannot be reached, or has nothing to show
-- **Two columns** - the entry cards on the left, the Notifications column 380 px wide on the right;
-  a tab narrower than 800 px stacks them
+  carries at least one welcome entry for the user; notifications alone never open it
+- **Local page** - when the hub gives no welcome entry for the user (a hub URL setting empty, no
+  motd extension, not reachable, an error, or no entry), the tab shows the local HTML page the lab
+  config names, or, while none is named, the extension's built-in page with its version, what it
+  does, its settings and the hub API it reads
+- **Silent without a page** - with `fallback_html` naming a file that does not exist, those cases
+  open nothing and log one console line
+- **Two columns** - the entry cards on the left in 3/4 of the width, the Notifications column in
+  the other 1/4; a tab narrower than 800 px stacks them
 - **One card per group** - markdown rendered by the lab's own markdown renderer, an HTML package
   shown in a sandboxed iframe at its hub address, sized to fit its page
-- **Notifications catch-up** - the broadcasts sent to all users and those naming the user, newest
-  first, each marked by an icon in its type's colour, with the relative time and an all or direct
-  marker
-- **Palette command** - `Message of the day: Open` reopens the one tab and pulls again
+- **Notifications catch-up** - the broadcasts of the last 24 hours, 3 days or 7 days (a setting)
+  sent to all users and those naming the user, newest first, each marked by an icon in its
+  type's colour, with the relative time and an all or direct marker
+- **Palette command** - `Message of the day: Open` pulls again and reopens the one tab; the tab
+  closes, and the command opens nothing, only when `fallback_html` names a file that does not exist
 - **Token stays on the server** - a server extension calls the hub with the lab's API token and
   passes Etags through, so the browser never holds the token and a repeated pull answers 304
 
 ## Requirements
 
 - JupyterLab >= 4.6
-- A GalaxaHub hub carrying `galaxahub-motd-extension`; without it the extension shows nothing
+- A GalaxaHub hub carrying `galaxahub-motd-extension`; without it the tab shows only the local or
+  built-in page
 - The two hub URLs in the lab's Jupyter config, as [Server configuration](#server-configuration)
-  states; without them the extension shows nothing
+  states; without them the tab shows only the local or built-in page
 
 ## Install
 
@@ -44,21 +53,26 @@ pip install jupyterlab_galaxahub_motd_extension
 
 ## Settings
 
-| Setting             | Default | Effect                                                                           |
-| ------------------- | ------- | -------------------------------------------------------------------------------- |
-| `openOnStart`       | `true`  | open the tab on lab start when the hub has something to show                     |
-| `reopenOnBroadcast` | `false` | reopen the tab when a live broadcast arrives through the notifications extension |
-| `pollMinutes`       | `0`     | pull again on this interval while the tab is open; `0` never polls               |
+| Setting              | Default | Effect                                                                               |
+| -------------------- | ------- | ------------------------------------------------------------------------------------ |
+| `openOnStart`        | `true`  | open the tab on lab start; the lab's `c.GalaxaHubMotd.open_on_start` must be on too  |
+| `reopenOnBroadcast`  | `false` | reopen the tab when a live broadcast arrives through the notifications extension     |
+| `pollMinutes`        | `0`     | pull again on this interval while the tab is open; `0` never polls                   |
+| `notificationWindow` | `24h`   | how far back Notifications lists broadcasts: `24h`, `3d` or `7d`; the CLI follows it |
 
 ## Server configuration
 
-The lab's Jupyter config names the two hub URLs the extension reads. Both settings are empty by
-default, and while either one is empty the extension shows nothing.
+The lab's Jupyter config names the two hub URLs the extension reads, and optionally a local page,
+the tab label and whether the tab opens on lab start. The two URLs are empty by default, and while
+either one is empty the extension asks no hub and shows only the local or built-in page.
 
-| Setting                                 | Value                                                                           |
-| --------------------------------------- | ------------------------------------------------------------------------------- |
-| `c.GalaxaHubMotd.motd_api_url`          | base URL of the motd API; the extension reads `<url>/rich` and `<url>/terminal` |
-| `c.GalaxaHubMotd.notifications_api_url` | URL that answers the broadcasts sent to the user                                |
+| Setting                                 | Value                                                                                                                                                     |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `c.GalaxaHubMotd.motd_api_url`          | base URL of the motd API; the extension reads `<url>/rich` and `<url>/terminal`                                                                           |
+| `c.GalaxaHubMotd.notifications_api_url` | URL that answers the broadcasts sent to the user                                                                                                          |
+| `c.GalaxaHubMotd.fallback_html`         | absolute path of a local HTML page, shown when the hub gives no welcome entry; the files in its folder are served too; empty (default): the built-in page |
+| `c.GalaxaHubMotd.label`                 | label of the tab and of the local page's card; default `Message of the day`                                                                               |
+| `c.GalaxaHubMotd.open_on_start`         | `True` (default): the tab opens on lab start; `False`: the tab stays closed on lab start, whatever each user's `openOnStart`                              |
 
 - **Files** - `jupyter_server_config.py` or `jupyter_lab_config.py` (or their `.json` form) in a
   Jupyter config directory; `jupyter --paths` lists the directories
@@ -67,6 +81,8 @@ default, and while either one is empty the extension shows nothing.
   file on the lab's command line applies to it too
 - **Token** - the extension sends the lab's `JUPYTERHUB_API_TOKEN` to both URLs, so both must
   belong to the hub that spawned the lab
+- **Local page** - shown in the same sandboxed frame as a hub HTML page, so its scripts do not
+  run; a path that names no file shows no page, and the server log names it
 
 For a GalaxaHub lab, where `JUPYTERHUB_API_URL` is the hub API of the lab:
 
@@ -77,6 +93,9 @@ hub = os.environ.get("JUPYTERHUB_API_URL", "")
 if hub:
     c.GalaxaHubMotd.motd_api_url = f"{hub}/extensions/motd"
     c.GalaxaHubMotd.notifications_api_url = f"{hub}/user-notifications"
+c.GalaxaHubMotd.fallback_html = "/opt/motd/index.html"  # optional; empty shows the built-in page
+c.GalaxaHubMotd.label = "Message of the day"            # optional
+c.GalaxaHubMotd.open_on_start = True                    # optional
 ```
 
 ## Server routes
@@ -94,9 +113,14 @@ from the lab's environment.
 - The hub's status, body, `Content-Type`, `Etag` and `Cache-Control` pass through, and the
   browser's `If-None-Match` goes to the hub; a matching Etag answers 304 with no body
 - **One answer for an absent hub** - a hub 404 (no motd extension), a hub that cannot be reached,
-  and an empty URL setting all answer `204 No Content` with `Cache-Control: no-cache`; the server
-  log states which of the three it was
-- Any other hub status, 403 included, passes through unchanged
+  and an empty URL setting all answer `204 No Content` with `Cache-Control: no-cache` on the
+  terminal and notifications routes; the server log states which of the three it was
+- Any other hub status, 403 included, passes through unchanged on those two routes
+- **Local page** - the rich route answers the local page as the one HTML entry whenever the hub
+  gives no entry: every case above, and a 200 with no entry.
+  `GET /jupyterlab-galaxahub-motd-extension/local/<path>` serves the page `fallback_html` names and
+  the files in its folder; `GET /jupyterlab-galaxahub-motd-extension/about/index.html` serves the
+  built-in page with the installed version. Both answer a logged-in user only
 - **Settings** - `GET /jupyterlab-galaxahub-motd-extension/settings` answers `motd_api_url` and
   `notifications_api_url` as the running server holds them; the CLI reads it
 - **Hub side** - [docs/design-api.md](docs/design-api.md) states what a hub must answer on the
@@ -104,8 +128,8 @@ from the lab's environment.
 
 ## Command line
 
-The package installs `jupyterlab-galaxahub-motd`, which prints the same message of the day in a
-lab terminal. It asks the running lab server for the two URLs, so whatever configured the lab
+The package installs `jupyterlab-galaxahub-motd`, which prints what the hub holds for the user in a
+lab terminal; it does not print the local or built-in page. It asks the running lab server for the two URLs, so whatever configured the lab
 applies, and makes the three hub reads itself with `JUPYTERHUB_API_TOKEN`. It finds the lab server
 through `JUPYTER_SERVER_URL`, which JupyterLab sets in every terminal.
 

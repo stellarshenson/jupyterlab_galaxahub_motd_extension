@@ -1,9 +1,10 @@
-"""The agent CLI against a stub hub on a local port (ACC-CLI-40 to ACC-CLI-63).
+"""The agent CLI against a stub hub on a local port (ACC-CLI-40 to ACC-CLI-65).
 
 The workstation's environment carries a live JUPYTERHUB_API_TOKEN and the JUPYTER_SERVER_URL of
 its own lab, so every test replaces the token, removes the lab URL and points the runtime
 directory at an empty one. The `hub` stub also answers the lab server's settings route under
-/lab/, naming its own hub paths, and the fixture points JUPYTER_SERVER_URL at it.
+/lab/, naming its own hub paths, and the lab's settings of the tab from the real schema; the
+fixture points JUPYTER_SERVER_URL at it.
 """
 import argparse
 import http.server
@@ -13,6 +14,7 @@ import socket
 import subprocess
 import sys
 import threading
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -23,6 +25,8 @@ ROOT = Path(__file__).parents[2]
 TOKEN = "stub-cli-token-7c2d9a"
 LAB_TOKEN = "stub-lab-server-token-41b8e3"
 SETTINGS_PATH = "/lab/jupyterlab-galaxahub-motd-extension/settings"
+TAB_SETTINGS_PATH = "/lab/lab/api/settings/jupyterlab_galaxahub_motd_extension:plugin"
+SCHEMA = json.loads((ROOT / "schema" / "plugin.json").read_text())
 JSON = "application/json"
 COMMANDS = ("show", "terminal", "rich", "notifications")
 
@@ -31,18 +35,25 @@ RICH = {"entries": [
     {"group": "analysts", "kind": "markdown", "body": "# Analysts\n\nRead the wiki first."},
     {"group": "ops", "kind": "html", "url": "/hub/api/extensions/motd/rich/p1/index.html"},
 ]}
-# out of order on purpose: the CLI sorts newest first
+NOW = datetime.now(timezone.utc).replace(microsecond=0)
+
+
+def _ago(hours):
+    return (NOW - timedelta(hours=hours)).isoformat()
+
+
+# out of order on purpose: the CLI sorts newest first; times inside the default 24 hours
 NOTIFICATIONS = {"notifications": [
-    {"ts": "2026-09-27T08:00:00+00:00", "message": "Older broadcast", "type": "info", "audience": "all"},
-    {"ts": "2026-09-28T09:30:00+00:00", "message": "Newest\nbroadcast", "type": "warning", "audience": "direct"},
-    {"ts": "2026-09-28T07:00:00+00:00", "message": "Middle broadcast", "type": "success", "audience": "all"},
+    {"ts": _ago(20), "message": "Older broadcast", "type": "info", "audience": "all"},
+    {"ts": _ago(1), "message": "Newest\nbroadcast", "type": "warning", "audience": "direct"},
+    {"ts": _ago(3.5), "message": "Middle broadcast", "type": "success", "audience": "all"},
 ]}
 
 
 class StubHub(http.server.ThreadingHTTPServer):
     """Answers GET /hub/api/<path> from `answers`, recording each request's path and
-    Authorization header, and the lab server's settings route from `settings` (or
-    `lab_answer`), recorded in `lab_requests`. `<authorization>` in an answer body is replaced
+    Authorization header, and the lab server's settings route from `settings` and the tab's
+    user settings from `tab` (or both from `lab_answer`), recorded in `lab_requests`. `<authorization>` in an answer body is replaced
     by the header the request carried, so a body can echo the token."""
 
     def __init__(self):
@@ -50,6 +61,7 @@ class StubHub(http.server.ThreadingHTTPServer):
         self.requests = []
         self.lab_requests = []
         self.lab_answer = None
+        self.tab = {}
         self.point(self.url)
         self.answers = {
             "extensions/motd/terminal": (200, "text/plain; charset=utf-8", TERMINAL.encode()),
@@ -78,8 +90,9 @@ class _StubHandler(http.server.BaseHTTPRequestHandler):
         authorization = self.headers.get("Authorization", "")
         if self.path.startswith("/lab/"):
             self.server.lab_requests.append((self.path, authorization))
+            lab = {SETTINGS_PATH: self.server.settings, TAB_SETTINGS_PATH: {"settings": self.server.tab, "schema": SCHEMA}}
             status, content_type, body = self.server.lab_answer or (
-                (200, JSON, json.dumps(self.server.settings).encode()) if self.path == SETTINGS_PATH else (404, JSON, b"{}"))
+                (200, JSON, json.dumps(lab[self.path]).encode()) if self.path in lab else (404, JSON, b"{}"))
         else:
             path = self.path.removeprefix("/hub/api/")
             self.server.requests.append((path, authorization))
@@ -212,10 +225,43 @@ def test_notification_lines(capsys, hub):
     code, out, _ = run(capsys, "notifications")
     assert code == 0
     assert out.splitlines() == [
-        "2026-09-28T09:30:00+00:00\twarning\tdirect\tNewest broadcast",
-        "2026-09-28T07:00:00+00:00\tsuccess\tall\tMiddle broadcast",
-        "2026-09-27T08:00:00+00:00\tinfo\tall\tOlder broadcast",
+        f"{_ago(1)}\twarning\tdirect\tNewest broadcast",
+        f"{_ago(3.5)}\tsuccess\tall\tMiddle broadcast",
+        f"{_ago(20)}\tinfo\tall\tOlder broadcast",
     ]
+
+
+def test_notification_window_and_notifications_alone_are_no_motd(capsys, hub):
+    # ACC-CLI-65: the lab's notificationWindow setting, 24h by default, sets how far back; a row
+    # with a time that cannot be read is left out
+    def row(hours, message):
+        return {"ts": _ago(hours), "message": message, "type": "info", "audience": "all"}
+
+    older = [row(25, "Yesterday"), row(71, "Three days"), row(167, "Six days"), row(168 + 1 / 60, "Last week")]
+    unreadable = {**older[0], "ts": "yesterday", "message": "Unreadable"}
+    hub.answers["user-notifications"] = (200, JSON, json.dumps(
+        {"notifications": [*older, unreadable, *NOTIFICATIONS["notifications"]]}).encode())
+    listed = {None: [], "3d": ["Yesterday", "Three days"], "7d": ["Yesterday", "Three days", "Six days"]}
+    for window, messages in listed.items():
+        if window:
+            hub.tab["notificationWindow"] = window
+        for command in ("notifications", "show"):
+            code, out, _ = run(capsys, command)
+            assert code == 0 and "Newest broadcast" in out, (window, command)
+            shown = [m for m in ("Yesterday", "Three days", "Six days", "Last week", "Unreadable") if m in out]
+            assert shown == messages, (window, command)
+    hub.tab.clear()
+    # notifications alone are no motd: show prints nothing and exits 1
+    hub.answers["extensions/motd/terminal"] = (204, "text/plain", b"")
+    hub.answers["extensions/motd/rich"] = (200, JSON, b'{"entries": []}')
+    code, out, err = run(capsys, "show")
+    assert (code, out) == (1, "")
+    assert _one_line(err) and "no terminal text and no rich entry" in err
+    # only rows older than the default 24 hours: notifications prints nothing and exits 1
+    hub.answers["user-notifications"] = (200, JSON, json.dumps({"notifications": older}).encode())
+    code, out, err = run(capsys, "notifications")
+    assert (code, out) == (1, "")
+    assert _one_line(err) and "last 24h" in err and "notificationWindow" in err
 
 
 def test_token_never_printed(capsys, hub):
@@ -313,8 +359,9 @@ def test_asks_the_running_lab(capsys, hub, runtime_dir, monkeypatch):
     code, out, err = run(capsys, "show", "--json")
     assert (code, err) == (0, "")
     assert hub.paths() == ["extensions/motd/terminal", "extensions/motd/rich", "user-notifications"]
-    # no runtime file: the lab server gets JUPYTERHUB_API_TOKEN
-    assert hub.lab_requests == [(SETTINGS_PATH, f"token {TOKEN}")]
+    # no runtime file: the lab server gets JUPYTERHUB_API_TOKEN, for its settings route and the
+    # tab's settings
+    assert hub.lab_requests == [(SETTINGS_PATH, f"token {TOKEN}"), (TAB_SETTINGS_PATH, f"token {TOKEN}")]
     # the running lab's runtime file token wins; a file whose process is gone is skipped
     gone = subprocess.Popen([sys.executable, "-c", "pass"])
     gone.wait()

@@ -17,30 +17,39 @@ What the extension pulls on lab start and when it opens the tab or stays silent
   - mechanism: 2026-09-28T09:19:16Z @kj pull after app.restored, open only when the rich feed answered and something is to show
   - log: 2026-09-28T09:19:16Z @kj added
   - log: 2026-09-28T09:54:13Z @kj closed: verified on 0.1.4
-- [x] `ACC-START-2` **Tab opens on start when only notifications exist** - HIGH; rich answers an empty entries list and notifications at least one row: the tab opens and is the current tab
-  - evidence: Galata 17/17 on 0.1.4: 'opens the tab when only notifications exist'; Jest 36/36 on 0.1.4 hasContent cases
-  - test: Galata ui-tests/tests/motd.spec.ts 'opens the tab when only notifications exist'
+- [x] `ACC-START-2` **No tab when only notifications exist** - CRITICAL; with no page to show (fallback_html names no file), rich answers no entry while notifications hold rows: no tab opens on start, from the Open command or on a recorded broadcast, and an open tab closes when a pull answers no entry; the console carries one line from the extension
+  - evidence: Galata 43/43 on 0.8.16: only notifications, no tab on start and none from the open command; Jest hasContent needs a rich entry
+  - related: ACC-OPEN-12, ACC-LIVE-23 - both open the tab only with an entry
+  - test: Galata: notifications only - no tab on start, none from the command, an open tab closes; Jest hasContent
   - test-tags: FUNCTIONAL, UNIT
   - log: 2026-09-28T09:19:17Z @kj added
   - log: 2026-09-28T09:54:13Z @kj closed: verified on 0.1.4
-- [x] `ACC-START-3` **Edge: hub without the motd extension** - HIGH; the hub answers 404 on the rich route: no tab opens, even when notifications exist, and the console carries one line from the extension
+  - log: 2026-09-29T21:24:17Z @kj amended title "Tab opens on start when only notifications exist" -> "No tab when only notifications exist"; text "rich answers an empty entries list and notifications at least one row: the tab opens and is the current tab" -> "CRITICAL; rich answers no entry while notifications hold rows: no tab opens on start, from the Open command or on a recorded broadcast, and an open tab closes when a pull answers no entry; the console carries one line from the extension"
+  - log: 2026-09-29T21:24:17Z @kj edited importance "CRITICAL" -> "CRITICAL"; test "Galata ui-tests/tests/motd.spec.ts 'opens the tab when only notifications exist'" -> "Galata: notifications only - no tab on start, none from the command, an open tab closes; Jest hasContent"
+  - log: 2026-09-29T21:24:26Z @kj reopened: requirement changed 2026-09-29: notifications alone never open the tab; evidence retired: Galata 17/17 on 0.1.4: 'opens the tab when only notifications exist'; Jest 36/36 on 0.1.4 hasContent cases
+  - log: 2026-09-30T07:26:40Z @kj closed
+  - log: 2026-09-30T07:46:20Z @kj amended text "rich answers no entry while notifications hold rows: no tab opens on start, from the Open command or on a recorded broadcast, and an open tab closes when a pull answers no entry; the console carries one line from the extension" -> "with no page to show (fallback_html names no file), rich answers no entry while notifications hold rows: no tab opens on start, from the Open command or on a recorded broadcast, and an open tab closes when a pull answers no entry; the console carries one line from the extension"; reason: the built-in page (ACC-LOCAL-70) now opens the tab in this case when fallback_html is empty
+- [x] `ACC-START-3` **Edge: hub without the motd extension** - HIGH; with no page to show (fallback_html names no file), the hub answers 404 on the rich route: no tab opens, even when notifications exist, and the console carries one line from the extension
   - evidence: Galata 17/17 on 0.1.4: 'stays closed when the hub has no motd extension' - rich 404, one console line, no tab, no dialog
   - test: Galata ui-tests/tests/motd.spec.ts 'stays closed when the hub has no motd extension'
   - test-tags: FUNCTIONAL, UNIT
   - log: 2026-09-28T09:19:17Z @kj added
   - log: 2026-09-28T09:54:13Z @kj closed: verified on 0.1.4
-- [x] `ACC-START-4` **Edge: empty answers** - HIGH; no rich entry and no notification: no tab opens and the console carries one line from the extension
+  - log: 2026-09-30T07:46:20Z @kj amended text "the hub answers 404 on the rich route: no tab opens, even when notifications exist, and the console carries one line from the extension" -> "with no page to show (fallback_html names no file), the hub answers 404 on the rich route: no tab opens, even when notifications exist, and the console carries one line from the extension"; reason: the built-in page (ACC-LOCAL-70) now opens the tab in this case when fallback_html is empty
+- [x] `ACC-START-4` **Edge: empty answers** - HIGH; with no page to show (fallback_html names no file), no rich entry and no notification: no tab opens and the console carries one line from the extension
   - evidence: Galata 17/17 on 0.1.4: 'stays closed when both answers are empty' - one console line, no tab
   - test: Galata ui-tests/tests/motd.spec.ts 'stays closed when both answers are empty'
   - test-tags: FUNCTIONAL, UNIT
   - log: 2026-09-28T09:19:17Z @kj added
   - log: 2026-09-28T09:54:13Z @kj closed: verified on 0.1.4
-- [x] `ACC-START-5` **Edge: unreachable hub** - HIGH; the hub refuses the connection: no tab opens, the console carries one line from the extension, and no dialog or notification is shown to the user
+  - log: 2026-09-30T07:46:20Z @kj amended text "no rich entry and no notification: no tab opens and the console carries one line from the extension" -> "with no page to show (fallback_html names no file), no rich entry and no notification: no tab opens and the console carries one line from the extension"; reason: the built-in page (ACC-LOCAL-70) now opens the tab in this case when fallback_html is empty
+- [x] `ACC-START-5` **Edge: unreachable hub** - HIGH; with no page to show (fallback_html names no file), the hub refuses the connection: no tab opens, the console carries one line from the extension, and no dialog or notification is shown to the user
   - evidence: Galata 17/17 on 0.1.4: 'stays closed when the hub is unreachable' - stub stopped, one line, no tab, dialog or toast
   - test: Galata ui-tests/tests/motd.spec.ts 'stays closed when the hub is unreachable'
   - test-tags: FUNCTIONAL
   - log: 2026-09-28T09:19:17Z @kj added
   - log: 2026-09-28T09:54:13Z @kj closed: verified on 0.1.4
+  - log: 2026-09-30T07:46:20Z @kj amended text "the hub refuses the connection: no tab opens, the console carries one line from the extension, and no dialog or notification is shown to the user" -> "with no page to show (fallback_html names no file), the hub refuses the connection: no tab opens, the console carries one line from the extension, and no dialog or notification is shown to the user"; reason: the built-in page (ACC-LOCAL-70) now opens the tab in this case when fallback_html is empty
 
 ## Tab content `VIEW`
 
@@ -95,6 +104,14 @@ What the Message of the day tab renders and in which order
   - test-tags: FUNCTIONAL
   - log: 2026-09-28T09:19:17Z @kj added
   - log: 2026-09-28T09:54:14Z @kj closed: verified on 0.1.4
+- [x] `ACC-VIEW-64` **Notifications window setting** - HIGH; the Notifications column lists and counts only rows whose ts lies inside the notificationWindow setting before now: 24h (default), 3d or 7d; a changed setting redraws the open tab; an older row, or one whose ts cannot be read, is not shown
+  - evidence: Jest 49/49 and Galata 43/43 on 0.8.16: 24 hours by default leaves out 2 and 8 days; 3d and 7d set live redraw the tab without a pull
+  - test: Jest notificationView per choice, readSettings, panel redraw; Galata: 24 hours by default, 3d and 7d set live redraw the tab
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-09-29T21:24:18Z @kj added
+  - log: 2026-09-29T21:47:36Z @kj amended title "Notifications of the last 7 days only" -> "Notifications window setting"; text "the Notifications column lists and counts only rows whose ts lies within 7 days before now; an older row, or one whose ts cannot be read, is not shown" -> "the Notifications column lists and counts only rows whose ts lies inside the notificationWindow setting before now: 24h (default), 3d or 7d; a changed setting redraws the open tab; an older row, or one whose ts cannot be read, is not shown"
+  - log: 2026-09-29T21:47:36Z @kj edited test "Jest notificationView with a fixed now; Galata: a row 8 days old is not shown" -> "Jest notificationView per choice, readSettings, panel redraw; Galata: 24 hours by default, 3d and 7d set live redraw the tab"
+  - log: 2026-09-30T07:26:40Z @kj closed
 
 ## Open command `OPEN`
 
@@ -220,14 +237,17 @@ How the tab reacts to broadcasts that jupyterlab_notifications_extension deliver
 
 The three settings in schema/plugin.json and what each changes
 
-- [x] `ACC-CONFIG-26` **Three settings with their defaults** - MEDIUM; schema/plugin.json declares openOnStart true, reopenOnBroadcast false and pollMinutes 0, an integer from 0 to 35791
-  - evidence: Jest 40/40 on 0.1.8: settings.spec.ts schema declares pollMinutes minimum 0, maximum 35791, default 0; defaults match DEFAULT_SETTINGS, readSettings fills and clamps
+- [x] `ACC-CONFIG-26` **Four settings with their defaults** - MEDIUM; schema/plugin.json declares openOnStart true, reopenOnBroadcast false, pollMinutes 0, an integer from 0 to 35791, and notificationWindow 24h, one of 24h, 3d and 7d
+  - evidence: Jest 49/49 after the notificationWindow change: settings.spec.ts schema declares the four settings, notificationWindow oneOf 24h, 3d, 7d default 24h; defaults match DEFAULT_SETTINGS
   - test: Jest src/**tests**/settings.spec.ts
   - test-tags: UNIT
   - log: 2026-09-28T09:19:18Z @kj added
   - log: 2026-09-28T09:54:16Z @kj closed: verified on 0.1.4
   - log: 2026-09-28T12:35:36Z @kj amended text "schema/plugin.json declares openOnStart true, reopenOnBroadcast false and pollMinutes 0, an integer of at least 0" -> "schema/plugin.json declares openOnStart true, reopenOnBroadcast false and pollMinutes 0, an integer from 0 to 35791"
   - log: 2026-09-28T12:43:06Z @kj edited evidence "Jest 36/36 on 0.1.4: settings.spec.ts schema defaults match DEFAULT_SETTINGS, readSettings fills and clamps" -> "Jest 40/40 on 0.1.8: settings.spec.ts schema declares pollMinutes minimum 0, maximum 35791, default 0; defaults match DEFAULT_SETTINGS, readSettings fills and clamps"
+  - log: 2026-09-29T21:47:36Z @kj reopened; evidence retired: Jest 40/40 on 0.1.8: settings.spec.ts schema declares pollMinutes minimum 0, maximum 35791, default 0; defaults match DEFAULT_SETTINGS, readSettings fills and clamps; reason: a fourth setting, notificationWindow, joins the schema
+  - log: 2026-09-29T21:47:36Z @kj amended title "Three settings with their defaults" -> "Four settings with their defaults"; text "schema/plugin.json declares openOnStart true, reopenOnBroadcast false and pollMinutes 0, an integer from 0 to 35791" -> "schema/plugin.json declares openOnStart true, reopenOnBroadcast false, pollMinutes 0, an integer from 0 to 35791, and notificationWindow 24h, one of 24h, 3d and 7d"
+  - log: 2026-09-29T21:47:42Z @kj closed
 - [x] `ACC-CONFIG-27` **openOnStart off keeps the tab closed** - MEDIUM; with openOnStart false the tab does not open on lab start; the command still opens it
   - evidence: Galata 17/17 on 0.1.4: 'openOnStart off keeps the tab closed on start' - closed after the pull, command still opens it
   - test: Galata ui-tests/tests/motd.spec.ts 'openOnStart off keeps the tab closed on start'
@@ -264,13 +284,17 @@ How the tab follows the lab theme
 
 the tab as drawn on board B of the design canvas: entry cards left, Notifications column right
 
-- [x] `ACC-LAYOUT-31` **Entries left, Notifications right** - HIGH; the tab shows the rich entries in a left column and the Notifications section in a right column 380 px wide, side by side
-  - evidence: Galata 22/22 on 0.1.7: 'shows the entries left and the Notifications column 380 px wide right' - 1440 px window, 2 entries and 4 rows: the Notifications box starts at the right edge of the entries box, same top, 380 px wide
-  - test: Galata: stub with 2 entries and 4 rows, 1440 px window; assert the Notifications box starts right of the entries box and is 380 px wide
+- [x] `ACC-LAYOUT-31` **Entries 3/4 left, Notifications 1/4 right** - HIGH; the tab shows the rich entries in a left column 3/4 of the tab width and the Notifications section in a right column 1/4 of it, side by side
+  - evidence: Galata 43/43 on 0.8.14 and 0.8.16: Notifications 0.25 of the two columns; renders on 6 themes: entries 648 px, Notifications 216 px
+  - test: Galata: stub with 2 entries and 4 rows, 1440 px window; assert the Notifications box starts right of the entries box and is 1/4 of the tab width
   - test-tags: FUNCTIONAL
   - mechanism: 2026-09-28T11:40:00Z @kj the panel holds two children in a flex row, .jp-MotdPanel-entries and .jp-MotdPanel-notifications
   - log: 2026-09-28T11:40:00Z @kj added
   - log: 2026-09-28T12:06:56Z @kj closed: verified on 0.1.7
+  - log: 2026-09-29T21:31:40Z @kj reopened: requirement changed 2026-09-29: entries take 3/4 of the width, Notifications 1/4; evidence retired: Galata 22/22 on 0.1.7: 'shows the entries left and the Notifications column 380 px wide right' - 1440 px window, 2 entries and 4 rows: the Notifications box starts at the right edge of the entries box, same top, 380 px wide
+  - log: 2026-09-29T21:31:41Z @kj amended title "Entries left, Notifications right" -> "Entries 3/4 left, Notifications 1/4 right"; text "the tab shows the rich entries in a left column and the Notifications section in a right column 380 px wide, side by side" -> "HIGH; the tab shows the rich entries in a left column 3/4 of the tab width and the Notifications section in a right column 1/4 of it, side by side"
+  - log: 2026-09-29T21:31:41Z @kj edited test "Galata: stub with 2 entries and 4 rows, 1440 px window; assert the Notifications box starts right of the entries box and is 380 px wide" -> "Galata: stub with 2 entries and 4 rows, 1440 px window; assert the Notifications box starts right of the entries box and is 1/4 of the tab width"
+  - log: 2026-09-30T07:26:40Z @kj closed
 - [x] `ACC-LAYOUT-32` **Entry card with a group header strip** - HIGH; each rich entry is a card: a header strip with a group icon and the group name, then the rendered content
   - evidence: Jest 40/40 on 0.1.7: panel.spec.ts 'draws each entry as a card: a header strip with its group, then the content' - 2 cards, each strip opens with the group icon and starts with the group name, the body is the renderer node or the iframe
   - test: Jest: render 2 entries; assert each card header starts with its group name and the card body holds the renderer node or the iframe; Galata 'keeps wide markdown and a long group name inside the card': a markdown body holding a 200-character inline code path scrolls sideways far enough to bring the code's right edge inside the card
@@ -330,12 +354,14 @@ the tab as drawn on board B of the design canvas: entry cards left, Notification
   - log: 2026-09-28T17:42:12Z @kj mechanism overridden; reason: supersedes the 'when that loop ran' clause of the 17:01:11Z record: the overflow past the root is added whenever the frame holds a fitted height, so a fitted page whose root grows by exactly that overflow fits again (DEF-LAYOUT-10)
   - log: 2026-09-28T17:42:12Z @kj edited test "Galata 'html page frame' against stub-hub packages - short page, a page that grows after load (`<details>` opened), text that wraps after the tab narrows, load behind another tab, a 700 px page with no doctype (quirks mode), a 700 px page with an html margin of 20 px (content past the root), html and body height 100%, absolute and fixed content; assert frame = page height + 2 for the first four under 480 px and for the quirks page above 480 px with compatMode BackCompat, frame = root height + 40 px html margin + 2 with no inner scroll for the html margin page, 480 px with inner scroll for html and body height 100% and for absolute content, 480 px with the content inside the viewport for fixed content; Jest: one resize observer per panel, connected on load, disconnected on re-render and dispose" -> "Galata 'html page frame' against stub-hub packages - short page, a page that grows after load (`<details>` opened), text that wraps after the tab narrows, load behind another tab, a 700 px page with no doctype (quirks mode), a 700 px page with an html margin of 20 px (content past the root), a page with an html margin of 20 px whose opened `<details>` adds exactly 40 px (growth equal to the content past the root), html and body height 100%, absolute and fixed content; assert frame = page height + 2 for the first four under 480 px and for the quirks page above 480 px with compatMode BackCompat, frame = root height + 40 px html margin + 2 with no inner scroll for the html margin page, frame = root height + 40 px html margin + 2 before and after the opening for the page that grows by its margin, 480 px with inner scroll for html and body height 100% and for absolute content, 480 px with the content inside the viewport for fixed content; Jest: one resize observer per panel, connected on load, disconnected on re-render and dispose"; evidence "Galata 32/32 on 0.1.15, describe 'html page frame' against stub-hub packages: a short page, a page grown by an opened `<details>`, text rewrapped after the viewport went from 1440 to 1300 px and a load behind a Launcher tab each end at frame = page height + 2, under 480 px; a 700 px page with no doctype (compatMode BackCompat) ends at 718 px, page height + 2; a 700 px page with an html margin of 20 px ends at 758 px (716 px root + 40 px margin + 2) with scrollHeight equal to clientHeight; html and body height 100% and absolute content each keep 480 px and scroll inside it under the mouse wheel; fixed content keeps 480 px with its card inside the viewport; Jest 41/41: one resize observer per panel, connected on load, disconnected on re-render and dispose" -> "Galata 33/33 on 0.1.16, describe 'html page frame' against stub-hub packages: a short page, a page grown by an opened `<details>`, text rewrapped after the viewport went from 1440 to 1300 px and a load behind a Launcher tab each end at frame = page height + 2, under 480 px; a 700 px page with no doctype (compatMode BackCompat) ends at 718 px, page height + 2; a 700 px page with an html margin of 20 px ends at 758 px (716 px root + 40 px margin + 2) with scrollHeight equal to clientHeight; a page with an html margin of 20 px whose opened `<details>` adds exactly 40 px ends at frame = root height + 42 closed and again after the root grew by 40 px; html and body height 100% and absolute content each keep 480 px and scroll inside it under the mouse wheel; fixed content keeps 480 px with its card inside the viewport; Jest 41/41: one resize observer per panel, connected on load, disconnected on re-render and dispose"; reason: the test line adds the growth-equal-to-content-past-the-root case of DEF-LAYOUT-10, and the evidence covers it on the installed 0.1.16 build
   - log: 2026-09-28T20:03:36Z @kj mechanism updated "2026-09-28T17:42:12Z @kj one ResizeObserver per panel watches the page root of each html frame, joined on the frame's load and disconnected on re-render and dispose; the viewport and scroll heights are read from the page's scrolling element (the root in standards mode, the body in quirks mode); on every report fitFrame fits the root as before: it sets the frame to the root offsetHeight plus the frame's borders and any horizontal scrollbar, at most three times, until the root is as tall as the viewport; when the frame holds a fitted height (set by this call's loop or an earlier call) and the fitted page still scrolls, the overflow past the root (a margin on the html element, content positioned or pulled below the body) is added, at most twice; the frame returns to the 480 px stylesheet box when the root does not settle (vh units), when the page still scrolls after the overflow is added (content past the root that follows the frame's height) or when the body has no in-flow height (only absolute or fixed content); a root as tall as the viewport of the 480 px box is left as it is (html, body height 100%), and so is a fitted page with nothing past its root, and a hidden frame (offsetHeight 0) keeps its height; a page with in-flow content plus absolute content past it fits and no longer scrolls in the 480 px box, as the criterion requires, because its fallback covers only a page with nothing but absolute or fixed content" -> "one ResizeObserver per panel watches the page root of each html frame, joined on the frame's load and disconnected when new entries rebuild the cards and on dispose; the viewport and scroll heights are read from the page's scrolling element (the root in standards mode, the body in quirks mode); on every report fitFrame fits the root as before: it sets the frame to the root offsetHeight plus the frame's borders and any horizontal scrollbar, at most three times, until the root is as tall as the viewport; when the frame holds a fitted height (set by this call's loop or an earlier call) and the fitted page still scrolls, the overflow past the root (a margin on the html element, content positioned or pulled below the body) is added, at most twice; the frame returns to the 480 px stylesheet box when the root does not settle (vh units), when the page still scrolls after the overflow is added (content past the root that follows the frame's height) or when the body has no in-flow height (only absolute or fixed content); a root as tall as the viewport of the 480 px box is left as it is (html, body height 100%), and so is a fitted page with nothing past its root, and a hidden frame (offsetHeight 0) keeps its height; a page with in-flow content plus absolute content past it fits and no longer scrolls in the 480 px box, as the criterion requires, because its fallback covers only a page with nothing but absolute or fixed content"; reason: wording update for DEF-VIEW-15: a pull that brings no new entries keeps the cards, so the observer is disconnected only when the cards are rebuilt; the rest of the record is unchanged and its length was accepted before
-- [x] `ACC-LAYOUT-37` **Edge: notifications only** - MEDIUM; with no rich entries the Notifications section takes the full width of the tab
-  - evidence: Galata 22/22 on 0.1.7: 'gives Notifications the full width when there are no entries' - 0 entries and 2 rows: entries column hidden, Notifications box as wide as the panel content
+- [-] `ACC-LAYOUT-37` **Edge: notifications only** - MEDIUM; with no rich entries the Notifications section takes the full width of the tab
   - test: Galata: stub with 0 entries and 2 rows; assert the Notifications box is as wide as the panel content
   - test-tags: FUNCTIONAL
   - log: 2026-09-28T11:40:00Z @kj added
   - log: 2026-09-28T12:06:57Z @kj closed: verified on 0.1.7
+  - log: 2026-09-29T21:24:26Z @kj rejected: unreachable since ACC-START-2 changed: the tab never shows without a rich entry
+  - log: 2026-09-30T08:58:17Z @kj reopened; evidence retired: Galata 22/22 on 0.1.7: 'gives Notifications the full width when there are no entries' - 0 entries and 2 rows: entries column hidden, Notifications box as wide as the panel content; reason: retire the evidence line left from before the rejection
+  - log: 2026-09-30T08:58:22Z @kj rejected: unreachable: notifications alone never open the tab (ACC-START-2), so a tab with no entries does not exist
 - [x] `ACC-LAYOUT-38` **Edge: narrow tab stacks the columns** - MEDIUM; a tab narrower than 800 px shows the Notifications section below the entries at full width, and the tab scrolls as one
   - evidence: Galata 22/22 on 0.1.7: 'stacks the columns in a tab narrower than 800 px and scrolls the tab as one' - 820 px window, tab under 800 px: Notifications box below the entries box, both as wide as the tab, the tab scrolls and neither column does
   - test: Galata: viewport so the tab is under 800 px wide; assert the Notifications box is below the entries box
@@ -515,6 +541,15 @@ the jupyterlab-galaxahub-motd command and its agent skill: the motd read from a 
   - test-tags: UNIT
   - log: 2026-09-29T19:53:49Z @kj added
   - log: 2026-09-29T19:55:42Z @kj closed
+- [x] `ACC-CLI-65` **CLI follows the notificationWindow setting and the motd-only rule** - HIGH; notifications and show print only rows inside the lab's notificationWindow setting, which the CLI reads from the running lab (24h by default); show exits 1 when the hub holds no terminal text and no rich entry, even with notifications
+  - evidence: pytest 49/49 on 1.0.2: test_notification_window_and_notifications_alone_are_no_motd lists 24h by default, 3d and 7d, show exits 1 with only notifications; Galata 49/49 on 1.0.2: CLI follows the setting stored in the lab
+  - related: ACC-VIEW-64 - same 7-day window; ACC-START-2 - same motd-only rule; ACC-CLI-47 - exit 1
+  - test: pytest with a stub lab and hub: 24h default, 3d, 7d; show with only notifications exits 1; Galata: the CLI follows a setting stored in the lab
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-09-29T21:24:18Z @kj added
+  - log: 2026-09-29T21:47:36Z @kj amended title "CLI follows the 7-day and motd-only rules" -> "CLI follows the notificationWindow setting and the motd-only rule"; text "notifications and show print only rows of the last 7 days; show exits 1 when the hub holds no terminal text and no rich entry, even with notifications" -> "notifications and show print only rows inside the lab's notificationWindow setting, which the CLI reads from the running lab (24h by default); show exits 1 when the hub holds no terminal text and no rich entry, even with notifications"
+  - log: 2026-09-29T21:47:36Z @kj edited test "pytest with a stub hub: an 8-day-old row is left out; show with only notifications exits 1" -> "pytest with a stub lab and hub: 24h default, 3d, 7d; show with only notifications exits 1; Galata: the CLI follows a setting stored in the lab"; test-tags "UNIT" -> "UNIT, FUNCTIONAL"
+  - log: 2026-09-30T08:58:08Z @kj closed
 
 ## Server settings `SERVER`
 
@@ -551,3 +586,50 @@ The two hub URLs the lab's Jupyter config sets for the extension
   - test-tags: UNIT
   - log: 2026-09-29T19:20:10Z @kj added
   - log: 2026-09-29T19:21:16Z @kj closed: verified on source after 0.8.8
+- [x] `ACC-SERVER-66` **Tab label setting** - HIGH; c.GalaxaHubMotd.label, default Message of the day, is the label of the tab and of the local page card; the lab page config carries it as galaxahubMotdLabel
+  - evidence: pytest 49/49 on 1.0.2: page_config_data carries galaxahubMotdLabel, default and configured, local card carries it; Galata 49/49 on 1.0.2: default label on the tab, page config label shows on the tab
+  - test: pytest jupyterlab_galaxahub_motd_extension/tests/test_routes.py: page_config_data carries the label; Galata ui-tests/tests/motd.spec.ts: default label on the tab, a page config label shows on the tab
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-09-30T07:29:52Z @kj added
+  - log: 2026-09-30T08:58:09Z @kj closed
+- [x] `ACC-SERVER-71` **Open on start switch for the lab** - HIGH; c.GalaxaHubMotd.open_on_start, default true; false: no tab opens on lab start, hub entries included, and the palette command still opens it; the lab page config carries it as galaxahubMotdOpenOnStart
+  - evidence: pytest 49/49 on 1.0.2: page_config_data galaxahubMotdOpenOnStart true by default, false when set; Galata 49/49 on 1.0.2: false keeps the tab closed on start, the command opens it
+  - related: ACC-CONFIG-26 - the per-user openOnStart; both must be on for the tab to open on start
+  - test: pytest jupyterlab_galaxahub_motd_extension/tests/test_routes.py: page_config_data carries it, default true; Galata ui-tests/tests/motd.spec.ts: page config false keeps the tab closed on start, the command opens it
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-09-30T07:46:08Z @kj added
+  - log: 2026-09-30T08:58:09Z @kj closed
+
+## Local page `LOCAL`
+
+The local HTML page the lab config names, shown when the hub gives no welcome entry
+
+- [x] `ACC-LOCAL-67` **Local page when the hub gives no entry** - CRITICAL; with GalaxaHubMotd.fallback_html naming an HTML file, the rich route answers that page as the one html entry when the hub gives none: a URL setting empty, hub 404, hub not reachable, an error status, or a 200 with no entry; the tab opens with it; notifications show as before
+  - evidence: pytest 49/49 on 1.0.2: 200 with no entry, 404, 403, 500, unreachable hub and an empty URL setting each answer the local page entry; Galata 49/49 on 1.0.2: no entry and unreachable hub open the tab with it
+  - related: ACC-START-3, ACC-START-4, ACC-START-5 - with a local page set, these edges open the tab with it
+  - related: ACC-START-2 - no entry with notifications opens the tab with the local page when one is set
+  - test: pytest jupyterlab_galaxahub_motd_extension/tests/test_routes.py: each of the five cases answers one html entry at /jupyterlab-galaxahub-motd-extension/local/<file>; Galata ui-tests/tests/motd.spec.ts: no entry and unreachable hub open the tab with the local page
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-09-30T07:30:01Z @kj added
+  - log: 2026-09-30T08:58:08Z @kj closed
+- [x] `ACC-LOCAL-68` **Hub entries win over the local page** - HIGH; a hub 200 with at least one entry, and a 304, pass through unchanged; with a fallback_html that names no file, every answer stays as before and the server log names the missing file
+  - evidence: pytest 49/49 on 1.0.2: hub entries and a 304 pass through with fallback_html set; a missing file answers 204 and logs its path; Galata: hub entries shown, not the local page
+  - test: pytest jupyterlab_galaxahub_motd_extension/tests/test_routes.py: entries and 304 pass through with fallback_html set; a missing file answers 204 and logs its path
+  - test-tags: UNIT
+  - log: 2026-09-30T07:30:01Z @kj added
+  - log: 2026-09-30T07:46:08Z @kj amended text "a hub 200 with at least one entry, and a 304, pass through unchanged; without fallback_html, or with one that names no file, every answer stays as before and the server log names the missing file" -> "a hub 200 with at least one entry, and a 304, pass through unchanged; with a fallback_html that names no file, every answer stays as before and the server log names the missing file"
+  - log: 2026-09-30T08:58:09Z @kj closed
+- [x] `ACC-LOCAL-69` **Local page files, only to a logged-in user** - CRITICAL; GET /jupyterlab-galaxahub-motd-extension/local/<path> serves the page and the files in its directory, nothing outside it, with Cache-Control no-cache, only to a logged-in user; 404 while fallback_html is empty; the tab shows the page in the sandboxed frame of a hub html page, sized to fit
+  - evidence: pytest 49/49 on 1.0.2: sibling image served, ../ refused, no token refused, 404 without fallback_html; check_auth.py all routes authenticated; Galata 49/49: frame shows the page, image 40 px wide, frame under 480 px
+  - test: pytest jupyterlab_galaxahub_motd_extension/tests/test_routes.py: a sibling image served, ../ refused, no token refused, 404 without fallback_html; check_auth.py; Galata: the frame shows the local page and its image
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-09-30T07:30:01Z @kj added
+  - log: 2026-09-30T08:58:09Z @kj closed
+- [x] `ACC-LOCAL-70` **Built-in page when no local page is set** - CRITICAL; with fallback_html empty, the rich route answers the extension's own page /jupyterlab-galaxahub-motd-extension/about/index.html in every case of ACC-LOCAL-67; the page states the extension version, what it does, the lab config settings, the lab settings and the hub API it reads, with no script and no external file
+  - evidence: pytest 49/49 on 1.0.2: no entry, 404, 500 and a scheme-less URL answer the about entry, about page has version, settings, hub API, no script; Galata 49/49 on 1.0.2: tab renders it with the installed version
+  - related: ACC-START-2, ACC-START-3, ACC-START-4, ACC-START-5 - with fallback_html empty these cases open the tab with the built-in page
+  - test: pytest jupyterlab_galaxahub_motd_extension/tests/test_routes.py: no entry, 404 and an empty URL setting answer the about entry; the about route serves the page; Galata ui-tests/tests/motd.spec.ts: the tab renders the about page sized to fit
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-09-30T07:46:08Z @kj added
+  - log: 2026-09-30T07:48:26Z @kj amended text "with fallback_html empty, the rich route answers the extension's own page /jupyterlab-galaxahub-motd-extension/about/index.html in every case of ACC-LOCAL-67; the page states what the extension does, the lab config settings, the lab settings and the hub API it reads, with no script and no external file" -> "with fallback_html empty, the rich route answers the extension's own page /jupyterlab-galaxahub-motd-extension/about/index.html in every case of ACC-LOCAL-67; the page states the extension version, what it does, the lab config settings, the lab settings and the hub API it reads, with no script and no external file"
+  - log: 2026-09-30T08:58:09Z @kj closed

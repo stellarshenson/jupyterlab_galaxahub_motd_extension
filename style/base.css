@@ -1,7 +1,7 @@
 /*
  * Message of the day tab. Colours only through JupyterLab CSS variables, so every theme
- * renders it. Two columns: the entry cards on the left, the Notifications column 380 px wide
- * on the right; a tab narrower than 800 px stacks them and scrolls as one.
+ * renders it. Two columns: the entry cards on the left in 3/4 of the width, the Notifications
+ * column in the other 1/4; a tab narrower than 800 px stacks them and scrolls as one.
  */
 
 .jp-MotdPanel {
@@ -40,7 +40,7 @@
 }
 
 .jp-MotdPanel-notifications {
-  flex: 0 0 380px;
+  flex: 0 0 25%;
   padding: 32px 24px;
   border-left: 1px solid var(--jp-border-color2);
 }
@@ -231,10 +231,22 @@
 .jp-MotdPanel-meta {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 8px;
   color: var(--jp-ui-font-color2);
   font-size: 12px;
+}
+
+/* the narrow column moves the time to its own line instead of breaking the words */
+.jp-MotdPanel-audience,
+.jp-MotdPanel-time {
+  white-space: nowrap;
+}
+
+/* a time wrapped to its own line keeps the right edge, like the others */
+.jp-MotdPanel-time {
+  margin-left: auto;
 }
 
 .jp-MotdPanel-audience {

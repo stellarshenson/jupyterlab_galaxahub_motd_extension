@@ -15,6 +15,10 @@ import { Locator } from '@playwright/test';
 
 import { spawn } from 'child_process';
 
+import * as fs from 'fs';
+
+import * as path from 'path';
+
 import { STUB_TOKEN, StubHub, TERMINAL_TEXT } from './stub-hub';
 
 const PLUGIN = 'jupyterlab_galaxahub_motd_extension:plugin';
@@ -159,13 +163,19 @@ test.describe('lab start', () => {
     await expectOpenAndCurrent(page);
   });
 
-  test('opens the tab when only notifications exist', async ({ page }) => {
+  test('stays closed when only notifications exist, also from the open command', async ({
+    page
+  }) => {
     hub.notifications = {
       status: 200,
       body: { notifications: [row('maintenance tonight', 5)] }
     };
+    const lines = motdLines(page);
     await page.goto();
-    await expectOpenAndCurrent(page);
+    await expectSilent(page, lines);
+    await execute(page, 'galaxahub-motd:open');
+    await expect.poll(() => lines.length).toBe(2);
+    await expect(tab(page)).toHaveCount(0);
   });
 
   test('stays closed when the hub has no motd extension', async ({ page }) => {
@@ -310,15 +320,17 @@ test.describe('tab content', () => {
     ).toBeGreaterThan(0);
   });
 
-  test('lists notifications newest first with type style, relative time and audience', async ({
+  test('lists the notifications of the last 24 hours by default, newest first with type style, relative time and audience', async ({
     page
   }) => {
-    // oldest first on the wire: the tab must reorder
+    // oldest first on the wire: the tab must reorder and leave out the rows older than 24 hours
     hub.notifications = {
       status: 200,
       body: {
         notifications: [
-          row('oldest', 3 * 24 * 60, 'info', 'all'),
+          row('last week', 8 * 24 * 60, 'info', 'all'),
+          row('two days', 2 * 24 * 60, 'info', 'all'),
+          row('oldest', 23 * 60, 'info', 'all'),
           row('middle', 60, 'error', 'direct'),
           row('newest', 5, 'warning', 'all')
         ]
@@ -331,6 +343,7 @@ test.describe('tab content', () => {
     await expect(page.locator('.jp-MotdPanel-heading').last()).toHaveText(
       'Notifications'
     );
+    await expect(page.locator('.jp-MotdPanel-count')).toHaveText('3');
     const rows = page.locator('.jp-MotdPanel-row');
     await expect(rows.locator('.jp-MotdPanel-message')).toHaveText([
       'newest',
@@ -348,7 +361,7 @@ test.describe('tab content', () => {
     await expect(rows.locator('.jp-MotdPanel-time')).toHaveText([
       '5 minutes ago',
       '1 hour ago',
-      '3 days ago'
+      '23 hours ago'
     ]);
     // each row starts with its type icon, coloured by the lab's own variable of the type
     await expect(rows.locator(':scope > svg.jp-MotdPanel-icon')).toHaveCount(3);
@@ -364,6 +377,46 @@ test.describe('tab content', () => {
       })()
     ]);
     expect(icon).toBe(warn);
+  });
+
+  test('the notificationWindow setting lists the last 3 days or 7 days, and redraws the open tab', async ({
+    page
+  }) => {
+    hub.notifications = {
+      status: 200,
+      body: {
+        notifications: [
+          row('last week', 8 * 24 * 60),
+          row('six days', 167 * 60),
+          row('three days', 71 * 60),
+          row('yesterday', 25 * 60),
+          row('newest', 5)
+        ]
+      }
+    };
+    hub.rich = { status: 200, body: { entries: [MARKDOWN] } };
+    await page.goto();
+    await expectOpenAndCurrent(page);
+    const messages = page.locator('.jp-MotdPanel-row .jp-MotdPanel-message');
+    await expect(messages).toHaveText(['newest']);
+    const pulled = hub.count(NOTIFICATIONS);
+    for (const [span, listed] of [
+      ['3d', ['newest', 'yesterday', 'three days']],
+      ['7d', ['newest', 'yesterday', 'three days', 'six days']]
+    ] as const) {
+      await page.evaluate(
+        async ([id, value]) => {
+          const registry = await (window as any).galata.getPlugin(
+            '@jupyterlab/apputils-extension:settings'
+          );
+          await registry.set(id, 'notificationWindow', value);
+        },
+        [PLUGIN, span] as const
+      );
+      await expect(messages).toHaveText([...listed]);
+    }
+    // the rows the tab already holds are redrawn; the hub is not asked again
+    expect(hub.count(NOTIFICATIONS)).toBe(pulled);
   });
 
   test('does not render the terminal text', async ({ page }) => {
@@ -439,7 +492,7 @@ test.describe('two-column layout', () => {
     return found!;
   }
 
-  test('shows the entries left and the Notifications column 380 px wide right', async ({
+  test('shows the entries left in 3/4 of the width and the Notifications column right in 1/4', async ({
     page
   }) => {
     hub.rich = { status: 200, body: { entries: [MARKDOWN, SECOND] } };
@@ -453,7 +506,9 @@ test.describe('two-column layout', () => {
     const notifications = await box(page, '.jp-MotdPanel-notifications');
     expect(notifications.x).toBeCloseTo(entries.x + entries.width, 0);
     expect(notifications.y).toBeCloseTo(entries.y, 0);
-    expect(notifications.width).toBeCloseTo(380, 0);
+    expect(
+      notifications.width / (entries.width + notifications.width)
+    ).toBeCloseTo(0.25, 2);
   });
 
   test('lays a row out as the message, then the marker left and the time right', async ({
@@ -536,24 +591,6 @@ test.describe('two-column layout', () => {
         .locator(`${html} .jp-MotdPanel-heading`)
         .evaluate(el => el.scrollWidth <= el.clientWidth)
     ).toBe(true);
-  });
-
-  test('gives Notifications the full width when there are no entries', async ({
-    page
-  }) => {
-    hub.notifications = { status: 200, body: { notifications: manyRows(2) } };
-    await page.goto();
-    await expectOpenAndCurrent(page);
-    await expect(page.locator('.jp-MotdPanel-row')).toHaveCount(2);
-
-    await expect(page.locator('.jp-MotdPanel-entries')).toBeHidden();
-    const [width, content] = await page
-      .locator('.jp-MotdPanel-notifications')
-      .evaluate(el => [
-        el.getBoundingClientRect().width,
-        el.parentElement!.clientWidth
-      ]);
-    expect(width).toBeCloseTo(content, 0);
   });
 
   test('stacks the columns in a tab narrower than 800 px and scrolls the tab as one', async ({
@@ -698,9 +735,7 @@ test.describe('two-column layout', () => {
       .toBeGreaterThan(0);
   });
 
-  test('caps a card at 960 px and a notification row at 760 px in a wide tab', async ({
-    page
-  }) => {
+  test('caps a card at 960 px in a wide tab', async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1000 });
     hub.rich = { status: 200, body: { entries: [MARKDOWN] } };
     hub.notifications = { status: 200, body: { notifications: manyRows(1) } };
@@ -713,15 +748,6 @@ test.describe('two-column layout', () => {
     expect(
       await page.locator('.jp-MotdPanel-section').evaluate(el => el.clientWidth)
     ).toBe(960);
-
-    hub.rich = { status: 200, body: { entries: [] } };
-    await page.goto();
-    await expectOpenAndCurrent(page);
-    await expect(page.locator('.jp-MotdPanel-entries')).toBeHidden();
-    await expect(page.locator('.jp-MotdPanel-row')).toHaveCount(1);
-    const notifications = await box(page, '.jp-MotdPanel-notifications');
-    expect(notifications.width).toBeGreaterThan(1000);
-    expect((await box(page, '.jp-MotdPanel-row')).width).toBe(760);
   });
 });
 
@@ -1055,6 +1081,23 @@ test.describe('open command', () => {
     await pulls;
   });
 
+  test('an open tab closes when a pull finds no entry, and the command does not reopen it', async ({
+    page
+  }) => {
+    hub.rich = { status: 200, body: { entries: [MARKDOWN] } };
+    hub.notifications = {
+      status: 200,
+      body: { notifications: [row('maintenance tonight', 5)] }
+    };
+    await page.goto();
+    await expectOpenAndCurrent(page);
+    hub.rich = { status: 200, body: { entries: [] } };
+    await execute(page, 'galaxahub-motd:open');
+    await expect(tab(page)).toHaveCount(0);
+    await execute(page, 'galaxahub-motd:open');
+    await expect(tab(page)).toHaveCount(0);
+  });
+
   test('the tab is a singleton', async ({ page }) => {
     hub.rich = { status: 200, body: { entries: [MARKDOWN] } };
     await page.goto();
@@ -1176,6 +1219,187 @@ test.describe('reopenOnBroadcast default', () => {
   });
 });
 
+test.describe('local page', () => {
+  // the lab's fallback_html is MOTD_LOCAL_PAGE (playwright.config.js); each test writes it
+  const page_ = process.env.MOTD_LOCAL_PAGE!;
+  const logo = path.join(path.dirname(page_), 'logo.svg');
+
+  test.beforeEach(() => {
+    fs.mkdirSync(path.dirname(page_), { recursive: true });
+    fs.writeFileSync(
+      page_,
+      '<!doctype html><html><body><h1>Local welcome</h1><img src="logo.svg" width="40" height="40"></body></html>'
+    );
+    fs.writeFileSync(
+      logo,
+      '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><rect width="40" height="40"/></svg>'
+    );
+  });
+
+  test.afterEach(() => {
+    fs.rmSync(path.dirname(page_), { recursive: true, force: true });
+  });
+
+  async function expectLocalPage(page: IJupyterLabPageFixture) {
+    await expectOpenAndCurrent(page);
+    await expect(page.locator('.jp-MotdPanel-section')).toHaveCount(1);
+    await expect(
+      page.locator('.jp-MotdPanel-strip .jp-MotdPanel-heading')
+    ).toHaveText(TAB);
+    const frame = page.locator('.jp-MotdPanel-frame');
+    await expect(frame).toHaveAttribute(
+      'sandbox',
+      'allow-same-origin allow-popups allow-popups-to-escape-sandbox'
+    );
+    await loaded(page, frame);
+    const content = page.frameLocator('.jp-MotdPanel-frame');
+    await expect(content.locator('h1')).toHaveText('Local welcome');
+    // the image beside the page loads through the same route
+    await expect
+      .poll(() =>
+        content
+          .locator('img')
+          .evaluate(el => (el as HTMLImageElement).naturalWidth)
+      )
+      .toBe(40);
+    // sized to fit the page, not the 480 px box
+    expect(await frame.evaluate(el => el.clientHeight)).toBeLessThan(480);
+  }
+
+  test('opens the tab with the local page when the hub holds no entry, notifications as before', async ({
+    page
+  }) => {
+    hub.notifications = {
+      status: 200,
+      body: { notifications: [row('maintenance tonight', 5)] }
+    };
+    await page.goto();
+    await expectLocalPage(page);
+    await expect(
+      page.locator('.jp-MotdPanel-row .jp-MotdPanel-message')
+    ).toHaveText(['maintenance tonight']);
+  });
+
+  test('opens the tab with the local page when the hub is unreachable', async ({
+    page
+  }) => {
+    await hub.stop();
+    await page.goto();
+    await expectLocalPage(page);
+    await expect(page.locator('.jp-MotdPanel-empty')).toHaveText(
+      'No notifications'
+    );
+  });
+
+  test('shows the hub entries, not the local page, when the hub holds one', async ({
+    page
+  }) => {
+    hub.rich = { status: 200, body: { entries: [MARKDOWN] } };
+    await page.goto();
+    await expectOpenAndCurrent(page);
+    await expect(page.locator('.jp-MotdPanel-section')).toHaveCount(1);
+    await expect(page.locator('.jp-MotdPanel-frame')).toHaveCount(0);
+  });
+});
+
+test.describe('built-in page', () => {
+  test('the tab renders the built-in page with the version, sized to fit', async ({
+    page
+  }) => {
+    // this lab names a local page, so the rich answer a lab without one gives is served here
+    // the lab adds a cache-busting query to every GET
+    await page.route(
+      /\/jupyterlab-galaxahub-motd-extension\/rich(\?|$)/,
+      route =>
+        route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            entries: [
+              {
+                group: TAB,
+                kind: 'html',
+                url: '/jupyterlab-galaxahub-motd-extension/about/index.html'
+              }
+            ]
+          })
+        })
+    );
+    await page.goto();
+    await expectOpenAndCurrent(page);
+    const frame = page.locator('.jp-MotdPanel-frame');
+    await loaded(page, frame);
+    const content = page.frameLocator('.jp-MotdPanel-frame');
+    await expect(content.locator('h1')).toHaveText('Message of the day');
+    // the installed version: package.json and the Python package carry the same one
+    const { version } = JSON.parse(
+      fs.readFileSync(path.join(__dirname, '..', '..', 'package.json'), 'utf-8')
+    );
+    await expect(content.locator('body')).toContainText(
+      `jupyterlab_galaxahub_motd_extension ${version}`
+    );
+    await expect(content.locator('body')).toContainText(
+      'c.GalaxaHubMotd.fallback_html'
+    );
+    // fitted to the page: the frame shows it whole and does not scroll inside
+    const [client, scroll] = await frame.evaluate(el => {
+      const root = (el as HTMLIFrameElement).contentDocument!.documentElement;
+      return [root.clientHeight, root.scrollHeight];
+    });
+    expect(scroll).toBeLessThanOrEqual(client);
+  });
+});
+
+test.describe('open on start off for the lab', () => {
+  test('the page config switch keeps the tab closed on start, the command opens it', async ({
+    page
+  }) => {
+    await page.route('**/lab**', async route => {
+      if (route.request().resourceType() !== 'document') {
+        return route.fallback();
+      }
+      const response = await route.fetch();
+      const html = (await response.text()).replace(
+        /"galaxahubMotdOpenOnStart":\s*true/,
+        '"galaxahubMotdOpenOnStart": false'
+      );
+      await route.fulfill({ response, body: html });
+    });
+    hub.rich = { status: 200, body: { entries: [MARKDOWN] } };
+    await page.goto();
+    await expect.poll(() => hub.count(RICH)).toBeGreaterThan(0);
+    await page.waitForTimeout(2000);
+    await expect(tab(page)).toHaveCount(0);
+    await execute(page, 'galaxahub-motd:open');
+    await expectOpenAndCurrent(page);
+  });
+});
+
+test.describe('tab label', () => {
+  test('the tab carries the label of the lab page config', async ({ page }) => {
+    // the server puts c.GalaxaHubMotd.label in the page config; this lab runs the default, so
+    // the page is served with another value in its place
+    await page.route('**/lab**', async route => {
+      if (route.request().resourceType() !== 'document') {
+        // fallback, not continue: the settings and state requests go on to galata's own mocks
+        return route.fallback();
+      }
+      const response = await route.fetch();
+      const html = (await response.text()).replace(
+        /"galaxahubMotdLabel":\s*"Message of the day"/,
+        '"galaxahubMotdLabel": "Welcome to the lab"'
+      );
+      await route.fulfill({ response, body: html });
+    });
+    hub.rich = { status: 200, body: { entries: [MARKDOWN] } };
+    await page.goto();
+    await expect(page.activity.getTabLocator('Welcome to the lab')).toHaveCount(
+      1
+    );
+    await expect(tab(page)).toHaveCount(0);
+  });
+});
+
 /**
  * The installed jupyterlab-galaxahub-motd, spawned as a lab terminal would run it. `env`
  * entries override the worker's environment; an undefined entry removes the variable.
@@ -1230,6 +1454,37 @@ test.describe('command line', () => {
     const none = await motdCli(['rich'], env);
     expect(none.code).toBe(1);
     expect(none.stdout).toBe('');
+  });
+
+  test('the CLI lists notifications as far back as the lab notificationWindow setting', async ({
+    baseURL,
+    request
+  }) => {
+    hub.notifications = {
+      status: 200,
+      body: { notifications: [row('yesterday', 25 * 60), row('newest', 5)] }
+    };
+    const env = { JUPYTER_SERVER_URL: `${baseURL}/` };
+    const listed = async () => {
+      const run = await motdCli(['notifications'], env);
+      expect(run.stderr).toBe('');
+      return run.stdout
+        .trim()
+        .split('\n')
+        .map(line => line.split('\t')[3]);
+    };
+    expect(await listed()).toEqual(['newest']);
+    // the lab server's own settings store, where the Settings Editor writes
+    const settings = `${baseURL}/lab/api/settings/${PLUGIN}`;
+    const stored = await request.put(settings, {
+      data: { raw: '{"notificationWindow": "3d"}' }
+    });
+    expect(stored.ok()).toBe(true);
+    try {
+      expect(await listed()).toEqual(['newest', 'yesterday']);
+    } finally {
+      await request.put(settings, { data: { raw: '{}' } });
+    }
   });
 
   test('without the lab server URL the CLI exits 4 and asks no hub', async () => {

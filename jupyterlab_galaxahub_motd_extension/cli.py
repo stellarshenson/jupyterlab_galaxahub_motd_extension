@@ -13,7 +13,7 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from jupyter_core.paths import jupyter_runtime_dir
@@ -25,6 +25,9 @@ from .routes import NAMESPACE, GalaxaHubMotd
 PROG = "jupyterlab-galaxahub-motd"
 NO_MOTD = 1
 HUB_FAILED = 4
+PLUGIN_ID = "jupyterlab_galaxahub_motd_extension:plugin"
+# the choices of the tab's notificationWindow setting, schema/plugin.json
+NOTIFICATION_WINDOWS = {"24h": timedelta(hours=24), "3d": timedelta(days=3), "7d": timedelta(days=7)}
 
 
 class Stop(Exception):
@@ -48,18 +51,16 @@ def lab_token(server):
     return ""
 
 
-def settings():
-    """The GalaxaHubMotd settings the running lab server holds, from its settings route."""
+def lab_read(read, *path):
+    """What `read` makes of the JSON answer of the running lab server for `path`."""
     server = os.environ.get("JUPYTER_SERVER_URL", "")
     if not server:
         raise Stop(HUB_FAILED, "JUPYTER_SERVER_URL is not set - run this in a terminal of the lab, which sets it")
     token = lab_token(server) or os.environ.get("JUPYTERHUB_API_TOKEN", "")
-    request = urllib.request.Request(url_path_join(server, NAMESPACE, "settings"),
-                                     headers={"Authorization": f"token {token}"})
+    request = urllib.request.Request(url_path_join(server, *path), headers={"Authorization": f"token {token}"})
     try:
         with urllib.request.urlopen(request, timeout=10) as answer:
-            found = json.loads(answer.read())
-        motd = GalaxaHubMotd(motd_api_url=found["motd_api_url"], notifications_api_url=found["notifications_api_url"])
+            return read(json.loads(answer.read()))
     except urllib.error.HTTPError as error:
         # the status only: the body could echo the token
         raise Stop(HUB_FAILED, f"the lab server at {server} answered {error.code} - run this in a terminal of "
@@ -69,11 +70,27 @@ def settings():
         why = getattr(error, "reason", error) if isinstance(error, OSError) else type(error).__name__
         raise Stop(HUB_FAILED, f"cannot read the settings of the lab server at {server}: {why} - "
                                "run this in a terminal of the running lab")
+
+
+def settings():
+    """The GalaxaHubMotd settings the running lab server holds, from its settings route."""
+    motd = lab_read(lambda found: GalaxaHubMotd(motd_api_url=found["motd_api_url"],
+                                                notifications_api_url=found["notifications_api_url"]),
+                    NAMESPACE, "settings")
     empty = motd.empty()
     if empty:
         raise Stop(NO_MOTD, f"no motd: GalaxaHubMotd.{' and GalaxaHubMotd.'.join(empty)} not set in the "
                             "running lab's config, so this lab has no hub to ask")
     return motd
+
+
+def notification_window():
+    """The tab's notificationWindow setting in the running lab: the user's choice, else its default.
+    The lab answers user settings that break the schema as none, so the value is one of the choices."""
+    def read(tab):
+        return tab["settings"].get("notificationWindow", tab["schema"]["properties"]["notificationWindow"]["default"])
+
+    return lab_read(read, "lab/api/settings", PLUGIN_ID)
 
 
 def fetch(motd, name):
@@ -137,20 +154,21 @@ def read_entries(motd):
     return entries
 
 
-def read_notifications(motd):
-    """The broadcasts newest first; a row with an unreadable time sorts last."""
+def read_notifications(motd, window):
+    """The broadcasts inside `window`, newest first; a row whose time cannot be read is left out."""
     def time(row):
         try:
             return datetime.fromisoformat(str(row["ts"]).replace("Z", "+00:00")).timestamp()
         except ValueError:
             return float("-inf")
 
+    since = (datetime.now(timezone.utc) - NOTIFICATION_WINDOWS[window]).timestamp()
     kept = [
         {"ts": r.get("ts"), "type": r.get("type"), "audience": r.get("audience"), "message": r["message"]}
         for r in rows(motd, "notifications", "notifications")
         if isinstance(r, dict) and isinstance(r.get("message"), str)
     ]
-    return sorted(kept, key=time, reverse=True)
+    return sorted((r for r in kept if time(r) >= since), key=time, reverse=True)
 
 
 def entries_text(entries):
@@ -166,9 +184,11 @@ def notification_lines(notifications):
 
 def cmd_show(args):
     hub = args.motd
-    motd = {"terminal": read_terminal(hub), "entries": read_entries(hub), "notifications": read_notifications(hub)}
-    if not any(motd.values()):
-        raise Stop(NO_MOTD, "no motd: the hub holds no terminal text, no rich entry and no notification for this user")
+    motd = {"terminal": read_terminal(hub), "entries": read_entries(hub),
+            "notifications": read_notifications(hub, notification_window())}
+    # notifications alone are no motd
+    if not motd["terminal"] and not motd["entries"]:
+        raise Stop(NO_MOTD, "no motd: the hub holds no terminal text and no rich entry for this user")
     if args.json:
         print(json.dumps(motd))
         return 0
@@ -203,9 +223,11 @@ def cmd_rich(args):
 
 
 def cmd_notifications(args):
-    notifications = read_notifications(args.motd)
+    window = notification_window()
+    notifications = read_notifications(args.motd, window)
     if not notifications:
-        raise Stop(NO_MOTD, "no motd: the hub holds no notification for this user")
+        raise Stop(NO_MOTD, f"no motd: the hub holds no notification of the last {window} for this user "
+                            "(the lab's notificationWindow setting)")
     print(json.dumps({"notifications": notifications}) if args.json else notification_lines(notifications))
     return 0
 
@@ -218,6 +240,10 @@ configuration:
   Both are settings of the lab server. The CLI asks the running lab server for them, so
   whatever configured that lab applies: its config files and its command line. Either one
   empty means no hub to ask (exit 1).
+  notificationWindow                     the tab's setting in the lab's Settings Editor:
+                                         24h (default), 3d or 7d, how far back show and
+                                         notifications list broadcasts; the CLI asks the
+                                         running lab for it
 
 environment:
   JUPYTER_SERVER_URL    the lab server this terminal belongs to, set by JupyterLab in every
@@ -246,10 +272,11 @@ Print the whole message of the day in three parts, in this order:
 
   the terminal text, as `terminal` prints it
   each rich entry under a `## <group>` heading, as `rich` prints it
-  `## Notifications`, then one line per broadcast, as `notifications` prints it
+  `## Notifications`, then one line per broadcast of the lab's notificationWindow setting,
+  as `notifications` prints it
 
-A part the hub holds nothing for is left out. Exits 1 when all three are empty, or when any
-of the three feeds answers 404.
+A part the hub holds nothing for is left out. Exits 1 when the hub holds no terminal text
+and no rich entry, whatever the notifications, or when any of the three feeds answers 404.
 """,
         f"""
 examples:
@@ -294,12 +321,13 @@ examples:
         '{"entries": [{"group", "kind": "markdown", "body"} or {"group", "kind": "html", "url"}]}',
     ),
     (
-        "notifications", cmd_notifications, "the broadcasts sent to the user, newest first",
+        "notifications", cmd_notifications, "the broadcasts of the notificationWindow setting, newest first",
         """
-Print the broadcasts the hub recorded for the user - those sent to all users and those
-naming the user - one line per broadcast, newest first. Each line holds four fields separated
-by a tab: time (ISO 8601), type, audience (all or direct), message. Whitespace inside a
-message, line breaks included, prints as one space. Exits 1 when the hub holds none.
+Print the broadcasts the hub recorded for the user - those sent to all users and those naming
+the user - one line per broadcast, newest first, as far back as the lab's notificationWindow
+setting reaches: 24h (default), 3d or 7d. Each line holds four fields separated by a tab: time
+(ISO 8601), type, audience (all or direct), message. Whitespace inside a message, line breaks
+included, prints as one space. Exits 1 when the hub holds none inside that span.
 """,
         f"""
 examples:

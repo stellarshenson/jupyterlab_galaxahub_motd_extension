@@ -1,36 +1,62 @@
-"""The three hub reads, proxied with the lab's API token.
+"""The three hub reads, proxied with the lab's API token, and the lab's own local page.
 
 The frontend calls only these routes. The hub is called from here with JUPYTERHUB_API_TOKEN,
 so the token never reaches the browser. The two hub URLs come from the lab's Jupyter config
 (GalaxaHubMotd); the contract is the hub's galaxahub-motd-extension (terminal, rich) and its
-user-notifications rail.
+user-notifications rail. When the hub gives no rich entry, the rich route answers the local
+page GalaxaHubMotd.fallback_html instead, served from the lab's own disk, or the extension's
+built-in page while that setting is empty.
 """
 import json
 import os
+from pathlib import Path
 
 import tornado
-from jupyter_server.base.handlers import APIHandler
+from jupyter_server.base.handlers import APIHandler, JupyterHandler
 from jupyter_server.utils import url_path_join
 from tornado.httpclient import AsyncHTTPClient, HTTPClientError, HTTPRequest
-from traitlets import Unicode
+from traitlets import Bool, Unicode
 from traitlets.config import Configurable
+
+from . import __version__
 
 NAMESPACE = "jupyterlab-galaxahub-motd-extension"
 ROUTES = ("terminal", "rich", "notifications")
+# the built-in page: the version, what the extension does, its settings and the hub API it reads
+ABOUT_PAGE = Path(__file__).parent / "about" / "index.html"
 
 
 class GalaxaHubMotd(Configurable):
-    """The two hub URLs, set in jupyter_server_config or jupyter_lab_config. Both are required:
-    with either one empty the extension has no hub to ask and shows nothing."""
+    """The two hub URLs, the local page, the tab label and the open-on-start switch, set in
+    jupyter_server_config or jupyter_lab_config. Both URLs are required: with either one empty
+    the extension has no hub to ask and shows only the local page."""
 
     motd_api_url = Unicode(
         "", config=True,
         help="Base URL of the motd API: <url>/rich answers the welcome entries (markdown and "
-             "html pages), <url>/terminal the terminal text. Empty: the extension shows nothing.",
+             "html pages), <url>/terminal the terminal text. Empty: no hub is asked, and the tab "
+             "shows the local or built-in page.",
     )
     notifications_api_url = Unicode(
         "", config=True,
-        help="URL that answers the broadcasts sent to the user. Empty: the extension shows nothing.",
+        help="URL that answers the broadcasts sent to the user. Empty: no hub is asked, and the tab "
+             "shows the local or built-in page.",
+    )
+    fallback_html = Unicode(
+        "", config=True,
+        help="Absolute path of an HTML page on the lab's disk, shown in the tab when the hub gives no "
+             "welcome entry: a URL setting empty, no motd extension, not reachable, an error answer, or "
+             "no entry for the user. The files in its directory are served beside it. Empty: the "
+             "extension's built-in page, which states what it does, its settings and the hub API it reads.",
+    )
+    label = Unicode(
+        "Message of the day", config=True,
+        help="The label of the tab, and of the local page's card.",
+    )
+    open_on_start = Bool(
+        True, config=True,
+        help="Open the tab on lab start. False keeps the tab closed on lab start. The user's "
+             "openOnStart lab setting must be on too.",
     )
 
     def empty(self):
@@ -47,12 +73,24 @@ class GalaxaHubMotd(Configurable):
 PASSED_HEADERS = ("Content-Type", "Etag", "Cache-Control")
 
 
+def has_entries(answer):
+    """Whether a hub rich answer gives the browser entries: a 304 keeps those the browser holds,
+    a 200 carries at least one."""
+    if answer.code == 304:
+        return True
+    try:
+        return answer.code == 200 and bool(json.loads(answer.body)["entries"])
+    except (ValueError, KeyError, TypeError):
+        return False
+
+
 class MotdProxyHandler(APIHandler):
     """GET one hub read and answer it unchanged, or 204 when there is no hub to ask.
 
     A hub 404 (the hub carries no motd extension), a hub that cannot be reached and an empty
     GalaxaHubMotd setting are one answer: 204 with Cache-Control: no-cache. Every other hub
-    status passes through with its body."""
+    status passes through with its body. The rich route answers the local or built-in page
+    whenever the hub gives no entry."""
 
     def initialize(self, motd):
         self.motd = motd
@@ -73,10 +111,12 @@ class MotdProxyHandler(APIHandler):
                 HTTPRequest(url, headers=headers, connect_timeout=5, request_timeout=10),
                 raise_error=False,
             )
-        except (OSError, HTTPClientError) as error:
+        except (OSError, HTTPClientError, ValueError) as error:
             return self.absent(name, f"{url} cannot be reached: {error}")
         if answer.code == 404:
             return self.absent(name, f"{url} answered 404")
+        if name == "rich" and not has_entries(answer) and self.local(f"{url} answered {answer.code} with no entry"):
+            return
 
         self.set_status(answer.code)
         for header in PASSED_HEADERS:
@@ -92,10 +132,62 @@ class MotdProxyHandler(APIHandler):
 
     def absent(self, name, why):
         """The one answer for a hub that has no motd to give; the log says which case it was."""
+        if name == "rich" and self.local(why):
+            return
         self.log.info("[Message of the day] %s: %s - answering 204", name, why)
         self.set_status(204)
         self.set_header("Cache-Control", "no-cache")
         self.finish()
+
+    def local(self, why):
+        """Answer the local page as the one html entry, labelled with GalaxaHubMotd.label: the
+        page fallback_html names, or the built-in page while it is empty; False when fallback_html
+        names no file."""
+        page = self.motd.fallback_html
+        if page and not os.path.isfile(page):
+            self.log.warning("[Message of the day] GalaxaHubMotd.fallback_html %s is not a file - no local page", page)
+            return False
+        self.log.info("[Message of the day] rich: %s - answering the local page %s", why, page or "(built-in)")
+        self.set_header("Cache-Control", "no-cache")
+        if page:
+            url = url_path_join(self.base_url, NAMESPACE, "local", os.path.basename(page))
+        else:
+            url = url_path_join(self.base_url, NAMESPACE, "about", "index.html")
+        self.finish(json.dumps({"entries": [{"group": self.motd.label, "kind": "html", "url": url}]}))
+        return True
+
+
+class PageHandler(JupyterHandler, tornado.web.StaticFileHandler):
+    """GET the local page and the files in its folder for the tab's frame, only to a logged-in
+    user, with Cache-Control: no-cache; 404 while the folder is empty (no fallback_html)."""
+
+    def initialize(self, folder):
+        self.folder = folder
+        super().initialize(path=folder)
+
+    @tornado.web.authenticated
+    def get(self, path, include_body=True):
+        if not self.folder:
+            raise tornado.web.HTTPError(404)
+        return super().get(path, include_body)
+
+    @tornado.web.authenticated
+    def head(self, path):
+        return self.get(path, include_body=False)
+
+    def set_extra_headers(self, path):
+        self.set_header("Cache-Control", "no-cache")
+
+
+class AboutPageHandler(JupyterHandler):
+    """GET the built-in page with this extension's version in place of {{version}}, only to a
+    logged-in user."""
+
+    @tornado.web.authenticated
+    def get(self):
+        self.set_header("Content-Type", "text/html; charset=utf-8")
+        self.set_header("Cache-Control", "no-cache")
+        self.finish(ABOUT_PAGE.read_text().replace("{{version}}", __version__))
 
 
 class MotdSettingsHandler(APIHandler):
@@ -117,7 +209,14 @@ def setup_route_handlers(web_app, motd):
     base_url = web_app.settings["base_url"]
 
     route_pattern = url_path_join(base_url, NAMESPACE, f"({'|'.join(ROUTES)})")
+    local = os.path.dirname(os.path.abspath(motd.fallback_html)) if motd.fallback_html else ""
     web_app.add_handlers(host_pattern, [
         (route_pattern, MotdProxyHandler, {"motd": motd}),
         (url_path_join(base_url, NAMESPACE, "settings"), MotdSettingsHandler, {"motd": motd}),
+        (url_path_join(base_url, NAMESPACE, "local", "(.*)"), PageHandler, {"folder": local}),
+        (url_path_join(base_url, NAMESPACE, "about", "index.html"), AboutPageHandler),
     ])
+    # the frontend reads the tab label and the open-on-start switch from the lab page's config
+    page_config = web_app.settings.setdefault("page_config_data", {})
+    page_config["galaxahubMotdLabel"] = motd.label
+    page_config["galaxahubMotdOpenOnStart"] = motd.open_on_start

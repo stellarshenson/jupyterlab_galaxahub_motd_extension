@@ -1,5 +1,5 @@
 /**
- * The settings and the theming rule (ACC-CONFIG-26, ACC-THEME-29).
+ * The settings and the theming rule (ACC-CONFIG-26, ACC-THEME-29, ACC-VIEW-64).
  */
 import * as fs from 'fs';
 import * as path from 'path';
@@ -13,8 +13,9 @@ describe('schema/plugin.json', () => {
     fs.readFileSync(path.join(ROOT, 'schema', 'plugin.json'), 'utf-8')
   );
 
-  it('declares the three settings with their defaults', () => {
+  it('declares the four settings with their defaults', () => {
     expect(Object.keys(schema.properties).sort()).toEqual([
+      'notificationWindow',
       'openOnStart',
       'pollMinutes',
       'reopenOnBroadcast'
@@ -32,6 +33,15 @@ describe('schema/plugin.json', () => {
       minimum: 0,
       maximum: 35791,
       default: 0
+    });
+    expect(schema.properties.notificationWindow).toMatchObject({
+      type: 'string',
+      oneOf: [
+        { const: '24h', title: 'Last 24 hours' },
+        { const: '3d', title: 'Last 3 days' },
+        { const: '7d', title: 'Last 7 days' }
+      ],
+      default: '24h'
     });
   });
 
@@ -54,9 +64,24 @@ describe('readSettings', () => {
       readSettings({
         openOnStart: false,
         reopenOnBroadcast: true,
-        pollMinutes: 5
+        pollMinutes: 5,
+        notificationWindow: '7d'
       })
-    ).toEqual({ openOnStart: false, reopenOnBroadcast: true, pollMinutes: 5 });
+    ).toEqual({
+      openOnStart: false,
+      reopenOnBroadcast: true,
+      pollMinutes: 5,
+      notificationWindow: '7d'
+    });
+  });
+
+  it('lists the last 24 hours for a notificationWindow that is not a choice', () => {
+    expect(readSettings({ notificationWindow: '2d' }).notificationWindow).toBe(
+      '24h'
+    );
+    expect(readSettings({ notificationWindow: 7 }).notificationWindow).toBe(
+      '24h'
+    );
   });
 
   it('never polls on a negative, fractional-below-one or non-number interval', () => {

@@ -49,12 +49,26 @@ export interface IMotdSettings {
   openOnStart: boolean;
   reopenOnBroadcast: boolean;
   pollMinutes: number;
+  notificationWindow: NotificationWindow;
 }
+
+/**
+ * How far back the tab lists notifications, one value per choice of the notificationWindow
+ * setting.
+ */
+export const NOTIFICATION_WINDOWS_MS = {
+  '24h': 24 * 60 * 60 * 1000,
+  '3d': 3 * 24 * 60 * 60 * 1000,
+  '7d': 7 * 24 * 60 * 60 * 1000
+};
+
+export type NotificationWindow = keyof typeof NOTIFICATION_WINDOWS_MS;
 
 export const DEFAULT_SETTINGS: IMotdSettings = {
   openOnStart: true,
   reopenOnBroadcast: false,
-  pollMinutes: 0
+  pollMinutes: 0,
+  notificationWindow: '24h'
 };
 
 /**
@@ -112,17 +126,12 @@ export function notificationRows(body: unknown): INotificationRow[] {
 }
 
 /**
- * Whether the tab has something to show: the hub carries the motd extension (the rich feed
- * answered) and holds at least one entry or one notification for the user.
+ * Whether the tab has something to show: the rich feed answered at least one entry - a hub
+ * entry, or the local or built-in page the server answers in its place. Notifications alone never
+ * open the tab.
  */
-export function hasContent(
-  rich: IFeedState<RichEntry>,
-  notifications: IFeedState<INotificationRow>
-): boolean {
-  return (
-    rich.state === 'ok' &&
-    (rich.rows.length > 0 || notifications.rows.length > 0)
-  );
+export function hasContent(rich: IFeedState<RichEntry>): boolean {
+  return rich.state === 'ok' && rich.rows.length > 0;
 }
 
 /**
@@ -130,7 +139,7 @@ export function hasContent(
  */
 export function silenceLine(rich: IFeedState<RichEntry>): string {
   const why = {
-    ok: 'the hub holds no entry and no notification for this user',
+    ok: 'the hub holds no entry for this user',
     absent: 'the hub has no motd extension or cannot be reached',
     failed: 'the hub refused the rich feed or did not answer',
     unpulled: 'nothing was pulled'
@@ -139,17 +148,21 @@ export function silenceLine(rich: IFeedState<RichEntry>): string {
 }
 
 /**
- * The notification rows as the tab draws them: newest first, each with its type, any type the
- * lab does not know read as default, and the audience marker.
+ * The notification rows as the tab draws them: those inside `span` before `now`, newest first,
+ * each with its type, any type the lab does not know read as default, and the audience marker.
+ * A row whose time cannot be read is left out.
  */
 export function notificationView(
-  rows: INotificationRow[]
+  rows: INotificationRow[],
+  span: NotificationWindow,
+  now = Date.now()
 ): INotificationView[] {
   const time = (ts: string) => {
     const t = Date.parse(ts);
     return Number.isNaN(t) ? -Infinity : t;
   };
-  return [...rows]
+  return rows
+    .filter(r => time(r.ts) >= now - NOTIFICATION_WINDOWS_MS[span])
     .sort((a, b) => time(b.ts) - time(a.ts))
     .map(r => {
       const audience = r.audience === 'direct' ? 'direct' : 'all';
@@ -179,7 +192,8 @@ export function isNewBroadcast(
 }
 
 /**
- * The settings with their defaults filled in; pollMinutes is a whole number of at least 0.
+ * The settings with their defaults filled in; pollMinutes is a whole number of at least 0, and
+ * notificationWindow one of its choices.
  */
 export function readSettings(
   composite: ReadonlyPartialJSONObject
@@ -187,6 +201,7 @@ export function readSettings(
   const bool = (value: unknown, fallback: boolean) =>
     typeof value === 'boolean' ? value : fallback;
   const minutes = composite.pollMinutes;
+  const span = composite.notificationWindow;
   return {
     openOnStart: bool(composite.openOnStart, DEFAULT_SETTINGS.openOnStart),
     reopenOnBroadcast: bool(
@@ -194,7 +209,12 @@ export function readSettings(
       DEFAULT_SETTINGS.reopenOnBroadcast
     ),
     pollMinutes:
-      typeof minutes === 'number' && minutes > 0 ? Math.floor(minutes) : 0
+      typeof minutes === 'number' && minutes > 0 ? Math.floor(minutes) : 0,
+    notificationWindow:
+      typeof span === 'string' &&
+      Object.keys(NOTIFICATION_WINDOWS_MS).includes(span)
+        ? (span as NotificationWindow)
+        : DEFAULT_SETTINGS.notificationWindow
   };
 }
 
@@ -217,7 +237,7 @@ export class MotdModel {
   }
 
   get hasContent(): boolean {
-    return hasContent(this.rich, this.notifications);
+    return hasContent(this.rich);
   }
 
   /**

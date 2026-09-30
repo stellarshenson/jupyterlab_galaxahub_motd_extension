@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Message of the day</title>
+    <style>
+      body {
+        margin: 16px 20px;
+        font-family: system-ui, sans-serif;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 20px;
+      }
+      h2 {
+        margin: 20px 0 6px;
+        font-size: 16px;
+      }
+      p {
+        margin: 0 0 8px;
+      }
+      code,
+      pre {
+        font-family: ui-monospace, monospace;
+        font-size: 13px;
+      }
+      pre {
+        margin: 0 0 8px;
+        padding: 8px 10px;
+        border: 1px solid;
+        border-radius: 3px;
+        overflow-x: auto;
+      }
+      table {
+        margin: 0 0 8px;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        padding: 3px 8px;
+        border: 1px solid;
+        text-align: left;
+        vertical-align: top;
+        overflow-wrap: anywhere;
+      }
+      td:first-child {
+        white-space: nowrap;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Message of the day</h1>
+    <p>jupyterlab_galaxahub_motd_extension {{version}}</p>
+    <p>
+      This lab has no message of the day for you yet. The lab administrator
+      sets it up; the rest of this page is for them.
+    </p>
+
+    <h2>What the extension does</h2>
+    <p>
+      On lab start the extension asks the hub for the welcome entries of the
+      user's groups and the broadcasts sent to the user, and shows them in this
+      tab: the entries as cards, the broadcasts in the Notifications column.
+      When the hub gives no entry, the tab shows a local page instead: this
+      page, until the lab config names another.
+    </p>
+
+    <h2>Lab config</h2>
+    <p>
+      In <code>jupyter_server_config.py</code> or
+      <code>jupyter_lab_config.py</code>, for a GalaxaHub lab:
+    </p>
+    <pre>
+import os
+
+hub = os.environ.get("JUPYTERHUB_API_URL", "")
+if hub:
+    c.GalaxaHubMotd.motd_api_url = f"{hub}/extensions/motd"
+    c.GalaxaHubMotd.notifications_api_url = f"{hub}/user-notifications"
+c.GalaxaHubMotd.fallback_html = "/opt/motd/index.html"  # when the hub gives no entry
+c.GalaxaHubMotd.label = "Message of the day"            # the tab label
+c.GalaxaHubMotd.open_on_start = True                    # False: no tab on lab start</pre>
+    <p>
+      With either URL empty the extension asks no hub. The files beside
+      <code>fallback_html</code> are served with it, so its images load; the
+      page runs no script.
+    </p>
+
+    <h2>Lab settings</h2>
+    <p>
+      In the Settings Editor, under Message of the day:
+      <code>openOnStart</code> (default true), <code>reopenOnBroadcast</code>
+      (default false), <code>pollMinutes</code> (default 0, never pulls again)
+      and <code>notificationWindow</code> (24h, 3d or 7d; default 24h).
+    </p>
+
+    <h2>Hub API</h2>
+    <p>
+      The lab server calls these URLs with
+      <code>Authorization: token &lt;JUPYTERHUB_API_TOKEN&gt;</code>; the
+      browser never holds the token.
+    </p>
+    <table>
+      <tr>
+        <th>URL</th>
+        <th>Answer</th>
+      </tr>
+      <tr>
+        <td><code>GET &lt;motd_api_url&gt;/rich</code></td>
+        <td>
+          <code>{"entries": [{"group", "kind": "markdown", "body"} or {"group", "kind": "html", "url"}]}</code>
+        </td>
+      </tr>
+      <tr>
+        <td><code>GET &lt;motd_api_url&gt;/terminal</code></td>
+        <td>the terminal text, <code>text/plain</code></td>
+      </tr>
+      <tr>
+        <td><code>GET &lt;notifications_api_url&gt;</code></td>
+        <td>
+          <code>{"notifications": [{"ts", "message", "type", "audience"}]}</code>
+        </td>
+      </tr>
+    </table>
+    <p>
+      A 404 on a URL means the hub has no motd extension. The full contract is
+      <a
+        href="https://github.com/stellarshenson/jupyterlab_galaxahub_motd_extension/blob/main/docs/design-api.md"
+        target="_blank"
+        rel="noopener">docs/design-api.md</a>.
+    </p>
+
+    <h2>Terminal</h2>
+    <p>
+      <code>jupyterlab-galaxahub-motd</code> prints what the hub holds for the user in
+      a lab terminal, not this page; <code>--help</code> lists its commands.
+    </p>
+  </body>
+</html>

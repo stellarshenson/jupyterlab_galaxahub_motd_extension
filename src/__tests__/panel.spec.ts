@@ -75,7 +75,7 @@ describe('MotdPanel drawing', () => {
   ];
   const rows: INotificationRow[] = [
     {
-      ts: ago(24 * 60),
+      ts: ago(23 * 60),
       message: 'older',
       type: 'info',
       audience: 'all'
@@ -190,6 +190,24 @@ describe('MotdPanel drawing', () => {
       'All users'
     );
     expect(items[0].querySelector('time')!.textContent).toBe('5 minutes ago');
+    panel.dispose();
+  });
+
+  it('redraws Notifications for a new notificationWindow', async () => {
+    const { model } = modelAnswering(
+      [],
+      [...rows, { ...rows[0], ts: ago(3 * 24 * 60 - 1), message: 'three days' }]
+    );
+    await model.pull();
+    const panel = new MotdPanel(model, fakeRendermime().registry);
+    await panel.render();
+    const messages = () =>
+      Array.from(panel.node.querySelectorAll('.jp-MotdPanel-message')).map(
+        m => m.textContent
+      );
+    expect(messages()).toEqual(['newer', 'older']);
+    panel.notificationWindow = '3d';
+    expect(messages()).toEqual(['newer', 'older', 'three days']);
     panel.dispose();
   });
 
