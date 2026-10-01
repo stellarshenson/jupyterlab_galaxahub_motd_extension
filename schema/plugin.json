@@ -7,7 +7,7 @@
     "openOnStart": {
       "type": "boolean",
       "title": "Open on start",
-      "description": "Open the Message of the day tab on lab start.",
+      "description": "Open the Message of the day tab on the first load of the lab after each lab server start. A later load, a browser refresh included, opens no tab.",
       "default": true
     },
     "reopenOnBroadcast": {

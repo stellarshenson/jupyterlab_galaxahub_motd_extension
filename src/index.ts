@@ -14,6 +14,7 @@ import { ISettingRegistry } from '@jupyterlab/settingregistry';
 import {
   DEFAULT_SETTINGS,
   MotdModel,
+  firstLoadOfServerStart,
   isNewBroadcast,
   readSettings,
   silenceLine
@@ -141,10 +142,15 @@ const plugin: JupyterFrontEndPlugin<void> = {
         console.log(silenceLine(model.rich));
         return;
       }
-      // the user's openOnStart and the lab's c.GalaxaHubMotd.open_on_start must both be on
+      // the user's openOnStart and the lab's c.GalaxaHubMotd.open_on_start must both be on; the
+      // tab then opens once per lab server start, on the first load of the page after it
       if (
         settings.openOnStart &&
-        PageConfig.getOption('galaxahubMotdOpenOnStart') !== 'false'
+        PageConfig.getOption('galaxahubMotdOpenOnStart') !== 'false' &&
+        firstLoadOfServerStart(
+          `${PLUGIN_ID}:serverStart:${app.serviceManager.serverSettings.baseUrl}`,
+          PageConfig.getOption('galaxahubMotdServerStart')
+        )
       ) {
         open();
       }

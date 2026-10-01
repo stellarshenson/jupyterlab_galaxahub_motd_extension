@@ -1375,6 +1375,40 @@ test.describe('open on start off for the lab', () => {
   });
 });
 
+test.describe('once per server start', () => {
+  test('a reload opens no tab, a new server start opens it', async ({
+    page
+  }) => {
+    hub.rich = { status: 200, body: { entries: [MARKDOWN] } };
+    await page.goto();
+    await expectOpenAndCurrent(page);
+
+    // the same server start: the page pulls again and opens no tab
+    const pulls = hub.count(RICH);
+    await page.reload();
+    await expect.poll(() => hub.count(RICH)).toBeGreaterThan(pulls);
+    await page.waitForTimeout(2000);
+    await expect(tab(page)).toHaveCount(0);
+    await execute(page, 'galaxahub-motd:open');
+    await expectOpenAndCurrent(page);
+
+    // the server started again: the page config carries another start
+    await page.route('**/lab**', async route => {
+      if (route.request().resourceType() !== 'document') {
+        return route.fallback();
+      }
+      const response = await route.fetch();
+      const html = (await response.text()).replace(
+        /"galaxahubMotdServerStart":\s*"[^"]*"/,
+        '"galaxahubMotdServerStart": "another start"'
+      );
+      await route.fulfill({ response, body: html });
+    });
+    await page.reload();
+    await expectOpenAndCurrent(page);
+  });
+});
+
 test.describe('tab label', () => {
   test('the tab carries the label of the lab page config', async ({ page }) => {
     // the server puts c.GalaxaHubMotd.label in the page config; this lab runs the default, so

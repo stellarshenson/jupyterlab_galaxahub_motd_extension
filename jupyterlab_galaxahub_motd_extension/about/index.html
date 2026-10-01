@@ -64,7 +64,10 @@
       user's groups and the broadcasts sent to the user, and shows them in this
       tab: the entries as cards, the broadcasts in the Notifications column.
       When the hub gives no entry, the tab shows a local page instead: this
-      page, until the lab config names another.
+      page, until the lab config names another. The tab opens by itself once
+      per lab server start; a later load, a browser refresh included, does not
+      open it, and the command <code>Message of the day: Open</code> opens it
+      at any time.
     </p>
 
     <h2>Lab config</h2>
@@ -81,7 +84,7 @@ if hub:
     c.GalaxaHubMotd.notifications_api_url = f"{hub}/user-notifications"
 c.GalaxaHubMotd.fallback_html = "/opt/motd/index.html"  # when the hub gives no entry
 c.GalaxaHubMotd.label = "Message of the day"            # the tab label
-c.GalaxaHubMotd.open_on_start = True                    # False: no tab on lab start</pre>
+c.GalaxaHubMotd.open_on_start = True                    # once per lab server start</pre>
     <p>
       With either URL empty the extension asks no hub. The files beside
       <code>fallback_html</code> are served with it, so its images load; the

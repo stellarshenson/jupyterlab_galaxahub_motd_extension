@@ -19,6 +19,9 @@ has none.
 
 - **Welcome tab on start** - opens the Message of the day tab and makes it current when the hub
   carries at least one welcome entry for the user; notifications alone never open it
+- **Once per server start** - the tab opens by itself on the first load of the lab after each lab
+  server start; a later load, a browser refresh included, opens no tab, and the palette command
+  opens it at any time
 - **Local page** - when the hub gives no welcome entry for the user (a hub URL setting empty, no
   motd extension, not reachable, an error, or no entry), the tab shows the local HTML page the lab
   config names, or, while none is named, the extension's built-in page with its version, what it
@@ -55,7 +58,7 @@ pip install jupyterlab_galaxahub_motd_extension
 
 | Setting              | Default | Effect                                                                               |
 | -------------------- | ------- | ------------------------------------------------------------------------------------ |
-| `openOnStart`        | `true`  | open the tab on lab start; the lab's `c.GalaxaHubMotd.open_on_start` must be on too  |
+| `openOnStart`        | `true`  | open the tab once per lab server start; `c.GalaxaHubMotd.open_on_start` must be on   |
 | `reopenOnBroadcast`  | `false` | reopen the tab when a live broadcast arrives through the notifications extension     |
 | `pollMinutes`        | `0`     | pull again on this interval while the tab is open; `0` never polls                   |
 | `notificationWindow` | `24h`   | how far back Notifications lists broadcasts: `24h`, `3d` or `7d`; the CLI follows it |
@@ -72,7 +75,7 @@ either one is empty the extension asks no hub and shows only the local or built-
 | `c.GalaxaHubMotd.notifications_api_url` | URL that answers the broadcasts sent to the user                                                                                                          |
 | `c.GalaxaHubMotd.fallback_html`         | absolute path of a local HTML page, shown when the hub gives no welcome entry; the files in its folder are served too; empty (default): the built-in page |
 | `c.GalaxaHubMotd.label`                 | label of the tab and of the local page's card; default `Message of the day`                                                                               |
-| `c.GalaxaHubMotd.open_on_start`         | `True` (default): the tab opens on lab start; `False`: the tab stays closed on lab start, whatever each user's `openOnStart`                              |
+| `c.GalaxaHubMotd.open_on_start`         | `True` (default): the tab opens on the first load after each lab server start; `False`: no load opens the tab, whatever each user's `openOnStart`         |
 
 - **Files** - `jupyter_server_config.py` or `jupyter_lab_config.py` (or their `.json` form) in a
   Jupyter config directory; `jupyter --paths` lists the directories
@@ -95,7 +98,7 @@ if hub:
     c.GalaxaHubMotd.notifications_api_url = f"{hub}/user-notifications"
 c.GalaxaHubMotd.fallback_html = "/opt/motd/index.html"  # optional; empty shows the built-in page
 c.GalaxaHubMotd.label = "Message of the day"            # optional
-c.GalaxaHubMotd.open_on_start = True                    # optional
+c.GalaxaHubMotd.open_on_start = True                    # optional; once per lab server start
 ```
 
 ## Server routes

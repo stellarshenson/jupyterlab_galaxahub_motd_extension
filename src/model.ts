@@ -192,6 +192,21 @@ export function isNewBroadcast(
 }
 
 /**
+ * True on the first call for a lab server start in this browser, false on the later ones. The
+ * browser keeps the start under `key`, which names the lab.
+ */
+export function firstLoadOfServerStart(
+  key: string,
+  serverStart: string
+): boolean {
+  if (localStorage.getItem(key) === serverStart) {
+    return false;
+  }
+  localStorage.setItem(key, serverStart);
+  return true;
+}
+
+/**
  * The settings with their defaults filled in; pollMinutes is a whole number of at least 0, and
  * notificationWindow one of its choices.
  */

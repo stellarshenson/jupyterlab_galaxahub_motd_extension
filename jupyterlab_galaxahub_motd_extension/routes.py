@@ -9,6 +9,7 @@ built-in page while that setting is empty.
 """
 import json
 import os
+import time
 from pathlib import Path
 
 import tornado
@@ -55,8 +56,9 @@ class GalaxaHubMotd(Configurable):
     )
     open_on_start = Bool(
         True, config=True,
-        help="Open the tab on lab start. False keeps the tab closed on lab start. The user's "
-             "openOnStart lab setting must be on too.",
+        help="Open the tab on the first load of the lab page after each lab server start; a later "
+             "load, a browser refresh included, opens no tab. False: no load opens the tab. The "
+             "user's openOnStart lab setting must be on too.",
     )
 
     def empty(self):
@@ -216,7 +218,9 @@ def setup_route_handlers(web_app, motd):
         (url_path_join(base_url, NAMESPACE, "local", "(.*)"), PageHandler, {"folder": local}),
         (url_path_join(base_url, NAMESPACE, "about", "index.html"), AboutPageHandler),
     ])
-    # the frontend reads the tab label and the open-on-start switch from the lab page's config
+    # the frontend reads the tab label and the open-on-start switch from the lab page's config,
+    # and this server start, so the tab opens by itself once per start and not on every page load
     page_config = web_app.settings.setdefault("page_config_data", {})
     page_config["galaxahubMotdLabel"] = motd.label
     page_config["galaxahubMotdOpenOnStart"] = motd.open_on_start
+    page_config["galaxahubMotdServerStart"] = str(time.time())

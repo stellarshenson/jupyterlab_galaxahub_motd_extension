@@ -193,8 +193,10 @@ for it.
 - **No tab** - only when `fallback_html` names a file that does not exist; the extension then
   writes one console line and opens nothing, and an open tab closes when `<motd_api_url>/rich`
   answers with no entry
-- **Open on start** - `c.GalaxaHubMotd.open_on_start = False`, or the user's `openOnStart` lab
-  setting off, keeps the tab closed on lab start in every case
+- **Open on start** - the tab opens by itself once per lab server start, on the first load of
+  the lab page after it; a later load in the same browser, a refresh included, opens no tab.
+  `c.GalaxaHubMotd.open_on_start = False`, or the user's `openOnStart` lab setting off, keeps
+  the tab closed on every load
 - **Palette command** - `Message of the day: Open` pulls again and opens the tab under the same
   conditions, whatever the two open-on-start switches say
 

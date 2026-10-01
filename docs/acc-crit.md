@@ -50,6 +50,14 @@ What the extension pulls on lab start and when it opens the tab or stays silent
   - log: 2026-09-28T09:19:17Z @kj added
   - log: 2026-09-28T09:54:13Z @kj closed: verified on 0.1.4
   - log: 2026-09-30T07:46:20Z @kj amended text "the hub refuses the connection: no tab opens, the console carries one line from the extension, and no dialog or notification is shown to the user" -> "with no page to show (fallback_html names no file), the hub refuses the connection: no tab opens, the console carries one line from the extension, and no dialog or notification is shown to the user"; reason: the built-in page (ACC-LOCAL-70) now opens the tab in this case when fallback_html is empty
+- [x] `ACC-START-72` **Tab opens once per server start** - HIGH; with content and both open-on-start switches on, the tab opens on the first lab page load after a lab server start; a later page load of the same server start in the same browser opens no tab; the Open command still opens it
+  - related: ACC-SERVER-71, ACC-CONFIG-27 - the two open-on-start switches
+  - evidence: Galata 50/50 on installed 1.0.7: 'a reload opens no tab, a new server start opens it'; pytest 50/50: test_server_start_in_the_page_config; Jest 50/50: 'first load of a server start'
+  - test: Galata 'a reload opens no tab, a new server start opens it'; pytest test_server_start_in_the_page_config; Jest 'first load of a server start'
+  - test-tags: UNIT, FUNCTIONAL
+  - mechanism: 2026-10-01T12:10:42Z @kj server puts its start time in the lab page config as galaxahubMotdServerStart; the browser keeps in localStorage, per lab base URL, the start it opened the tab for
+  - log: 2026-10-01T12:10:42Z @kj added
+  - log: 2026-10-01T12:55:52Z @kj closed
 
 ## Tab content `VIEW`
 

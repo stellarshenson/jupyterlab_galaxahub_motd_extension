@@ -1,6 +1,6 @@
 /**
  * The answer-to-view mapping (ACC-START-2 to 4, ACC-VIEW-9 and 10, ACC-VIEW-11, ACC-VIEW-64,
- * ACC-LIVE-23 and 24).
+ * ACC-LIVE-23 and 24), and the once-per-server-start mark (ACC-START-72).
  */
 import {
   IFeedState,
@@ -8,6 +8,7 @@ import {
   MotdModel,
   RichEntry,
   applyAnswer,
+  firstLoadOfServerStart,
   hasContent,
   isNewBroadcast,
   notificationRows,
@@ -268,5 +269,19 @@ describe('MotdModel', () => {
     expect(model.rich.rows).toEqual([ENTRY]);
     expect(model.notifications.rows).toEqual([]);
     expect(changed).toBe(2);
+  });
+});
+
+describe('first load of a server start', () => {
+  beforeEach(() => localStorage.clear());
+
+  it('is true once per server start and lab', () => {
+    expect(firstLoadOfServerStart('lab-a', '100')).toBe(true);
+    expect(firstLoadOfServerStart('lab-a', '100')).toBe(false);
+    // another lab served from the same origin
+    expect(firstLoadOfServerStart('lab-b', '100')).toBe(true);
+    // the server of lab-a started again
+    expect(firstLoadOfServerStart('lab-a', '200')).toBe(true);
+    expect(firstLoadOfServerStart('lab-a', '200')).toBe(false);
   });
 });

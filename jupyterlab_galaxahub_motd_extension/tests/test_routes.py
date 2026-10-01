@@ -20,7 +20,7 @@ import tornado.testing
 import tornado.web
 
 from jupyterlab_galaxahub_motd_extension import __version__, cli
-from jupyterlab_galaxahub_motd_extension.routes import ROUTES, GalaxaHubMotd
+from jupyterlab_galaxahub_motd_extension.routes import ROUTES, GalaxaHubMotd, setup_route_handlers
 
 NS = "jupyterlab-galaxahub-motd-extension"
 TOKEN = "stub-lab-token-5f1e0c"
@@ -444,3 +444,12 @@ async def test_open_on_start_in_the_page_config(jp_serverapp):
 async def test_open_on_start_off_in_the_page_config(jp_serverapp, motd_extra):
     # ACC-SERVER-71
     assert jp_serverapp.web_app.settings["page_config_data"]["galaxahubMotdOpenOnStart"] is False
+
+
+async def test_server_start_in_the_page_config(jp_serverapp):
+    # ACC-START-72: a string the frontend compares; a later start carries another one
+    page_config = jp_serverapp.web_app.settings["page_config_data"]
+    start = page_config["galaxahubMotdServerStart"]
+    assert isinstance(start, str) and start
+    setup_route_handlers(jp_serverapp.web_app, GalaxaHubMotd())
+    assert page_config["galaxahubMotdServerStart"] not in ("", start)

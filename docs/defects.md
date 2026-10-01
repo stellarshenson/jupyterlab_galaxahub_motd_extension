@@ -236,3 +236,16 @@ The two hub URL settings the lab's Jupyter config sets
   - log: 2026-09-29T19:20:10Z @kj added
   - log: 2026-09-29T19:20:30Z @kj edited test-tags added "UNIT"
   - log: 2026-09-29T19:21:16Z @kj closed: fixed by review round 7 plan
+
+## Lab start `START`
+
+Opening the tab when the lab starts
+
+- [x] `DEF-START-25` **Tab opens on every page load** - MAJOR; the tab opens after every lab page load, a browser refresh included; it must open only on the first page load after each lab server start
+  - related: ACC-START-72 - the criterion this fix meets
+  - evidence: Galata 50/50 on installed 1.0.7: after a reload the tab stays closed, with another server start it opens; review wf_e668d28c-d09 SHIP
+  - repro: load the lab with a hub entry, close the tab, refresh the browser window: the tab opens again
+  - test-tags: UNIT, FUNCTIONAL
+  - root-cause: 2026-10-01T12:10:41Z @kj index.ts opens the tab after every page load that has content; nothing records that the tab already opened for this server start
+  - log: 2026-10-01T12:10:41Z @kj added
+  - log: 2026-10-01T12:55:52Z @kj closed: fixed: server puts its start in the page config, the browser keeps the start it opened the tab for

@@ -4,6 +4,16 @@
 
 <!-- <END NEW CHANGELOG ENTRY> -->
 
+## [1.0.8] - 2026-10-01
+
+### Fixed
+
+- The tab opened after every load of the lab page, a browser refresh included; it now opens by itself once per lab server start, on the first load after it, and the palette command opens it at any time
+
+### Changed
+
+- The `openOnStart` setting text, the `c.GalaxaHubMotd.open_on_start` help, the README, `docs/design-api.md` and the built-in page state the once-per-server-start rule
+
 ## [1.0.3] - 2026-09-30
 
 ### Added
