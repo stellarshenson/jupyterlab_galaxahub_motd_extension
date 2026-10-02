@@ -2020,7 +2020,7 @@ test.describe('tab label', () => {
     await expect(tab(page)).toHaveCount(0);
   });
 
-  test('the tab shows the blue info icon before its label', async ({
+  test('the tab shows the blue circle icon before its label', async ({
     page
   }) => {
     hub.rich = { status: 200, body: { entries: [MARKDOWN] } };
@@ -2035,18 +2035,16 @@ test.describe('tab label', () => {
       .locator('.lm-TabBar-tabLabel')
       .boundingBox())!;
     expect(iconBox.x + iconBox.width).toBeLessThanOrEqual(labelBox.x);
-    // drawn as lines in the lab's brand colour, with no fill
-    const paint = await icon.locator('g').evaluate(el => {
+    // one circle filled in the lab's brand colour
+    const paint = await icon.locator('circle').evaluate(el => {
       const probe = document.createElement('span');
       probe.style.color = 'var(--jp-brand-color1)';
       document.body.appendChild(probe);
       const brand = getComputedStyle(probe).color;
       probe.remove();
-      const style = getComputedStyle(el);
-      return { fill: style.fill, stroke: style.stroke, brand };
+      return { fill: getComputedStyle(el).fill, brand };
     });
-    expect(paint.fill).toBe('none');
-    expect(paint.stroke).toBe(paint.brand);
+    expect(paint.fill).toBe(paint.brand);
     // the stock light theme's brand colour is blue
     expect(paint.brand).toBe('rgb(25, 118, 210)');
   });

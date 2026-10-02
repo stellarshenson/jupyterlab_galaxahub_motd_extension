@@ -37,16 +37,14 @@ const TYPE_ICONS: Record<string, string[]> = {
 };
 
 /**
- * The tab's icon, the info icon of a notification row. The lab's jp-icon-brand1 class gives the
- * stroke the brand colour, which is blue in the stock and the Galaxa themes.
+ * The tab's icon, a filled circle. The lab's jp-icon-brand1 class gives the fill the brand
+ * colour, which is blue in the stock and the Galaxa themes.
  */
 export const motdIcon = new LabIcon({
   name: 'jupyterlab_galaxahub_motd_extension:tab',
   svgstr:
-    '<svg xmlns="http://www.w3.org/2000/svg" width="16" viewBox="0 0 24 24" fill="none">' +
-    '<g class="jp-icon-brand1" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-    TYPE_ICONS.info.map(d => `<path d="${d}"/>`).join('') +
-    '</g></svg>'
+    '<svg xmlns="http://www.w3.org/2000/svg" width="16" viewBox="0 0 24 24">' +
+    '<circle class="jp-icon-brand1" fill="currentColor" cx="12" cy="12" r="10"/></svg>'
 });
 
 /**

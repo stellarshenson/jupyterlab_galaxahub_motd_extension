@@ -4,6 +4,12 @@
 
 <!-- <END NEW CHANGELOG ENTRY> -->
 
+## [1.0.37] - 2026-10-02
+
+### Changed
+
+- The tab's icon is a blue filled circle in the lab's brand colour, in place of the info icon; it is drawn as SVG, so it looks the same on every system
+
 ## [1.0.35] - 2026-10-02
 
 ### Changed
