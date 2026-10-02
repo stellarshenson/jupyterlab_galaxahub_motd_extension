@@ -109,6 +109,70 @@ describe('MotdPanel drawing', () => {
     panel.dispose();
   });
 
+  it('scrolls to the heading of the same entry on a same-document link (ACC-VIEW-81)', async () => {
+    const two: RichEntry[] = [
+      { label: 'first', kind: 'markdown', body: 'a' },
+      { label: 'second', kind: 'markdown', body: 'b' }
+    ];
+    const { model } = modelAnswering(two, []);
+    await model.pull();
+    const panel = new MotdPanel(model, fakeRendermime().registry);
+    await panel.render();
+    // what the lab's renderer draws: headings with data-jupyter-id, a link with target=_blank
+    const bodies = Array.from(
+      panel.node.querySelectorAll<HTMLElement>('.jp-MotdPanel-body')
+    );
+    for (const body of bodies) {
+      body.innerHTML =
+        '<a href="#Part-two" target="_blank">lab form</a>' +
+        '<a href="#third-part-faq" target="_blank">GitHub form</a>' +
+        '<a href="#100%-sure" target="_blank">percent</a>' +
+        '<a href="#none" target="_blank">no heading</a>' +
+        '<a href="https://example.org/#Part-two" target="_blank">other address</a>' +
+        '<h2 data-jupyter-id="Part-two">Part two</h2>' +
+        '<h2 data-jupyter-id="Third-part:-FAQ!">Third part: FAQ!</h2>' +
+        '<h2 data-jupyter-id="100%-sure">100% sure</h2>';
+    }
+    const [, second] = bodies;
+    const scrolled: Element[] = [];
+    Element.prototype.scrollIntoView = function () {
+      scrolled.push(this);
+    };
+    // whether the panel stopped the link's own action
+    const click = (text: string) => {
+      const link = Array.from(second.querySelectorAll('a')).find(
+        a => a.textContent === text
+      )!;
+      let prevented = false;
+      // runs after the panel's listener; jsdom cannot follow a link, so the action stops here
+      panel.node.addEventListener(
+        'click',
+        event => {
+          prevented = event.defaultPrevented;
+          event.preventDefault();
+        },
+        { once: true }
+      );
+      link.dispatchEvent(
+        new MouseEvent('click', { bubbles: true, cancelable: true })
+      );
+      return prevented;
+    };
+
+    expect(click('lab form')).toBe(true);
+    expect(click('GitHub form')).toBe(true);
+    expect(click('percent')).toBe(true);
+    // the headings of the link's own entry, not those of the entry above it
+    expect(scrolled).toEqual(Array.from(second.querySelectorAll('h2')));
+    // a fragment that names no heading opens nothing and scrolls nothing
+    expect(click('no heading')).toBe(true);
+    // a link to another address keeps its own action
+    expect(click('other address')).toBe(false);
+    expect(scrolled).toHaveLength(3);
+    delete (Element.prototype as any).scrollIntoView;
+    panel.dispose();
+  });
+
   it('draws each entry as a card: a header strip with its group, then the content', async () => {
     const { model } = modelAnswering(entries, []);
     await model.pull();

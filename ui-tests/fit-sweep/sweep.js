@@ -15,7 +15,7 @@
  */
 const fs = require('fs');
 const path = require('path');
-const { chromium } = require('playwright-core');
+const { chromium } = require('@playwright/test');
 
 const args = process.argv.slice(2);
 const option = (name, fallback) =>
@@ -185,11 +185,7 @@ const seeded = seed => {
 window.scroller = () => {
   const columns = document.querySelector('.jp-MotdPanel-columns');
   const entries = document.querySelector('.jp-MotdPanel-entries');
-  return getComputedStyle(entries).overflowY !== 'visible'
-    ? entries
-    : getComputedStyle(columns).display === 'contents'
-      ? tab
-      : columns;
+  return getComputedStyle(entries).overflowY !== 'visible' ? entries : columns;
 };
 window.contentHeight = async () => {
   await settle();

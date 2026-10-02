@@ -149,6 +149,14 @@ What the Message of the day tab renders and in which order
   - log: 2026-10-02T09:38:18Z @kj amended text "the Message of the day tab shows a note bubble icon before its label, a line icon in the tab's text colour" -> "LOW; the Message of the day tab shows an info icon before its label: a circle with an i, drawn as lines in the lab's brand colour (jp-icon-brand1), which is blue in the stock and Galaxa themes"
   - log: 2026-10-02T09:38:18Z @kj edited test "Jest: the panel's title icon is the note bubble LabIcon; Galata: the tab shows an svg before its label" -> "Jest: the panel's title icon is the info LabIcon with the jp-icon-brand1 stroke; Galata: the tab shows the svg before its label, stroke equal to --jp-brand-color1, fill none"
   - log: 2026-10-02T09:45:12Z @kj closed
+- [x] `ACC-VIEW-81` **Same-document link scrolls to its heading** - MEDIUM; in a markdown entry a click on a link to a heading of the same entry scrolls that heading into view and opens no window; the fragment is the lab's heading id (heading text, spaces as hyphens) or the GitHub form (lower case, punctuation removed); a fragment naming no heading does nothing
+  - evidence: 1.0.34: Galata 66/66 'scrolls to the heading a same-document link names and opens no window' - lab form, GitHub form, a heading with é and %, no new page, lab URL and page position unchanged; Jest 57/57 'scrolls to the heading of the same entry on a same-document link'
+  - mechanism: 2026-10-02T11:16:11Z @kj one click listener on the markdown body: a link whose href starts with # is stopped, and headingOf finds the heading inside that body by data-jupyter-id, exact first, then lower case without punctuation
+  - test: Galata: click both link forms in a long markdown entry - no new browser page, the heading at the top of the entries column; Jest: a click scrolls the heading of the same entry, not of another entry
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-02T11:08:33Z @kj added; reason: names both accepted fragment forms and the no-match case
+  - log: 2026-10-02T11:16:11Z @kj closed
+  - log: 2026-10-02T12:03:33Z @kj edited evidence "1.0.32: Galata 66/66 'scrolls to the heading a same-document link names and opens no window' - both fragment forms, no new page, lab URL and page position unchanged; Jest 57/57 'scrolls to the heading of the same entry on a same-document link'" -> "1.0.34: Galata 66/66 'scrolls to the heading a same-document link names and opens no window' - lab form, GitHub form, a heading with é and %, no new page, lab URL and page position unchanged; Jest 57/57 'scrolls to the heading of the same entry on a same-document link'"
 
 ## Open command `OPEN`
 

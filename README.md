@@ -35,7 +35,9 @@ has none.
   scrollbar beside the cards is kept while they do not scroll, so a card keeps its width
 - **One card per group** - markdown rendered by the lab's own markdown renderer, an HTML package
   shown in a sandboxed iframe at its hub address, sized to fit its page; the entry's `label` heads
-  the card, and an entry with no label has no header bar
+  the card, and an entry with no label has no header bar. In a markdown entry a link to a heading
+  of the same entry (`[text](#Getting-started)` or the GitHub form `#getting-started`) scrolls
+  to that heading
 - **Scripts in HTML pages** - the JavaScript of an HTML page runs in the tab, in a hub page and in
   the local page; `c.GalaxaHubMotd.html_allow_scripts = False` in the lab's Jupyter config stops
   it

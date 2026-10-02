@@ -4,6 +4,17 @@
 
 <!-- <END NEW CHANGELOG ENTRY> -->
 
+## [1.0.35] - 2026-10-02
+
+### Changed
+
+- A notification row no longer carries the `data-audience` attribute and the `jp-mod-all` or `jp-mod-direct` class, which no rule read
+- The frame fit sweep loads Chromium through `@playwright/test`, the dependency that `ui-tests/package.json` declares
+
+### Fixed
+
+- In a markdown entry a link to a heading of the same entry scrolls to that heading, written in the lab form (`#Getting-started`) or the GitHub form (`#getting-started`); it opened another browser window and scrolled nothing
+
 ## [1.0.31] - 2026-10-02
 
 ### Changed

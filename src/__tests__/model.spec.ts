@@ -202,14 +202,8 @@ describe('notificationView', () => {
 
   it('marks the audience', () => {
     const [newest, middle] = notificationView(rows, '7d', NOW);
-    expect([newest.audience, newest.audienceLabel]).toEqual([
-      'direct',
-      'Direct'
-    ]);
-    expect([middle.audience, middle.audienceLabel]).toEqual([
-      'all',
-      'All users'
-    ]);
+    expect(newest.audienceLabel).toBe('Direct');
+    expect(middle.audienceLabel).toBe('All users');
   });
 
   it.each([

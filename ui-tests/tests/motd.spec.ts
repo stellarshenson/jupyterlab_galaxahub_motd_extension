@@ -246,6 +246,70 @@ test.describe('tab content', () => {
     ).toHaveText(['one', 'two']);
   });
 
+  test('scrolls to the heading a same-document link names and opens no window', async ({
+    page
+  }) => {
+    const filler = Array.from({ length: 40 }, (_, i) => `Line ${i}`).join(
+      '\n\n'
+    );
+    const body = [
+      '# Welcome',
+      '[lab form](#Second-part), [GitHub form](#third-part-faq), [accent](#Résumé-100%), [no heading](#no-such-heading)',
+      filler,
+      '## Second part',
+      filler,
+      '## Third part: FAQ!',
+      filler,
+      '## Résumé 100%',
+      filler
+    ].join('\n\n');
+    // the entry above has a heading of the same name: the link stays inside its own entry
+    const above = { label: 'alpha', kind: 'markdown', body: '## Second part' };
+    hub.rich = {
+      status: 200,
+      body: { entries: [above, { ...MARKDOWN, body }] }
+    };
+    await page.setViewportSize({ width: 1440, height: 800 });
+    await page.goto();
+    await expectOpenAndCurrent(page);
+    let opened = 0;
+    page.context().on('page', () => opened++);
+    const url = page.url();
+    const scroller = page.locator('.jp-MotdPanel-entries');
+    const entry = page.locator('.jp-MotdPanel-section[data-label="analysts"]');
+    // how far the heading's top is below the top of the scrolling column
+    const below = async (heading: string) => {
+      const top = (await scroller.boundingBox())!.y;
+      const box = await entry.locator('h2', { hasText: heading }).boundingBox();
+      return box!.y - top;
+    };
+
+    await entry.getByRole('link', { name: 'lab form' }).click();
+    await expect.poll(() => below('Second part')).toBeLessThan(40);
+    expect(await below('Second part')).toBeGreaterThanOrEqual(0);
+
+    await entry.getByRole('link', { name: 'GitHub form' }).click();
+    await expect.poll(() => below('Third part')).toBeLessThan(40);
+    expect(await below('Third part')).toBeGreaterThanOrEqual(0);
+
+    // the renderer writes the letter é as escapes and leaves the % as it is
+    await entry.getByRole('link', { name: 'accent' }).click();
+    await expect.poll(() => below('Résumé 100%')).toBeLessThan(40);
+    expect(await below('Résumé 100%')).toBeGreaterThanOrEqual(0);
+
+    await entry.getByRole('link', { name: 'no heading' }).click();
+    await page.waitForTimeout(500);
+    expect(opened).toBe(0);
+    expect(page.url()).toBe(url);
+    // the lab page itself did not move
+    expect(
+      await page.evaluate(() => [
+        document.scrollingElement!.scrollTop,
+        document.getElementById('main')!.getBoundingClientRect().top
+      ])
+    ).toEqual([0, 0]);
+  });
+
   test('an entry with no label shows its card without the header strip', async ({
     page
   }) => {

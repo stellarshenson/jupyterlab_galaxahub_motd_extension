@@ -39,7 +39,6 @@ export interface INotificationView {
   message: string;
   ts: string;
   type: string;
-  audience: 'all' | 'direct';
   audienceLabel: string;
 }
 
@@ -176,7 +175,6 @@ export function notificationView(
         message: r.message,
         ts: r.ts,
         type: STYLED_TYPES.includes(r.type) ? r.type : 'default',
-        audience,
         audienceLabel: audience === 'direct' ? 'Direct' : 'All users'
       };
     });

@@ -250,6 +250,25 @@ What the open tab shows after a pull
   - root-cause: 2026-09-28T19:52:19Z @kj the frame sandbox has no allow-popups
   - log: 2026-09-28T19:52:19Z @kj added
   - log: 2026-09-28T20:04:02Z @kj closed
+- [x] `DEF-VIEW-30` **Same-document link opens another window** - MEDIUM; in a markdown entry a link to a heading of the same entry, [text](#heading), opens another browser window at the lab's address and scrolls nothing; fix: a click listener on the entry's body stops the link and scrolls the heading of that entry into view; src/panel.ts
+  - evidence: Galata 'scrolls to the heading a same-document link names and opens no window' failed on 1.0.31 (heading 1732 px below, second page opened), passes on 1.0.32; Galata 66/66, Jest 57/57, pytest 55/55
+  - root-cause: 2026-10-02T11:16:11Z @kj the lab's shared rendermime registry has no url resolver, so its renderer skips handleUrls, which installs the same-document click handler; hardenAnchorLinks then gives the link target=_blank; headings carry data-jupyter-id, not id
+  - related: ACC-VIEW-81
+  - repro: markdown entry with a heading and a link to it; click the link
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-02T11:08:21Z @kj added
+  - log: 2026-10-02T11:16:11Z @kj edited text "in a markdown entry a link to a heading of the same entry, [text](#heading), opens another browser window at the lab's address and scrolls nothing; cause under investigation" -> "MEDIUM; in a markdown entry a link to a heading of the same entry, [text](#heading), opens another browser window at the lab's address and scrolls nothing; fix: a click listener on the entry's body stops the link and scrolls the heading of that entry into view; src/panel.ts"
+  - log: 2026-10-02T11:16:11Z @kj closed
+  - log: 2026-10-02T11:58:05Z @kj regressed as DEF-VIEW-30-1
+- [x] `DEF-VIEW-30-1` **Link to a heading with % and a letter outside ASCII does not scroll** - MEDIUM; in a markdown entry the link [x](#Résumé-100%) to the heading 'Résumé 100%' scrolls nothing; fix: headingOf decodes each run of escapes by itself; src/panel.ts
+  - evidence: Galata 'scrolls to the heading a same-document link names and opens no window' with the accent link failed on 1.0.33 (heading 4760 px below), passes on 1.0.34; Galata 66/66, Jest 57/57, pytest 55/55
+  - related: ACC-VIEW-81
+  - test-tags: FUNCTIONAL
+  - repro: markdown entry with '## Résumé 100%' and the link [x](#Résumé-100%); click the link
+  - root-cause: 2026-10-02T12:03:33Z @kj headingOf decoded the whole fragment with one decodeURIComponent; the lab's parser writes é as escapes and leaves a bare % as it is, so the call threw on the % and the fragment stayed encoded
+  - log: 2026-10-02T11:58:05Z @kj regression of DEF-VIEW-30: review round 1 (wf_aee95217-36b): a lab-form link to a heading with a bare % and a letter outside ASCII, [x](#Résumé-100%), scrolls nothing
+  - log: 2026-10-02T12:03:33Z @kj edited title "Same-document link opens another window" -> "Link to a heading with % and a letter outside ASCII does not scroll"; text "in a markdown entry a link to a heading of the same entry, [text](#heading), opens another browser window at the lab's address and scrolls nothing; fix: a click listener on the entry's body stops the link and scrolls the heading of that entry into view; src/panel.ts" -> "MEDIUM; in a markdown entry the link [x](#Résumé-100%) to the heading 'Résumé 100%' scrolls nothing; fix: headingOf decodes each run of escapes by itself; src/panel.ts"; repro added "markdown entry with '## Résumé 100%' and the link [x](#Résumé-100%); click the link"; test-tags added "FUNCTIONAL"
+  - log: 2026-10-02T12:03:33Z @kj closed
 
 ## Test harness `TEST`
 

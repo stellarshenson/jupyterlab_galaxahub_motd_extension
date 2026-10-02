@@ -90,7 +90,10 @@ with one `entries` list.
   and `url`, so the `group` GalaxaHub also sends is not used
 - **Order** - the tab shows the entries in answer order, and GalaxaHub sorts them by group name
 - **Markdown entry** - `kind: markdown` carries `body`, which the lab's markdown renderer shows as
-  untrusted content, so it sanitises any HTML in it
+  untrusted content, so it sanitises any HTML in it. A link to a heading of the same entry
+  (`[text](#fragment)`) scrolls to that heading: the fragment is the heading's text with a hyphen
+  for each space (`#Getting-started`), or the GitHub form in lower case and without punctuation
+  (`#getting-started`)
 - **HTML entry** - `kind: html` carries `url`, a page that the browser loads in a frame, as
   [5. HTML pages](#5.-HTML-pages) states
 - **Dropped entries** - the extension drops an entry with another `kind`, or a missing `body` or

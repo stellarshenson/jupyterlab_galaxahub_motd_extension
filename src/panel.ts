@@ -89,6 +89,34 @@ function icon(paths: string[], className: string): SVGSVGElement {
 }
 
 /**
+ * The heading of a markdown entry that the link `href` (`#fragment`) names. The lab's renderer
+ * gives a heading its text with a hyphen for each space as its id; a link written the GitHub
+ * way names that id in lower case and without punctuation.
+ */
+function headingOf(body: HTMLElement, href: string): HTMLElement | undefined {
+  // the renderer writes a letter outside ASCII as escapes and leaves a % as it is, so each run
+  // of escapes is decoded by itself: the % of the heading 'Résumé 100%' starts no escape
+  const fragment = href.slice(1).replace(/(%[0-9a-f]{2})+/gi, run => {
+    try {
+      return decodeURIComponent(run);
+    } catch {
+      // a % and two hex digits of a heading that are no escape, as in '100%ab': read as written
+      return run;
+    }
+  });
+  const headings = Array.from(
+    body.querySelectorAll<HTMLElement>('h1, h2, h3, h4, h5, h6')
+  );
+  const id = (heading: HTMLElement) => heading.dataset.jupyterId ?? heading.id;
+  const github = (text: string) =>
+    text.toLowerCase().replace(/[^\p{L}\p{N}_-]/gu, '');
+  return (
+    headings.find(heading => id(heading) === fragment) ??
+    headings.find(heading => github(id(heading)) === fragment.toLowerCase())
+  );
+}
+
+/**
  * The Message of the day tab: the rich entries as cards in the left column, the Notifications
  * section in the right column. It draws whatever the model holds after each pull, and while it
  * is open it pulls again every `pollMinutes`.
@@ -289,6 +317,18 @@ export class MotdPanel extends Widget {
           trusted: false
         })
       );
+      // a link to a heading of this entry scrolls to that heading. The lab's renderer does this
+      // only with a url resolver, and the lab's registry has none: such a link has
+      // target=_blank and no handler, so a click opened the lab's address in another window
+      renderer.node.addEventListener('click', event => {
+        const href = (event.target as Element)
+          .closest('a')
+          ?.getAttribute('href');
+        if (href?.startsWith('#')) {
+          event.preventDefault();
+          headingOf(renderer.node, href)?.scrollIntoView();
+        }
+      });
       section.appendChild(renderer.node);
     } else {
       // allow-same-origin keeps the hub cookie on the page's own files; allow-popups opens a
@@ -347,7 +387,6 @@ export class MotdPanel extends Widget {
       const item = document.createElement('li');
       item.className = 'jp-MotdPanel-row';
       item.dataset.type = row.type;
-      item.dataset.audience = row.audience;
       const text = document.createElement('div');
       text.className = 'jp-MotdPanel-text';
       const message = document.createElement('div');
@@ -356,7 +395,7 @@ export class MotdPanel extends Widget {
       const meta = document.createElement('div');
       meta.className = 'jp-MotdPanel-meta';
       const audience = document.createElement('span');
-      audience.className = `jp-MotdPanel-audience jp-mod-${row.audience}`;
+      audience.className = 'jp-MotdPanel-audience';
       audience.textContent = row.audienceLabel;
       const time = document.createElement('time');
       time.className = 'jp-MotdPanel-time';
