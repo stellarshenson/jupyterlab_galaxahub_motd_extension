@@ -141,6 +141,64 @@ How the tab lays out its columns, cards and html page frames
   - root-cause: 2026-09-28T20:25:40Z @kj _focusColumn calls focus() on the entries column, and focus() scrolls the element into view
   - log: 2026-09-28T20:25:40Z @kj added
   - log: 2026-09-28T20:25:57Z @kj closed: fixed: _focusColumn calls focus({ preventScroll: true })
+- [x] `DEF-LAYOUT-27` **Frame grows without end for a page sized to the window height** - MAJOR; with html_allow_scripts on, a page whose script sets in-flow content to window.innerHeight on resize, with a margin or content beside it, makes the frame grow on every rendering frame: 1680 px after 1 s; found by review wf_9e60e791-887
+  - evidence: Galata 57/57 on 1.0.17: 'keeps the 480 px box for a page whose script sizes it to the window height' - frame 480, page scrolls 16 px inside; it failed on 1.0.16 at 1680 px; 'fits a page whose script adds lines of one height' passes on both
+  - related: ACC-LAYOUT-36 - the frame fit rule this breaks; ACC-SERVER-76 - the switch that lets the script run
+  - repro: Galata 'keeps the 480 px box for a page whose script sizes it to the window height' on 1.0.16: frame 1680, expected 480
+  - test-tags: FUNCTIONAL
+  - root-cause: 2026-10-02T03:15:52Z @kj each fit changes the frame's window height, the page's resize handler makes the page taller by the same amount, and fitFrame fits again; its test for a page that follows the frame runs inside one call and misses a handler that runs after it
+  - log: 2026-10-02T03:15:52Z @kj added
+  - log: 2026-10-02T03:22:13Z @kj closed
+  - log: 2026-10-02T03:45:22Z @kj regressed as DEF-LAYOUT-27-1
+- [-] `DEF-LAYOUT-27-1` **Frame grows without end for a page sized to the window height** - MAJOR; with html_allow_scripts on, a page whose script sets in-flow content to window.innerHeight on resize, with a margin or content beside it, makes the frame grow on every rendering frame: 1680 px after 1 s; found by review wf_9e60e791-887
+  - test-tags: MANUAL
+  - repro: html_allow_scripts on; page with the default body margin whose script sets an element's height to window.innerHeight on load and on resize; open the tab: the frame grows on every rendering frame, 1680 px after 1 s on 1.0.16
+  - log: 2026-10-02T03:45:22Z @kj regression of DEF-LAYOUT-27: reopened: the guard that closed it sent pages that grow by themselves to the 480 px box (review round 2, wf_344fa9db-650) and was removed; the growth is live again; the owner decides between a documented limit and a guard design
+  - log: 2026-10-02T04:04:37Z @kj edited repro added "html_allow_scripts on; page with the default body margin whose script sets an element's height to window.innerHeight on load and on resize; open the tab: the frame grows on every rendering frame, 1680 px after 1 s on 1.0.16"; test-tags added "MANUAL"
+  - log: 2026-10-02T04:53:53Z @kj rejected: rejected: Star Colonel's decision 2026-10-02 - a documented limit of an administrator's page; README 'Page height' states the cause and the way out: the page takes its height from its content
+- [x] `DEF-LAYOUT-28` **Fitted frame keeps a scrollbar with nothing to scroll** - MEDIUM; a fitted html page whose height follows its width (an image as wide as the page) keeps a 15 px vertical scrollbar in its frame after it grows; owner report with funcraft/w40k-mechanicum/out/15-sermon.html; not seen before because Playwright hides scrollbars in headless Chromium
+  - evidence: Galata 59/59 on 1.0.23 with visible scrollbars: 'leaves no scrollbar in the frame of a page that grows and whose height follows its width' passes, failed on 1.0.19 by 15 px; probe with 15-sermon.html: window and page 799 px, frame fitted, scripts on and off
+  - related: ACC-LAYOUT-36 - the frame fit rule
+  - repro: Galata with visible scrollbars, 'leaves no scrollbar in the frame of a page that grows and whose height follows its width' on 1.0.19: window 15 px wider than the page
+  - test-tags: FUNCTIONAL
+  - root-cause: 2026-10-02T03:52:49Z @kj the grown page overflows the fitted frame and gets a scrollbar, which makes it narrower and shorter; fitFrame fits to that height, and the browser keeps the scrollbar because without it the page is taller than the frame
+  - log: 2026-10-02T03:52:49Z @kj added
+  - log: 2026-10-02T04:04:29Z @kj closed
+  - log: 2026-10-02T04:53:53Z @kj regressed as DEF-LAYOUT-28-1
+- [x] `DEF-LAYOUT-28-1` **Fitted frame keeps a scrollbar with nothing to scroll** - MEDIUM; a fitted html page whose height follows its width (an image as wide as the page) keeps a 15 px vertical scrollbar in its frame after it grows; owner report with funcraft/w40k-mechanicum/out/15-sermon.html; not seen before because Playwright hides scrollbars in headless Chromium
+  - evidence: Galata 60/60 on 1.0.26: 'leaves no scrollbar in the frame after the tab becomes taller' passes, failed on 1.0.23 by 15 px; sweep with 15-sermon.html, 144 samples per scale (load, narrower, wider, taller; scripts on and off): 0 leftover scrollbars at scales 1, 1.1, 1.25, 1.5
+  - test-tags: FUNCTIONAL
+  - repro: Galata with visible scrollbars: a page whose height follows its width in a tab short enough that the entries column scrolls, then the window made taller: the frame keeps a 15 px scrollbar
+  - root-cause: 2026-10-02T04:53:53Z @kj the observer watched only the page root: when the entries column loses its scrollbar the frame gets 15 px wider, the page takes a scrollbar that absorbs them, the root's box does not change, and no fit runs
+  - log: 2026-10-02T04:53:53Z @kj regression of DEF-LAYOUT-28: reopened: review round 3 (wf_82dd865a-932) - the scrollbar returns when the tab becomes taller, 4 of 9 window size changes with 15-sermon.html
+  - log: 2026-10-02T04:54:00Z @kj edited repro added "Galata with visible scrollbars: a page whose height follows its width in a tab short enough that the entries column scrolls, then the window made taller: the frame keeps a 15 px scrollbar"; test-tags added "FUNCTIONAL"
+  - log: 2026-10-02T05:40:21Z @kj closed
+  - log: 2026-10-02T08:06:45Z @kj regressed as DEF-LAYOUT-28-2
+- [x] `DEF-LAYOUT-28-2` **Fitted frame keeps a scrollbar with nothing to scroll** - MEDIUM; a fitted html page whose height follows its width (an image as wide as the page) keeps a 15 px vertical scrollbar in its frame after it grows; owner report with funcraft/w40k-mechanicum/out/15-sermon.html; not seen before because Playwright hides scrollbars in headless Chromium
+  - test-tags: FUNCTIONAL
+  - repro: node ui-tests/fit-sweep/sweep.js --only 'height follows width': the tab height sweeps fail on the 1.0.26 fit and stylesheet
+  - evidence: 1.0.28: fit sweep 0 failed of 12309 samples at each of scales 1, 1.1, 1.25, 1.5 (1.0.26: 1416 to 2416 failed); Galata 65/65, with the tab height changed in 2 px steps in the two-column and the stacked tab
+  - root-cause: 2026-10-02T08:06:50Z @kj the frame's width depended on the scrollbar of the element that scrolls the card; a page whose height follows its width is taller without that scrollbar and shorter with it, so near the height where scrolling starts no state is at rest
+  - log: 2026-10-02T08:06:45Z @kj regression of DEF-LAYOUT-28-1: review round 4 (wf_8514c144-fda): the scrollbar returns when the tab height changes in 2 px steps, 83 of 261 heights at scale 1 with a 2/1 page; in a stacked tab 99 of 281
+  - log: 2026-10-02T08:32:42Z @kj closed
+  - log: 2026-10-02T08:33:16Z @kj edited repro added "node ui-tests/fit-sweep/sweep.js --only 'height follows width': the tab height sweeps fail on the 1.0.26 fit and stylesheet"; test-tags added "FUNCTIONAL"
+- [x] `DEF-LAYOUT-29` **Frame fit fails at a fractional device scale** - MEDIUM; at browser zoom 110 % or display scaling 125 % or 150 % a fitted page keeps a scrollbar with nothing to scroll, or stays in the 480 px box; with 15-sermon.html 12, 18 and 31 of 78 tab widths on 1.0.23; present on 1.0.15; found by review round 3
+  - evidence: 1.0.26: describe 'html page frame' 13/13 at MOTD_DEVICE_SCALE 1.1, 1.25 and 1.5; on 1.0.23 4 of 13 failed at 1.25; sweep with 15-sermon.html: 0 of 144 samples with a leftover scrollbar or an unfitted frame at each of the four scales
+  - related: ACC-LAYOUT-78 - the criterion; ACC-LAYOUT-36 and DEF-LAYOUT-28 - the frame fit
+  - repro: Chromium with --force-device-scale-factor=1.25, viewport null, window 1800x1125: Galata 'fits a page whose script adds lines of one height' ends 360 px above the page height
+  - test-tags: FUNCTIONAL
+  - root-cause: 2026-10-02T04:54:00Z @kj fitToPage compares root.offsetHeight with view.clientHeight, two whole numbers rounded from sizes that differ by less than one device pixel; the loop alternates and gives up
+  - log: 2026-10-02T04:54:00Z @kj added
+  - log: 2026-10-02T05:40:21Z @kj closed
+  - log: 2026-10-02T08:06:46Z @kj regressed as DEF-LAYOUT-29-1
+- [x] `DEF-LAYOUT-29-1` **Frame fit fails at a fractional device scale** - MEDIUM; at browser zoom 110 % or display scaling 125 % or 150 % a fitted page keeps a scrollbar with nothing to scroll, or stays in the 480 px box; with 15-sermon.html 12, 18 and 31 of 78 tab widths on 1.0.23; present on 1.0.15; found by review round 3
+  - test-tags: FUNCTIONAL
+  - repro: node ui-tests/fit-sweep/sweep.js --scale 1.25 --only 'margin on the html element': fails on the 1.0.26 fit
+  - evidence: 1.0.28: fit sweep 0 failed of 12309 samples at each of scales 1, 1.1, 1.25, 1.5, with the margin, wide and fractional height page classes (1.0.26: 1762 failed at 1.1, 2416 at 1.25); Galata html page frame 16/16 at 1.1, 1.25, 1.5
+  - root-cause: 2026-10-02T08:06:52Z @kj the fit trusted whole-px readings: scrollHeight, clientHeight and innerHeight leave out a fraction of a px, the browser shows a scrollbar for that fraction, and a horizontal scrollbar's whole-px height differs by 1 between two reads, so the equality checks failed
+  - log: 2026-10-02T08:06:46Z @kj regression of DEF-LAYOUT-29: review round 4 (wf_8514c144-fda): at scale 1.1 a 55 px page keeps a scrollbar; at 1.25 a page with a margin on the html element keeps the 480 px box or a scrollbar, 8 of 55 widths; a page wider than its frame keeps the box at 1.1 and 1.25
+  - log: 2026-10-02T08:32:42Z @kj closed
+  - log: 2026-10-02T08:33:18Z @kj edited repro added "node ui-tests/fit-sweep/sweep.js --scale 1.25 --only 'margin on the html element': fails on the 1.0.26 fit"; test-tags added "FUNCTIONAL"
 
 ## Agent CLI `CLI`
 

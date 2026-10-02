@@ -50,6 +50,27 @@ will be opened in your browser at the end of the tests execution; see
 [Playwright documentation](https://playwright.dev/docs/test-reporters#html-reporter)
 for configuring that behavior.
 
+4. Run the frame tests as on a scaled display, where sizes are not whole numbers of px
+   (display scaling 125 % is `1.25`); run them at `1.1`, `1.25` and `1.5`:
+
+```sh
+cd ./ui-tests
+MOTD_DEVICE_SCALE=1.25 jlpm playwright test -g "html page frame"
+```
+
+5. Run the acceptance sweep of the frame fit after any change to `src/fit.ts` or the layout
+   rules in `style/base.css`. It needs no lab: it loads the compiled `lib/fit.js` and the
+   stylesheet into a copy of the tab's elements, and changes the tab's size and the page in
+   about 12,000 samples per device scale (14 page classes in the two-column,
+   no-Notifications and stacked layouts). The sweep holds its own copy of the frame observer
+   of `src/panel.ts`, so a change to that observer is copied into `fit-sweep/sweep.js` by
+   hand. Run it at `1`, `1.1`, `1.25` and `1.5`; it exits with 1 when a sample fails:
+
+```sh
+cd ./ui-tests
+node fit-sweep/sweep.js --scale 1.25
+```
+
 ## Update the tests snapshots
 
 > All commands are assumed to be executed from the root directory

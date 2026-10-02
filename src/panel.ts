@@ -4,9 +4,13 @@ import { IRenderMime, IRenderMimeRegistry } from '@jupyterlab/rendermime';
 
 import { TranslationBundle, nullTranslator } from '@jupyterlab/translation';
 
+import { LabIcon } from '@jupyterlab/ui-components';
+
 import { Message } from '@lumino/messaging';
 
 import { Widget } from '@lumino/widgets';
+
+import { fitFrame } from './fit';
 
 import {
   DEFAULT_SETTINGS,
@@ -17,6 +21,18 @@ import {
 } from './model';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
+
+/**
+ * The tab's icon, a note bubble drawn as lines. The lab's jp-icon3 class gives the stroke the
+ * tab's text colour in every theme.
+ */
+export const motdIcon = new LabIcon({
+  name: 'jupyterlab_galaxahub_motd_extension:tab',
+  svgstr:
+    '<svg xmlns="http://www.w3.org/2000/svg" width="16" viewBox="0 0 24 24" fill="none">' +
+    '<g class="jp-icon3" stroke="#616161" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M4 5h16v11H10l-5 4v-4H4V5z"/><path d="M8 9h8M8 12.5h5"/></g></svg>'
+});
 
 const CIRCLE = 'M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0';
 
@@ -72,53 +88,6 @@ function icon(paths: string[], className: string): SVGSVGElement {
 }
 
 /**
- * Fit an html entry frame to its page: the page root's height plus any content past the root,
- * plus the frame's borders and any horizontal scrollbar; the viewport height is read from the
- * page's scrolling element, which is the root in standards mode and the body in quirks mode. A
- * hidden frame keeps its height. A page that cannot be measured keeps the stylesheet's 480 px
- * box and scrolls inside it: a root as tall as the frame's viewport
- * (html, body { height: 100% }), a root that follows the frame's height (vh units), content past
- * the root that follows the frame's height (positioned against the viewport's bottom) or nothing
- * in flow (only absolute or fixed content).
- */
-function fitFrame(frame: HTMLIFrameElement): void {
-  const page = frame.contentDocument;
-  if (!page?.body || !frame.offsetHeight) {
-    return;
-  }
-  const root = page.documentElement;
-  const view = page.scrollingElement ?? root;
-  // a new height can move a scrollbar in the tab or the frame and wrap the page again, so it is
-  // set until the root is as tall as the viewport, three times at most; a root already as tall
-  // is fitted or sized to the frame, and a frame that ends fitted reports no further change
-  for (let i = 0; i < 3 && root.offsetHeight !== view.clientHeight; i++) {
-    frame.style.height = `${root.offsetHeight + frame.offsetHeight - view.clientHeight}px`;
-  }
-  // content past the root (a margin on the html element, content positioned or pulled below
-  // the body) still scrolls once the root fits; it is added, twice at most, because the page
-  // loses its own scrollbar and can wrap wider; only a frame this call or an earlier one fitted
-  // gets it, so a root as tall as the 480 px box is left as it is
-  const past =
-    frame.style.height && root.offsetHeight === view.clientHeight
-      ? view.scrollHeight - view.clientHeight
-      : 0;
-  for (
-    let j = 0;
-    j < 2 && past && root.offsetHeight + past !== view.clientHeight;
-    j++
-  ) {
-    frame.style.height = `${root.offsetHeight + past + frame.offsetHeight - view.clientHeight}px`;
-  }
-  if (
-    root.offsetHeight + past !== view.clientHeight ||
-    view.scrollHeight > view.clientHeight ||
-    !page.body.offsetHeight
-  ) {
-    frame.style.height = '';
-  }
-}
-
-/**
  * The Message of the day tab: the rich entries as cards in the left column, the Notifications
  * section in the right column. It draws whatever the model holds after each pull, and while it
  * is open it pulls again every `pollMinutes`.
@@ -137,6 +106,7 @@ export class MotdPanel extends Widget {
     this._trans = trans;
     this.id = 'galaxahub-motd';
     this.title.label = trans.__('Message of the day');
+    this.title.icon = motdIcon;
     this.title.closable = true;
     this.addClass('jp-MotdPanel');
     // the shell's current widget follows focus, so the panel must be able to take it
@@ -148,8 +118,27 @@ export class MotdPanel extends Widget {
     // 0 keeps both in the Tab order
     this._entries.tabIndex = 0;
     this._notifications.tabIndex = 0;
-    this.node.append(this._entries, this._notifications);
+    // the element that scrolls a stacked tab: the stylesheet cannot give the tab itself a rule
+    // by the tab's width
+    const columns = document.createElement('div');
+    columns.className = 'jp-MotdPanel-columns';
+    columns.append(this._entries, this._notifications);
+    this.node.appendChild(columns);
     model.changed.connect(() => void this.render(), this);
+  }
+
+  /**
+   * Whether the scripts of an html page run, c.GalaxaHubMotd.html_allow_scripts; read when the
+   * cards are drawn.
+   */
+  htmlAllowScripts = false;
+
+  /**
+   * Whether the tab has its Notifications column, which it has while the lab config names a
+   * notifications URL; without the column the cards take the full width.
+   */
+  set notifications(shown: boolean) {
+    this.toggleClass('jp-mod-noNotifications', !shown);
   }
 
   /**
@@ -191,10 +180,11 @@ export class MotdPanel extends Widget {
       this._renderers = renderers;
       // the old frames leave with their cards; each new frame joins the observer on load
       this._frameObserver.disconnect();
-      // a tab activated before its first cards were drawn gave the focus to Notifications
+      // a tab activated before its first cards were drawn gave the focus to Notifications, or
+      // to the tab itself in a lab with no Notifications column
       const refocus =
         !this._entries.childElementCount &&
-        document.activeElement === this._notifications;
+        document.activeElement === this._besideEntries;
       // an empty entries column is hidden and the Notifications column takes the full width
       this._entries.replaceChildren(cards);
       this._drawnRows = rows;
@@ -231,6 +221,16 @@ export class MotdPanel extends Widget {
   }
 
   /**
+   * What takes the focus while the entries column is empty: the Notifications column, or the
+   * tab itself in a lab with no Notifications column.
+   */
+  private get _besideEntries(): HTMLElement {
+    return this.hasClass('jp-mod-noNotifications')
+      ? this.node
+      : this._notifications;
+  }
+
+  /**
    * Focus the column the page keys should scroll: the entries, or Notifications when there are
    * none, since an empty entries column is hidden and cannot take the focus. A stacked tab keeps
    * its scroll position.
@@ -238,7 +238,7 @@ export class MotdPanel extends Widget {
   private _focusColumn(): void {
     (this._entries.childElementCount
       ? this._entries
-      : this._notifications
+      : this._besideEntries
     ).focus({ preventScroll: true });
   }
 
@@ -290,25 +290,31 @@ export class MotdPanel extends Widget {
       );
       section.appendChild(renderer.node);
     } else {
-      // the hub serves a package with script-src 'none' and frame-ancestors 'self';
-      // allow-same-origin keeps the hub cookie on its own files, and no allow-scripts;
-      // allow-popups opens a target=_blank link in a browser tab outside the sandbox
+      // allow-same-origin keeps the hub cookie on the page's own files; allow-popups opens a
+      // target=_blank link in a browser tab outside the sandbox; allow-scripts, with
+      // htmlAllowScripts on, runs the page's scripts, which on the lab's origin have the access
+      // of the lab page itself
       const frame = document.createElement('iframe');
       frame.className = 'jp-MotdPanel-frame';
+      const sandbox =
+        'allow-same-origin allow-popups allow-popups-to-escape-sandbox';
       frame.setAttribute(
         'sandbox',
-        'allow-same-origin allow-popups allow-popups-to-escape-sandbox'
+        this.htmlAllowScripts ? `${sandbox} allow-scripts` : sandbox
       );
       // with no label the page's url tells the frames apart for a screen reader
       frame.title = `Message of the day - ${entry.label || entry.url}`;
       frame.src = entry.url;
-      // the observer reports the page root on load and on every size change after it, so the
-      // frame follows a page that changes its height, a tab width change and a tab shown after
-      // a hidden load; a page on another origin cannot be read and keeps the 480 px box
+      // the observer reports the page root and the frame on load and on every size change
+      // after it, so the frame follows a page that changes its height, a tab width change and a
+      // tab shown after a hidden load. The frame is observed too, because a page's scrollbar
+      // can take up a change of the frame's width and leave the root's size as it was; a page
+      // on another origin cannot be read and keeps the 480 px box
       frame.addEventListener('load', () => {
         const root = frame.contentDocument?.documentElement;
         if (root) {
           this._frameObserver.observe(root);
+          this._frameObserver.observe(frame);
         }
       });
       section.appendChild(frame);
@@ -365,7 +371,8 @@ export class MotdPanel extends Widget {
       }
       meta.append(audience, time);
       text.append(message, meta);
-      // the icon's colour is the type's lab variable, set in the stylesheet by data-type
+      // the icon's colour and the card's tint are the type's lab variable, set in the
+      // stylesheet by data-type
       item.appendChild(icon(TYPE_ICONS[row.type], 'jp-MotdPanel-icon'));
       // the icon is hidden from screen readers, so the type is also written out
       if (TYPE_LABELS[row.type]) {
@@ -394,7 +401,7 @@ export class MotdPanel extends Widget {
   private _notifications = document.createElement('aside');
   private _renderers: IRenderMime.IRenderer[] = [];
   private _drawnRows: RichEntry[] | null = null;
-  // one observer for the page roots of every html entry frame
+  // one observer for every html entry frame and its page root
   private _frameObserver = new ResizeObserver(() =>
     this._entries
       .querySelectorAll<HTMLIFrameElement>('.jp-MotdPanel-frame')

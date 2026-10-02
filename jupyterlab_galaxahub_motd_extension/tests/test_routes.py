@@ -193,9 +193,9 @@ async def test_cli_asks_the_running_lab(jp_fetch, jp_serverapp, jp_http_port, jp
 def test_settings_are_empty_by_default():
     motd = GalaxaHubMotd()
     assert (motd.motd_api_url, motd.notifications_api_url, motd.fallback_html) == ("", "", "")
-    assert (motd.label, motd.open_on_start) == ("Message of the day", True)
+    assert (motd.label, motd.open_on_start, motd.html_allow_scripts) == ("Message of the day", True, True)
     assert set(GalaxaHubMotd.class_trait_names(config=True)) == {
-        "motd_api_url", "notifications_api_url", "fallback_html", "label", "open_on_start"}
+        "motd_api_url", "notifications_api_url", "fallback_html", "label", "open_on_start", "html_allow_scripts"}
 
 
 async def test_no_other_route(jp_fetch, hub):
@@ -421,9 +421,10 @@ async def test_builtin_page_without_a_local_page(jp_fetch, jp_base_url, hub):
     page = response.body.decode()
     assert f"jupyterlab_galaxahub_motd_extension {__version__}" in page and "{{version}}" not in page
     for words in ("c.GalaxaHubMotd.motd_api_url", "c.GalaxaHubMotd.fallback_html", "c.GalaxaHubMotd.open_on_start",
-                  "notificationWindow", "/rich", "/terminal", "JUPYTERHUB_API_TOKEN"):
+                  "c.GalaxaHubMotd.html_allow_scripts", "notificationWindow", "/rich", "/terminal",
+                  "JUPYTERHUB_API_TOKEN"):
         assert words in page, words
-    # no script and no file from elsewhere: the frame sandbox blocks scripts, and the page stands alone
+    # no script and no file from elsewhere: the page reads the same with html_allow_scripts off, and stands alone
     assert "<script" not in page and 'src="http' not in page and "<link" not in page
 
 
@@ -444,6 +445,28 @@ async def test_open_on_start_in_the_page_config(jp_serverapp):
 async def test_open_on_start_off_in_the_page_config(jp_serverapp, motd_extra):
     # ACC-SERVER-71
     assert jp_serverapp.web_app.settings["page_config_data"]["galaxahubMotdOpenOnStart"] is False
+
+
+async def test_html_allow_scripts_in_the_page_config(jp_serverapp):
+    # ACC-SERVER-76
+    assert jp_serverapp.web_app.settings["page_config_data"]["galaxahubMotdHtmlAllowScripts"] is True
+
+
+@pytest.mark.parametrize("motd_extra", [{"html_allow_scripts": False}])
+async def test_html_allow_scripts_off_in_the_page_config(jp_serverapp, motd_extra):
+    # ACC-SERVER-76
+    assert jp_serverapp.web_app.settings["page_config_data"]["galaxahubMotdHtmlAllowScripts"] is False
+
+
+async def test_notifications_in_the_page_config(jp_serverapp):
+    # ACC-LAYOUT-77: this lab names a notifications URL
+    assert jp_serverapp.web_app.settings["page_config_data"]["galaxahubMotdNotifications"] is True
+
+
+@pytest.mark.parametrize("left_out", [("notifications_api_url",)])
+async def test_no_notifications_url_in_the_page_config(jp_serverapp, left_out):
+    # ACC-LAYOUT-77
+    assert jp_serverapp.web_app.settings["page_config_data"]["galaxahubMotdNotifications"] is False
 
 
 async def test_server_start_in_the_page_config(jp_serverapp):

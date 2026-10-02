@@ -18,7 +18,8 @@ has none.
 ## Features
 
 - **Welcome tab on start** - opens the Message of the day tab and makes it current when the hub
-  carries at least one welcome entry for the user; notifications alone never open it
+  carries at least one welcome entry for the user; notifications alone never open it. The tab
+  carries a note bubble icon before its label
 - **Once per server start** - the tab opens by itself on the first load of the lab after each lab
   server start; a later load, a browser refresh included, opens no tab, and the palette command
   opens it at any time
@@ -29,13 +30,18 @@ has none.
 - **Silent without a page** - with `fallback_html` naming a file that does not exist, those cases
   open nothing and log one console line
 - **Two columns** - the entry cards on the left in 3/4 of the width, the Notifications column in
-  the other 1/4; a tab narrower than 800 px stacks them
+  the other 1/4; a tab narrower than 800 px stacks them. A lab whose config names no notifications
+  URL has no Notifications column, and its cards take the full width of the tab. The room of the
+  scrollbar beside the cards is kept while they do not scroll, so a card keeps its width
 - **One card per group** - markdown rendered by the lab's own markdown renderer, an HTML package
   shown in a sandboxed iframe at its hub address, sized to fit its page; the entry's `label` heads
   the card, and an entry with no label has no header bar
+- **Scripts in HTML pages** - the JavaScript of an HTML page runs in the tab, in a hub page and in
+  the local page; `c.GalaxaHubMotd.html_allow_scripts = False` in the lab's Jupyter config stops
+  it
 - **Notifications catch-up** - the broadcasts of the last 24 hours, 3 days or 7 days (a setting)
-  sent to all users and those naming the user, newest first, each marked by an icon in its
-  type's colour, with the relative time and an all or direct marker
+  sent to all users and those naming the user, newest first, each a card tinted in its type's
+  colour, with the type's icon, the relative time and an all or direct marker
 - **Palette command** - `Message of the day: Open` pulls again and reopens the one tab; the tab
   closes, and the command opens nothing, only when `fallback_html` names a file that does not exist
 - **Token stays on the server** - a server extension calls the hub with the lab's API token and
@@ -67,16 +73,18 @@ pip install jupyterlab_galaxahub_motd_extension
 ## Server configuration
 
 The lab's Jupyter config names the two hub URLs the extension reads, and optionally a local page,
-the tab label and whether the tab opens on lab start. The two URLs are empty by default, and while
-either one is empty the extension asks no hub and shows only the local or built-in page.
+the tab label, whether the tab opens on lab start and whether the scripts of an HTML page run. The
+two URLs are empty by default, and while either one is empty the extension asks no hub and shows
+only the local or built-in page.
 
 | Setting                                 | Value                                                                                                                                                     |
 | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `c.GalaxaHubMotd.motd_api_url`          | base URL of the motd API; the extension reads `<url>/rich` and `<url>/terminal`                                                                           |
-| `c.GalaxaHubMotd.notifications_api_url` | URL that answers the broadcasts sent to the user                                                                                                          |
+| `c.GalaxaHubMotd.notifications_api_url` | URL that answers the broadcasts sent to the user; while it is empty the tab has no Notifications column, and its cards take the full width                |
 | `c.GalaxaHubMotd.fallback_html`         | absolute path of a local HTML page, shown when the hub gives no welcome entry; the files in its folder are served too; empty (default): the built-in page |
 | `c.GalaxaHubMotd.label`                 | label of the tab and of the local page's card; default `Message of the day`                                                                               |
 | `c.GalaxaHubMotd.open_on_start`         | `True` (default): the tab opens on the first load after each lab server start; `False`: no load opens the tab, whatever each user's `openOnStart`         |
+| `c.GalaxaHubMotd.html_allow_scripts`    | `True` (default): the JavaScript of an HTML page runs, in a hub page and in the local page; `False`: no script in a page runs                             |
 
 - **Files** - `jupyter_server_config.py` or `jupyter_lab_config.py` (or their `.json` form) in a
   Jupyter config directory; `jupyter --paths` lists the directories
@@ -85,8 +93,20 @@ either one is empty the extension asks no hub and shows only the local or built-
   file on the lab's command line applies to it too
 - **Token** - the extension sends the lab's `JUPYTERHUB_API_TOKEN` to both URLs, so both must
   belong to the hub that spawned the lab
-- **Local page** - shown in the same sandboxed frame as a hub HTML page, so its scripts do not
-  run; a path that names no file shows no page, and the server log names it
+- **Local page** - shown in the same sandboxed frame as a hub HTML page; a path that names no
+  file shows no page, and the server log names it
+- **Scripts** - `html_allow_scripts` is a lab config setting only, with no entry in the lab's
+  Settings Editor. A page on the lab's origin is read with the user's login, so its script has the
+  access of the lab page itself: it can call the lab server as the user. Keep the setting on only
+  where an administrator alone can write the pages. The frame's sandbox still blocks form
+  submission, `alert`, `confirm` and `prompt`, downloads and navigation of the lab page, without
+  a visible message
+- **Page height** - the tab sets the frame's height to the page's height, so a page whose script
+  sets its height from the window height (`window.innerHeight` in a resize handler) makes its
+  card grow for as long as the tab is visible; such a page must take its height from its content
+- **Hub header** - a hub can forbid script in its pages with its own `Content-Security-Policy`
+  header (`script-src 'none'`); the browser then runs no script in them, whatever this setting
+  says
 
 For a GalaxaHub lab, where `JUPYTERHUB_API_URL` is the hub API of the lab:
 
@@ -100,6 +120,7 @@ if hub:
 c.GalaxaHubMotd.fallback_html = "/opt/motd/index.html"  # optional; empty shows the built-in page
 c.GalaxaHubMotd.label = "Message of the day"            # optional
 c.GalaxaHubMotd.open_on_start = True                    # optional; once per lab server start
+c.GalaxaHubMotd.html_allow_scripts = True               # optional; False runs no script in a page
 ```
 
 ## Server routes
@@ -129,6 +150,93 @@ from the lab's environment.
   `notifications_api_url` as the running server holds them; the CLI reads it
 - **Hub side** - [docs/design-api.md](docs/design-api.md) states what a hub must answer on the
   three routes, for a developer who writes the hub side without GalaxaHub
+
+## Motd schema
+
+A hub gives the motd through three GET routes at the two URLs of
+[Server configuration](#server-configuration). The extension sends
+`Authorization: token <JUPYTERHUB_API_TOKEN>`, and the hub answers with the data of the user who
+owns that token. A hub that answers as this section states works with the extension;
+[docs/design-api.md](docs/design-api.md) holds the full contract.
+
+| Route                     | Answer                                | Read by  |
+| ------------------------- | ------------------------------------- | -------- |
+| `<motd_api_url>/rich`     | JSON, the user's welcome entries      | tab, CLI |
+| `<notifications_api_url>` | JSON, the broadcasts sent to the user | tab, CLI |
+| `<motd_api_url>/terminal` | plain text, the user's terminal text  | CLI only |
+
+### Welcome entries
+
+```json
+{
+  "entries": [
+    {
+      "label": "Interns",
+      "kind": "markdown",
+      "body": "# Welcome\n\nRead the handbook first."
+    },
+    {
+      "label": "Research",
+      "kind": "html",
+      "url": "/hub/api/extensions/motd/rich/<package-id>/index.html"
+    }
+  ]
+}
+```
+
+| Field   | Type                     | Required              | Meaning                                                                                          |
+| ------- | ------------------------ | --------------------- | ------------------------------------------------------------------------------------------------ |
+| `label` | string                   | no                    | heading of the entry's card; missing or blank: the card has no header bar                        |
+| `kind`  | `"markdown"` or `"html"` | yes                   | how the entry is shown; an entry of another kind is dropped                                      |
+| `body`  | string                   | with `kind: markdown` | markdown text, shown by the lab's markdown renderer, which removes scripts and unsafe HTML       |
+| `url`   | string                   | with `kind: html`     | address of an HTML page, shown in a frame; a path from the host root is read on the lab's origin |
+
+- **Order** - the tab shows one card per entry, in answer order
+- **No entry** - `{"entries": []}` means the user has no welcome entry, and the tab shows the local
+  or built-in page
+- **HTML page** - the page must allow the lab to frame it (`frame-ancestors 'self'` when hub and
+  lab share one origin); its scripts run as `c.GalaxaHubMotd.html_allow_scripts` and the hub's
+  own `Content-Security-Policy` allow
+
+### Broadcasts
+
+```json
+{
+  "notifications": [
+    {
+      "ts": "2026-09-29T08:00:00+00:00",
+      "message": "Maintenance tonight at 22:00",
+      "type": "warning",
+      "audience": "all"
+    }
+  ]
+}
+```
+
+| Field      | Type   | Required | Meaning                                                                                              |
+| ---------- | ------ | -------- | ---------------------------------------------------------------------------------------------------- |
+| `message`  | string | yes      | the text of the broadcast; a row without it is dropped                                               |
+| `ts`       | string | yes      | ISO 8601 time the broadcast was sent; a row whose time cannot be read is not listed                  |
+| `type`     | string | no       | `info`, `success`, `warning`, `error` or `in-progress`; any other value is shown as the default type |
+| `audience` | string | no       | `direct` for a broadcast that named the user; any other value is shown as All users                  |
+
+### Terminal text
+
+`GET <motd_api_url>/terminal` answers `text/plain; charset=utf-8`, which the CLI prints as
+received, and `204` when the user has no terminal text.
+
+### Status codes
+
+| Hub status                                | What the extension does                                                                                                                                |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 200                                       | uses the body as the current rows                                                                                                                      |
+| 304                                       | keeps the rows it holds                                                                                                                                |
+| 404                                       | treats the hub as having no motd                                                                                                                       |
+| no connection, timeout, empty URL setting | same as 404                                                                                                                                            |
+| any other status, including 403 and 500   | broadcasts: marks the pull as failed and keeps the rows it holds; welcome entries: shows the local or built-in page, as for every answer with no entry |
+
+The hub sends `Cache-Control: no-cache` on every answer, a 204 included, because a browser caches
+a 204 by default.
 
 ## Command line
 

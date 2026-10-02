@@ -84,11 +84,13 @@ if hub:
     c.GalaxaHubMotd.notifications_api_url = f"{hub}/user-notifications"
 c.GalaxaHubMotd.fallback_html = "/opt/motd/index.html"  # when the hub gives no entry
 c.GalaxaHubMotd.label = "Message of the day"            # the tab label
-c.GalaxaHubMotd.open_on_start = True                    # once per lab server start</pre>
+c.GalaxaHubMotd.open_on_start = True                    # once per lab server start
+c.GalaxaHubMotd.html_allow_scripts = True               # False runs no script in a page</pre>
     <p>
       With either URL empty the extension asks no hub. The files beside
-      <code>fallback_html</code> are served with it, so its images load; the
-      page runs no script.
+      <code>fallback_html</code> are served with it, so its images load. The
+      scripts of the local page run while <code>html_allow_scripts</code> is
+      on; a hub page's also need the hub to allow script.
     </p>
 
     <h2>Lab settings</h2>

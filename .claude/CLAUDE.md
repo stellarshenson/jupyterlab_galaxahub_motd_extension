@@ -47,8 +47,9 @@ beyond the pulled answers and the settings.
   unreachable hub and an empty URL setting all answer `204` - the one documented "no motd here"
   answer. The CLI asks the running lab server's `settings` route for the same settings
 - **Frontend** (TypeScript) - `src/request.ts` the feed call, `src/model.ts` the pulled answers
-  and the pure answer-to-view mapping, `src/panel.ts` the tab, `src/index.ts` the plugin, the
-  `Message of the day: Open` command and the settings (`schema/plugin.json`)
+  and the pure answer-to-view mapping, `src/panel.ts` the tab, `src/fit.ts` the fit of an html
+  entry frame to its page, `src/index.ts` the plugin, the `Message of the day: Open` command and
+  the settings (`schema/plugin.json`)
 - **Live broadcasts** keep arriving through `jupyterlab_notifications_extension`; this extension
   never ingests. With `reopenOnBroadcast` on, a lab notification the hub feed records as a broadcast
   reopens the tab
@@ -75,10 +76,14 @@ project-local `.nodeenv/` toolchain the Makefile pins.
 file over the local one as soon as a newer version is found. Check at the start of any build work.
 Local version at project creation: 1.43, identical to canonical.
 
-**The Galata suite has no Makefile target**, so it is the one lifecycle step outside the Makefile:
+**The Galata suite has no Makefile target**, so it is a lifecycle step outside the Makefile:
 `jlpm install` and `jlpm playwright install chromium` in `ui-tests/`, then
 `JUPYTER_TEST_PORT=<free port> jlpm playwright test`. Port 8888 belongs to this workstation's own
 lab. Redirect output to a file instead of `| tee`, which reports tee's exit status.
+
+**The acceptance sweep of the frame fit has no Makefile target either**:
+`node fit-sweep/sweep.js --scale <1|1.1|1.25|1.5>` in `ui-tests/`, after any change to `src/fit.ts`
+or the layout rules in `style/base.css` (`ui-tests/README.md`, step 5).
 
 ## Git Rules (Project-Specific)
 

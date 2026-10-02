@@ -171,13 +171,21 @@ This section states what the hub serves for an `html` welcome entry. The browser
   `frame-ancestors 'self'` allows it when hub and lab share one origin, as in the default
   JupyterHub proxy layout
 - **Blocked frame** - `X-Frame-Options: DENY` or `frame-ancestors 'none'` leaves the frame empty
-- **Sandbox** - the frame has `allow-same-origin allow-popups allow-popups-to-escape-sandbox` and
-  no `allow-scripts`, so no script in the page runs
-- **Scripts on GalaxaHub** - GalaxaHub also sends `script-src 'none'` with every page
+- **Sandbox** - the frame has `allow-same-origin allow-popups allow-popups-to-escape-sandbox`, and
+  `allow-scripts` while `c.GalaxaHubMotd.html_allow_scripts` is on, which is the default
+- **Scripts** - with the setting on, a script in the page runs; on the lab's origin it has the
+  access of the lab page itself, so the hub must let only an administrator write a page. With the
+  setting off, no script in the page runs
+- **Hub header** - the hub decides too: a page sent with `script-src 'none'` in its
+  `Content-Security-Policy` runs no script, whatever the setting says, and a page sent with
+  `script-src 'self' 'unsafe-inline'` runs the scripts embedded in it and those of its own files
 - **Links** - a link with `target="_blank"` opens in a new browser tab
 - **Height** - on the lab's origin, the tab measures the page and sets the frame height to it
 - **Height fallback** - a page on another origin, or a page the tab cannot measure, gets a 480 px
   frame that scrolls
+- **Scrollbar room** - the element that scrolls the cards (the entries column, or the whole tab
+  when it is narrower than 800 px) keeps the room of its scrollbar while it does not scroll, so
+  the width of a page does not change when scrolling starts
 
 ## 6. Tab open conditions
 

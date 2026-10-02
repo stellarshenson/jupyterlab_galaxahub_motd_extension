@@ -6,18 +6,23 @@
 
 .jp-MotdPanel {
   container-type: inline-size;
-  display: flex;
-  flex-wrap: wrap;
-  overflow: auto;
   background: var(--jp-layout-color1);
   color: var(--jp-ui-font-color1);
   font-family: var(--jp-ui-font-family);
   font-size: var(--jp-ui-font-size1);
 }
 
+/* holds the two columns. A stacked tab scrolls here, because a rule by the tab's width cannot
+   apply to the tab itself */
+.jp-MotdPanel-columns {
+  display: flex;
+  flex-wrap: wrap;
+  height: 100%;
+}
+
 /* the tab and its columns take the focus with no outline, as the lab's main-area widgets */
 .jp-MotdPanel:focus,
-.jp-MotdPanel > :focus {
+.jp-MotdPanel-columns > :focus {
   outline: none;
 }
 
@@ -29,10 +34,14 @@
   overflow: auto;
 }
 
+/* the room of the scrollbar is kept while the column does not scroll: an html page whose height
+   follows its width would else be taller without the scrollbar and shorter with it, with no
+   height at which the column is at rest */
 .jp-MotdPanel-entries {
   flex: 1 1 0;
   min-width: 0;
   padding: 16px;
+  scrollbar-gutter: stable;
 }
 
 .jp-MotdPanel-entries:empty {
@@ -50,12 +59,22 @@
   border-left: none;
 }
 
-/* keeps a row's time near its message when the column takes the full width */
+/* a lab with no notifications URL has no Notifications column */
+.jp-MotdPanel.jp-mod-noNotifications .jp-MotdPanel-notifications {
+  display: none;
+}
+
+/* limits the width of a notification card when the column takes the full width */
 .jp-MotdPanel-notifications > * {
   max-width: 760px;
 }
 
 @container (max-width: 800px) {
+  .jp-MotdPanel-columns {
+    overflow: auto;
+    scrollbar-gutter: stable;
+  }
+
   .jp-MotdPanel-entries,
   .jp-MotdPanel-notifications {
     flex-basis: 100%;
@@ -88,6 +107,11 @@
 
 .jp-MotdPanel-section + .jp-MotdPanel-section {
   margin-top: 12px;
+}
+
+/* with no Notifications column the cards take the full width */
+.jp-MotdPanel.jp-mod-noNotifications .jp-MotdPanel-section {
+  max-width: none;
 }
 
 .jp-MotdPanel-strip {
@@ -165,17 +189,49 @@
   list-style: none;
 }
 
+/* a notification card: its border and background carry a tint of the lab colour of its type */
 .jp-MotdPanel-row {
   /* holds the off-screen type label, so the label stays inside the scrolling column */
   position: relative;
   display: flex;
   gap: 10px;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--jp-border-color2);
+  padding: 10px 12px;
+  border: 1px solid
+    color-mix(in srgb, var(--jp-private-motd-tone) 45%, transparent);
+  border-radius: 6px;
+  background: color-mix(
+    in srgb,
+    var(--jp-private-motd-tone) 12%,
+    var(--jp-layout-color1)
+  );
 }
 
-.jp-MotdPanel-row:last-child {
-  border-bottom: none;
+.jp-MotdPanel-row + .jp-MotdPanel-row {
+  margin-top: 8px;
+}
+
+.jp-MotdPanel-row[data-type='info'] {
+  --jp-private-motd-tone: var(--jp-info-color1);
+}
+
+.jp-MotdPanel-row[data-type='success'] {
+  --jp-private-motd-tone: var(--jp-success-color1);
+}
+
+.jp-MotdPanel-row[data-type='warning'] {
+  --jp-private-motd-tone: var(--jp-warn-color1);
+}
+
+.jp-MotdPanel-row[data-type='error'] {
+  --jp-private-motd-tone: var(--jp-error-color1);
+}
+
+.jp-MotdPanel-row[data-type='in-progress'] {
+  --jp-private-motd-tone: var(--jp-brand-color1);
+}
+
+.jp-MotdPanel-row[data-type='default'] {
+  --jp-private-motd-tone: var(--jp-ui-font-color2);
 }
 
 .jp-MotdPanel-icon {
@@ -183,30 +239,7 @@
   width: 16px;
   height: 16px;
   margin-top: 1px;
-}
-
-.jp-MotdPanel-row[data-type='info'] > .jp-MotdPanel-icon {
-  color: var(--jp-info-color1);
-}
-
-.jp-MotdPanel-row[data-type='success'] > .jp-MotdPanel-icon {
-  color: var(--jp-success-color1);
-}
-
-.jp-MotdPanel-row[data-type='warning'] > .jp-MotdPanel-icon {
-  color: var(--jp-warn-color1);
-}
-
-.jp-MotdPanel-row[data-type='error'] > .jp-MotdPanel-icon {
-  color: var(--jp-error-color1);
-}
-
-.jp-MotdPanel-row[data-type='in-progress'] > .jp-MotdPanel-icon {
-  color: var(--jp-brand-color1);
-}
-
-.jp-MotdPanel-row[data-type='default'] > .jp-MotdPanel-icon {
-  color: var(--jp-ui-font-color2);
+  color: var(--jp-private-motd-tone);
 }
 
 /* the type in words for screen readers, drawn off-screen */
@@ -223,7 +256,7 @@
   display: flex;
   flex-direction: column;
   flex-grow: 1;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
 }
 
@@ -232,38 +265,22 @@
   overflow-wrap: anywhere;
 }
 
+/* the audience and the time are one quiet line; a narrow column wraps between the two */
 .jp-MotdPanel-meta {
   display: flex;
-  align-items: center;
   flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 8px;
   color: var(--jp-ui-font-color2);
   font-size: 12px;
 }
 
-/* the narrow column moves the time to its own line instead of breaking the words */
 .jp-MotdPanel-audience,
 .jp-MotdPanel-time {
   white-space: nowrap;
 }
 
-/* a time wrapped to its own line keeps the right edge, like the others */
-.jp-MotdPanel-time {
-  margin-left: auto;
-}
-
-.jp-MotdPanel-audience {
-  padding: 0 6px;
-  border: 1px solid var(--jp-border-color1);
-  border-radius: 3px;
-  font-size: 11px;
-  line-height: 16px;
-}
-
-.jp-MotdPanel-audience.jp-mod-direct {
-  border-color: var(--jp-brand-color1);
-  color: var(--jp-brand-color1);
+.jp-MotdPanel-audience::after {
+  margin: 0 5px;
+  content: '\00b7';
 }
 
 .jp-MotdPanel-empty {

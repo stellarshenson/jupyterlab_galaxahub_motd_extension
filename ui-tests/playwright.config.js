@@ -34,12 +34,27 @@ process.env.MOTD_LOCAL_PAGE = path.join(
   'index.html'
 );
 
+// MOTD_DEVICE_SCALE runs the suite as on a scaled display (1.25 is display scaling 125 %), where
+// sizes are not whole numbers of px. Chromium lays out at that scale only with the launch flag;
+// the deviceScaleFactor option makes the page read the same scale
+const SCALE = Number(process.env.MOTD_DEVICE_SCALE || '1');
+
 module.exports = {
   ...baseConfig,
   // one lab and one stub hub, shared by every spec
   workers: 1,
   fullyParallel: false,
-  use: { ...baseConfig.use, baseURL: BASE_URL },
+  use: {
+    ...baseConfig.use,
+    baseURL: BASE_URL,
+    deviceScaleFactor: SCALE,
+    // playwright hides the scrollbars of headless chromium; a user's browser shows them, and they
+    // take width from a page
+    launchOptions: {
+      ignoreDefaultArgs: ['--hide-scrollbars'],
+      args: [`--force-device-scale-factor=${SCALE}`]
+    }
+  },
   webServer: {
     command: 'jlpm start',
     url: `${BASE_URL}/lab`,

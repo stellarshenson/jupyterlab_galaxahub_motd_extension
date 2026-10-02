@@ -60,9 +60,14 @@ const plugin: JupyterFrontEndPlugin<void> = {
       'jupyterlab_galaxahub_motd_extension'
     );
     const panel = new MotdPanel(model, rendermime, trans);
-    // c.GalaxaHubMotd.label, which the server extension puts in the lab page's config
+    // c.GalaxaHubMotd.label and html_allow_scripts, and whether notifications_api_url is set,
+    // which the server extension puts in the lab page's config
     panel.title.label =
       PageConfig.getOption('galaxahubMotdLabel') || panel.title.label;
+    panel.htmlAllowScripts =
+      PageConfig.getOption('galaxahubMotdHtmlAllowScripts') === 'true';
+    panel.notifications =
+      PageConfig.getOption('galaxahubMotdNotifications') !== 'false';
     let settings = DEFAULT_SETTINGS;
 
     const open = () => {

@@ -30,9 +30,10 @@ if os.environ.get("MOTD_LOCAL_PAGE"):
     c.GalaxaHubMotd.fallback_html = os.environ["MOTD_LOCAL_PAGE"]
 
 # the lab also reads the machine's Jupyter config directories, where a lab image may set these
-# two; the suite runs on the defaults
+# three; the suite runs on the defaults
 c.GalaxaHubMotd.label = "Message of the day"
 c.GalaxaHubMotd.open_on_start = True
+c.GalaxaHubMotd.html_allow_scripts = True
 
 # Uncomment to set server log level to debug level
 # c.ServerApp.log_level = "DEBUG"

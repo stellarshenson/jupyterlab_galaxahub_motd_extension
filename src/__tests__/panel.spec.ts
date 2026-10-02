@@ -12,7 +12,7 @@ import { MessageLoop } from '@lumino/messaging';
 import { Widget } from '@lumino/widgets';
 
 import { INotificationRow, MotdModel, RichEntry } from '../model';
-import { MotdPanel } from '../panel';
+import { MotdPanel, motdIcon } from '../panel';
 import { Feed, IAnswer } from '../request';
 
 /**
@@ -204,6 +204,52 @@ describe('MotdPanel drawing', () => {
     panel.dispose();
   });
 
+  it('adds allow-scripts to the frame sandbox with htmlAllowScripts on (ACC-SERVER-76)', async () => {
+    const { model } = modelAnswering(entries, []);
+    await model.pull();
+    const panel = new MotdPanel(model, fakeRendermime().registry);
+    panel.htmlAllowScripts = true;
+    await panel.render();
+
+    expect(panel.node.querySelector('iframe')!.getAttribute('sandbox')).toBe(
+      'allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-scripts'
+    );
+    panel.dispose();
+  });
+
+  it('carries jp-mod-noNotifications while the lab names no notifications URL (ACC-LAYOUT-77)', () => {
+    const { model } = modelAnswering(entries, []);
+    const panel = new MotdPanel(model, fakeRendermime().registry);
+    expect(panel.hasClass('jp-mod-noNotifications')).toBe(false);
+    panel.notifications = false;
+    expect(panel.hasClass('jp-mod-noNotifications')).toBe(true);
+    panel.notifications = true;
+    expect(panel.hasClass('jp-mod-noNotifications')).toBe(false);
+    panel.dispose();
+  });
+
+  it('shows the note bubble icon in its tab (ACC-VIEW-80)', () => {
+    const { model } = modelAnswering([], []);
+    const panel = new MotdPanel(model, fakeRendermime().registry);
+    expect(panel.title.icon).toBe(motdIcon);
+    // lines in the tab's text colour: the lab's jp-icon3 class on a stroked group, no fill
+    expect(motdIcon.svgstr).toContain('<g class="jp-icon3" stroke=');
+    expect(motdIcon.svgstr).toContain('fill="none"');
+    panel.dispose();
+  });
+
+  it('holds both columns in the element that scrolls a stacked tab (ACC-LAYOUT-38)', () => {
+    const { model } = modelAnswering([], []);
+    const panel = new MotdPanel(model, fakeRendermime().registry);
+    const columns = panel.node.firstElementChild!;
+    expect(columns.className).toBe('jp-MotdPanel-columns');
+    expect(Array.from(columns.children).map(el => el.className)).toEqual([
+      'jp-MotdPanel-entries',
+      'jp-MotdPanel-notifications'
+    ]);
+    panel.dispose();
+  });
+
   it('lists notifications newest first with time and audience', async () => {
     const { model } = modelAnswering([], rows);
     await model.pull();
@@ -274,10 +320,11 @@ describe('MotdPanel drawing', () => {
       expect(icon.tagName).toBe('svg');
       expect(icon.getAttribute('class')).toBe('jp-MotdPanel-icon');
       expect(icon.getAttribute('aria-hidden')).toBe('true');
-      // the stylesheet colours the icon by the row's data-type
+      // the stylesheet gives the row the lab colour of its data-type, for the icon and the
+      // card's tint
       const rule = CSS.match(
         new RegExp(
-          `\\.jp-MotdPanel-row\\[data-type='${item.dataset.type}'\\] > \\.jp-MotdPanel-icon \\{\\s*color: var\\((--[\\w-]+)\\);`
+          `\\.jp-MotdPanel-row\\[data-type='${item.dataset.type}'\\] \\{\\s*--jp-private-motd-tone: var\\((--[\\w-]+)\\);`
         )
       );
       expect(rule?.[1]).toBe(variables[item.dataset.type!]);
@@ -403,7 +450,7 @@ describe('MotdPanel html page frames', () => {
       const page = document.implementation.createHTMLDocument('package');
       Object.defineProperty(frame, 'contentDocument', { value: page });
       frame.dispatchEvent(new Event('load'));
-      expect(observer.observed).toEqual([page.documentElement]);
+      expect(observer.observed).toEqual([page.documentElement, frame]);
 
       // a pull with new rows rebuilds the cards; their frames join on their own load
       const disconnects = observer.disconnects;

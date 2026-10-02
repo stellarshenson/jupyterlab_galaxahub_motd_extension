@@ -28,8 +28,8 @@ ABOUT_PAGE = Path(__file__).parent / "about" / "index.html"
 
 
 class GalaxaHubMotd(Configurable):
-    """The two hub URLs, the local page, the tab label and the open-on-start switch, set in
-    jupyter_server_config or jupyter_lab_config. Both URLs are required: with either one empty
+    """The two hub URLs, the local page, the tab label, the open-on-start switch and the scripts
+    switch, set in jupyter_server_config or jupyter_lab_config. Both URLs are required: with either one empty
     the extension has no hub to ask and shows only the local page."""
 
     motd_api_url = Unicode(
@@ -59,6 +59,13 @@ class GalaxaHubMotd(Configurable):
         help="Open the tab on the first load of the lab page after each lab server start; a later "
              "load, a browser refresh included, opens no tab. False: no load opens the tab. The "
              "user's openOnStart lab setting must be on too.",
+    )
+    html_allow_scripts = Bool(
+        True, config=True,
+        help="Let the scripts of an HTML page run in the tab: the local page's, and a hub page's where "
+             "the hub's Content-Security-Policy allows script. A script on the lab's origin has the "
+             "access of the lab page itself, so only an administrator must be able to write a page. "
+             "False: no script in a page runs.",
     )
 
     def empty(self):
@@ -218,9 +225,13 @@ def setup_route_handlers(web_app, motd):
         (url_path_join(base_url, NAMESPACE, "local", "(.*)"), PageHandler, {"folder": local}),
         (url_path_join(base_url, NAMESPACE, "about", "index.html"), AboutPageHandler),
     ])
-    # the frontend reads the tab label and the open-on-start switch from the lab page's config,
-    # and this server start, so the tab opens by itself once per start and not on every page load
+    # the frontend reads the tab label, the open-on-start switch, the scripts switch and whether a
+    # notifications URL is set (without one the tab has no Notifications column) from the lab
+    # page's config, and this server start, so the tab opens by itself once per start and not on
+    # every page load
     page_config = web_app.settings.setdefault("page_config_data", {})
     page_config["galaxahubMotdLabel"] = motd.label
     page_config["galaxahubMotdOpenOnStart"] = motd.open_on_start
+    page_config["galaxahubMotdHtmlAllowScripts"] = motd.html_allow_scripts
+    page_config["galaxahubMotdNotifications"] = bool(motd.notifications_api_url)
     page_config["galaxahubMotdServerStart"] = str(time.time())

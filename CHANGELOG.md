@@ -4,6 +4,29 @@
 
 <!-- <END NEW CHANGELOG ENTRY> -->
 
+## [1.0.29] - 2026-10-02
+
+### Added
+
+- The JavaScript of a motd HTML page runs in its frame; `c.GalaxaHubMotd.html_allow_scripts = False` in the Jupyter config turns it off
+- A lab whose config sets no `notifications_api_url` shows no Notifications column, and the cards take the whole width of the tab
+- The tab carries a note bubble icon before its label
+- README section "Motd schema": the hub routes, the entry and broadcast fields, the terminal text and the status codes
+- `ui-tests/fit-sweep/sweep.js`, an acceptance sweep of the frame fit: about 12,000 samples per device scale, without a lab
+- `MOTD_DEVICE_SCALE` runs the Galata suite as on a scaled display
+
+### Changed
+
+- A notification row is a card tinted in its type's colour: the message, then the audience marker and the time on one line
+- The room of the scrollbar beside the cards is kept while they do not scroll, so a card keeps its width when the column starts to scroll
+- The Galata suite runs with visible scrollbars
+
+### Fixed
+
+- A fitted HTML page kept a scrollbar with nothing to scroll after the page grew, or after the tab changed its height
+- The frame did not fit its page at a device scale that is not a whole number (display scaling 125 %, browser zoom 110 %)
+- Content that appeared below the body of a fitted page stayed outside the frame
+
 ## [1.0.15] - 2026-10-02
 
 ### Changed
