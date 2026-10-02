@@ -37,14 +37,15 @@ const TYPE_ICONS: Record<string, string[]> = {
 };
 
 /**
- * The tab's icon, a filled circle. The stylesheet gives it a pale orange: the lab's Jupyter
- * icon colour mixed with the theme's palest warn colour.
+ * The tab's icon, a filled circle. The lab's class gives it the Jupyter icon colour, orange;
+ * the fill opacity makes it semi-transparent.
  */
 export const motdIcon = new LabIcon({
   name: 'jupyterlab_galaxahub_motd_extension:tab',
   svgstr:
     '<svg xmlns="http://www.w3.org/2000/svg" width="16" viewBox="0 0 24 24">' +
-    '<circle class="jp-MotdPanel-tabIcon" fill="currentColor" cx="12" cy="12" r="10"/></svg>'
+    '<circle class="jp-jupyter-icon-color" fill="currentColor" fill-opacity="0.8" ' +
+    'cx="12" cy="12" r="9"/></svg>'
 });
 
 /**

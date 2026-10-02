@@ -296,10 +296,11 @@ describe('MotdPanel drawing', () => {
     const { model } = modelAnswering([], []);
     const panel = new MotdPanel(model, fakeRendermime().registry);
     expect(panel.title.icon).toBe(motdIcon);
-    // one circle; the stylesheet's jp-MotdPanel-tabIcon rule gives it the pale orange
+    // one circle; the lab's jp-jupyter-icon-color class gives a filled shape the orange
     expect(motdIcon.svgstr).toContain(
-      '<circle class="jp-MotdPanel-tabIcon" fill='
+      '<circle class="jp-jupyter-icon-color" fill="currentColor" fill-opacity="0.8" '
     );
+    expect(motdIcon.svgstr).toContain(' r="9"/>');
     expect(motdIcon.svgstr.match(/<(circle|path|g)\b/g)).toEqual(['<circle']);
     panel.dispose();
   });

@@ -2020,7 +2020,7 @@ test.describe('tab label', () => {
     await expect(tab(page)).toHaveCount(0);
   });
 
-  test('the tab shows the pale orange dot icon before its label', async ({
+  test('the tab shows the semi-transparent orange dot icon before its label', async ({
     page
   }) => {
     hub.rich = { status: 200, body: { entries: [MARKDOWN] } };
@@ -2035,28 +2035,18 @@ test.describe('tab label', () => {
       .locator('.lm-TabBar-tabLabel')
       .boundingBox())!;
     expect(iconBox.x + iconBox.width).toBeLessThanOrEqual(labelBox.x);
-    // one circle, filled with the lab's Jupyter icon colour mixed with the palest warn colour
-    const paint = await icon.locator('circle').evaluate(el => {
-      const colour = (value: string) => {
-        const probe = document.createElement('span');
-        probe.style.color = value;
-        document.body.appendChild(probe);
-        const computed = getComputedStyle(probe).color;
-        probe.remove();
-        return computed;
-      };
-      return {
-        fill: getComputedStyle(el).fill,
-        pale: colour(
-          'color-mix(in srgb, var(--jp-jupyter-icon-color) 55%, var(--jp-warn-color3))'
-        ),
-        orange: colour('var(--jp-jupyter-icon-color)')
-      };
+    // one circle in the stock light theme's Jupyter icon colour, #f37626, at 80 % fill opacity,
+    // 9 of the 24 grid units in radius: three quarters of the icon's width
+    const circle = icon.locator('circle');
+    const paint = await circle.evaluate(el => {
+      const style = getComputedStyle(el);
+      return { fill: style.fill, opacity: style.fillOpacity };
     });
-    expect(paint.fill).toBe(paint.pale);
-    // paler than the stock light theme's Jupyter icon colour, #f37626
-    expect(paint.orange).toBe('rgb(243, 118, 38)');
-    expect(paint.fill).not.toBe(paint.orange);
+    expect(paint).toEqual({ fill: 'rgb(243, 118, 38)', opacity: '0.8' });
+    expect((await circle.boundingBox())!.width).toBeCloseTo(
+      iconBox.width * 0.75,
+      1
+    );
   });
 });
 

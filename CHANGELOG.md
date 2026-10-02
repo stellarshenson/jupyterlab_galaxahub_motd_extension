@@ -4,6 +4,12 @@
 
 <!-- <END NEW CHANGELOG ENTRY> -->
 
+## [1.0.43] - 2026-10-02
+
+### Changed
+
+- The tab's dot is 10 % smaller, more saturated and semi-transparent: the lab's Jupyter icon colour, or the warn colour where a theme sets none, at 80 % opacity, with no pale mix
+
 ## [1.0.41] - 2026-10-02
 
 ### Changed
