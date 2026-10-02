@@ -4,6 +4,12 @@
 
 <!-- <END NEW CHANGELOG ENTRY> -->
 
+## [1.0.41] - 2026-10-02
+
+### Changed
+
+- The tab's icon is a pale orange dot in place of the flag: the lab's Jupyter icon colour, or the warn colour where a theme sets none, mixed with the theme's palest warn colour
+
 ## [1.0.39] - 2026-10-02
 
 ### Changed

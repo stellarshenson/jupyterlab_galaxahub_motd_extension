@@ -4,6 +4,16 @@
  * column in the other 1/4; a tab narrower than 800 px stacks them and scrolls as one.
  */
 
+/* the tab's icon, a dot. The lab's Jupyter icon colour, or the warn colour where a theme sets
+   none, made paler with the theme's palest warn colour */
+.jp-MotdPanel-tabIcon {
+  fill: color-mix(
+    in srgb,
+    var(--jp-jupyter-icon-color, var(--jp-warn-color0)) 55%,
+    var(--jp-warn-color3)
+  );
+}
+
 .jp-MotdPanel {
   container-type: inline-size;
   background: var(--jp-layout-color1);

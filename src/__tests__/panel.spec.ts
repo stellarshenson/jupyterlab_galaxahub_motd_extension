@@ -292,16 +292,15 @@ describe('MotdPanel drawing', () => {
     panel.dispose();
   });
 
-  it('shows the flag icon in its tab (ACC-VIEW-80)', () => {
+  it('shows the dot icon in its tab (ACC-VIEW-80)', () => {
     const { model } = modelAnswering([], []);
     const panel = new MotdPanel(model, fakeRendermime().registry);
     expect(panel.title.icon).toBe(motdIcon);
-    // one filled shape in the lab's Jupyter icon colour; the lab's class colours a fill only
+    // one circle; the stylesheet's jp-MotdPanel-tabIcon rule gives it the pale orange
     expect(motdIcon.svgstr).toContain(
-      '<path class="jp-jupyter-icon-color" fill='
+      '<circle class="jp-MotdPanel-tabIcon" fill='
     );
-    expect(motdIcon.svgstr.match(/<(circle|path|g)\b/g)).toEqual(['<path']);
-    expect(motdIcon.svgstr).not.toContain('stroke');
+    expect(motdIcon.svgstr.match(/<(circle|path|g)\b/g)).toEqual(['<circle']);
     panel.dispose();
   });
 
