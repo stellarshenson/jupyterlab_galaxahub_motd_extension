@@ -139,12 +139,16 @@ What the Message of the day tab renders and in which order
   - log: 2026-10-01T23:51:25Z @kj amended text "each rich entry's card is headed by the entry's label field; the group field is not read; an entry with no string label is dropped; the CLI prints and emits label; the local and built-in page entry carries label" -> "HIGH; a rich entry's card is headed by its label; group is not read; a missing or empty label leaves the card without its header strip; the CLI prints and emits label and prints no heading for an empty one; the local page entry carries label"
   - log: 2026-10-02T01:04:12Z @kj edited test "Jest: richRows drops an entry with group and no label, the card strip starts with the label; pytest: CLI text and JSON carry label, local entry carries label; Galata: stub entries carry both fields, cards are found by their label" -> "Jest: 'reads the label and no other field; a missing or blank label is empty (ACC-VIEW-73)', 'draws an entry with no label as a card without the header strip', the card strip starts with the label; pytest: test_rich_entry_with_no_label_has_no_heading, CLI text and JSON carry label, local entry carries label; Galata: 'an entry with no label shows its card without the header strip', stub entries carry both fields, cards are found by their label"; reason: names four test cases by their titles
   - log: 2026-10-02T01:12:50Z @kj closed
-- [x] `ACC-VIEW-80` **Tab icon** - LOW; the Message of the day tab shows a note bubble icon before its label, a line icon in the tab's text colour
-  - evidence: 1.0.28: Jest 56/56 'shows the note bubble icon in its tab'; Galata 65/65 'the tab shows the note bubble icon before its label' - svg left of the label, stroke set, fill none; rendered in four themes
-  - test: Jest: the panel's title icon is the note bubble LabIcon; Galata: the tab shows an svg before its label
+- [x] `ACC-VIEW-80` **Tab icon** - LOW; the Message of the day tab shows an info icon before its label: a circle with an i, drawn as lines in the lab's brand colour (jp-icon-brand1), which is blue in the stock and Galaxa themes
+  - evidence: 1.0.30: Jest 56/56 'shows the info icon in its tab'; Galata 65/65 'the tab shows the blue info icon before its label' - stroke equals --jp-brand-color1, rgb(25, 118, 210) in JupyterLab Light, fill none; rendered in six themes
+  - test: Jest: the panel's title icon is the info LabIcon with the jp-icon-brand1 stroke; Galata: the tab shows the svg before its label, stroke equal to --jp-brand-color1, fill none
   - test-tags: UNIT, FUNCTIONAL
   - log: 2026-10-02T08:21:39Z @kj added
   - log: 2026-10-02T08:33:04Z @kj closed
+  - log: 2026-10-02T09:38:18Z @kj reopened: owner asked for a blue info icon in place of the note bubble; evidence retired: 1.0.28: Jest 56/56 'shows the note bubble icon in its tab'; Galata 65/65 'the tab shows the note bubble icon before its label' - svg left of the label, stroke set, fill none; rendered in four themes
+  - log: 2026-10-02T09:38:18Z @kj amended text "the Message of the day tab shows a note bubble icon before its label, a line icon in the tab's text colour" -> "LOW; the Message of the day tab shows an info icon before its label: a circle with an i, drawn as lines in the lab's brand colour (jp-icon-brand1), which is blue in the stock and Galaxa themes"
+  - log: 2026-10-02T09:38:18Z @kj edited test "Jest: the panel's title icon is the note bubble LabIcon; Galata: the tab shows an svg before its label" -> "Jest: the panel's title icon is the info LabIcon with the jp-icon-brand1 stroke; Galata: the tab shows the svg before its label, stroke equal to --jp-brand-color1, fill none"
+  - log: 2026-10-02T09:45:12Z @kj closed
 
 ## Open command `OPEN`
 

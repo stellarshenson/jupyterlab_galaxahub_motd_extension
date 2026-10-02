@@ -22,18 +22,6 @@ import {
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
-/**
- * The tab's icon, a note bubble drawn as lines. The lab's jp-icon3 class gives the stroke the
- * tab's text colour in every theme.
- */
-export const motdIcon = new LabIcon({
-  name: 'jupyterlab_galaxahub_motd_extension:tab',
-  svgstr:
-    '<svg xmlns="http://www.w3.org/2000/svg" width="16" viewBox="0 0 24 24" fill="none">' +
-    '<g class="jp-icon3" stroke="#616161" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-    '<path d="M4 5h16v11H10l-5 4v-4H4V5z"/><path d="M8 9h8M8 12.5h5"/></g></svg>'
-});
-
 const CIRCLE = 'M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0';
 
 /**
@@ -47,6 +35,19 @@ const TYPE_ICONS: Record<string, string[]> = {
   'in-progress': [CIRCLE, 'M12 7v5l3 2'],
   default: ['M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z', 'M10 21h4']
 };
+
+/**
+ * The tab's icon, the info icon of a notification row. The lab's jp-icon-brand1 class gives the
+ * stroke the brand colour, which is blue in the stock and the Galaxa themes.
+ */
+export const motdIcon = new LabIcon({
+  name: 'jupyterlab_galaxahub_motd_extension:tab',
+  svgstr:
+    '<svg xmlns="http://www.w3.org/2000/svg" width="16" viewBox="0 0 24 24" fill="none">' +
+    '<g class="jp-icon-brand1" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+    TYPE_ICONS.info.map(d => `<path d="${d}"/>`).join('') +
+    '</g></svg>'
+});
 
 /**
  * The words a screen reader says for each type; the default type has none.

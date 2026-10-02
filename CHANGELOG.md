@@ -4,6 +4,12 @@
 
 <!-- <END NEW CHANGELOG ENTRY> -->
 
+## [1.0.31] - 2026-10-02
+
+### Changed
+
+- The tab's icon is a blue info icon, a circle with an i in the lab's brand colour, in place of the note bubble; it is the icon an info notification row shows
+
 ## [1.0.29] - 2026-10-02
 
 ### Added

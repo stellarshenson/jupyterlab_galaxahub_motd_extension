@@ -228,13 +228,16 @@ describe('MotdPanel drawing', () => {
     panel.dispose();
   });
 
-  it('shows the note bubble icon in its tab (ACC-VIEW-80)', () => {
+  it('shows the info icon in its tab (ACC-VIEW-80)', () => {
     const { model } = modelAnswering([], []);
     const panel = new MotdPanel(model, fakeRendermime().registry);
     expect(panel.title.icon).toBe(motdIcon);
-    // lines in the tab's text colour: the lab's jp-icon3 class on a stroked group, no fill
-    expect(motdIcon.svgstr).toContain('<g class="jp-icon3" stroke=');
+    // lines in the lab's brand colour: the jp-icon-brand1 class on a stroked group, no fill
+    expect(motdIcon.svgstr).toContain('<g class="jp-icon-brand1" stroke=');
     expect(motdIcon.svgstr).toContain('fill="none"');
+    // a circle with an i: the dot and the stem
+    expect(motdIcon.svgstr).toContain('<path d="M12 8h.01"/>');
+    expect(motdIcon.svgstr).toContain('<path d="M12 11v5"/>');
     panel.dispose();
   });
 
