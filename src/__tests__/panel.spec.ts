@@ -292,13 +292,16 @@ describe('MotdPanel drawing', () => {
     panel.dispose();
   });
 
-  it('shows the blue circle icon in its tab (ACC-VIEW-80)', () => {
+  it('shows the flag icon in its tab (ACC-VIEW-80)', () => {
     const { model } = modelAnswering([], []);
     const panel = new MotdPanel(model, fakeRendermime().registry);
     expect(panel.title.icon).toBe(motdIcon);
-    // one filled circle in the lab's brand colour: the jp-icon-brand1 class on a filled shape
-    expect(motdIcon.svgstr).toContain('<circle class="jp-icon-brand1" fill=');
-    expect(motdIcon.svgstr.match(/<(circle|path|g)\b/g)).toEqual(['<circle']);
+    // one filled shape in the lab's Jupyter icon colour; the lab's class colours a fill only
+    expect(motdIcon.svgstr).toContain(
+      '<path class="jp-jupyter-icon-color" fill='
+    );
+    expect(motdIcon.svgstr.match(/<(circle|path|g)\b/g)).toEqual(['<path']);
+    expect(motdIcon.svgstr).not.toContain('stroke');
     panel.dispose();
   });
 
