@@ -1,6 +1,6 @@
 {
     "name": "jupyterlab_galaxahub_motd_extension",
-    "version": "1.0.15",
+    "version": "1.0.29",
     "description": "jupyterlab_galaxahub_motd_extension",
     "keywords": [
         "jupyter",
@@ -64,6 +64,7 @@
         "@jupyterlab/services": "^7.6.0",
         "@jupyterlab/settingregistry": "^4.6.0",
         "@jupyterlab/translation": "^4.6.0",
+        "@jupyterlab/ui-components": "^4.6.0",
         "@lumino/coreutils": "^2.2.0",
         "@lumino/messaging": "^2.0.0",
         "@lumino/signaling": "^2.1.0",
