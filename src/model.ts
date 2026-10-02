@@ -5,11 +5,12 @@ import { ISignal, Signal } from '@lumino/signaling';
 import { Feed, IAnswer } from './request';
 
 /**
- * One rich motd entry as the hub answers it: markdown inline, html as the url of its package.
+ * One rich motd entry: markdown inline, html as the url of its package. `label` heads the
+ * entry's card; it is empty when the hub gives none, and the card then has no header strip.
  */
 export type RichEntry =
-  | { group: string; kind: 'markdown'; body: string }
-  | { group: string; kind: 'html'; url: string };
+  | { label: string; kind: 'markdown'; body: string }
+  | { label: string; kind: 'html'; url: string };
 
 /**
  * One broadcast addressed to the user, as GET /hub/api/user-notifications answers it.
@@ -99,19 +100,24 @@ export function applyAnswer<T>(
 }
 
 /**
- * The entries of a rich answer; an entry of an unknown kind or shape is dropped.
+ * The entries of a rich answer; an entry of an unknown kind or shape is dropped. Only `label`,
+ * `kind` and `body` or `url` are read; a label that is missing or blank becomes empty.
  */
 export function richRows(body: unknown): RichEntry[] {
   const entries = (body as { entries?: unknown })?.entries;
   if (!Array.isArray(entries)) {
     return [];
   }
-  return entries.filter(
-    (e): e is RichEntry =>
-      typeof e?.group === 'string' &&
-      ((e.kind === 'markdown' && typeof e.body === 'string') ||
-        (e.kind === 'html' && typeof e.url === 'string'))
-  );
+  const rows: RichEntry[] = [];
+  for (const e of entries) {
+    const label = typeof e?.label === 'string' ? e.label.trim() : '';
+    if (e?.kind === 'markdown' && typeof e.body === 'string') {
+      rows.push({ label, kind: 'markdown', body: e.body });
+    } else if (e?.kind === 'html' && typeof e.url === 'string') {
+      rows.push({ label, kind: 'html', url: e.url });
+    }
+  }
+  return rows;
 }
 
 /**

@@ -71,12 +71,12 @@ with one `entries` list.
 {
   "entries": [
     {
-      "group": "interns",
+      "label": "Interns",
       "kind": "markdown",
       "body": "# Welcome\n\nRead the handbook first."
     },
     {
-      "group": "research",
+      "label": "Research",
       "kind": "html",
       "url": "/hub/api/extensions/motd/rich/<package-id>/index.html"
     }
@@ -85,13 +85,16 @@ with one `entries` list.
 ```
 
 - **Entries** - one entry for each group of the user that has a welcome entry
+- **Label** - `label` is the heading of the entry's card; with a `label` that is missing, not a
+  string or blank, the card has no header bar. The extension reads only `label`, `kind`, `body`
+  and `url`, so the `group` GalaxaHub also sends is not used
 - **Order** - the tab shows the entries in answer order, and GalaxaHub sorts them by group name
 - **Markdown entry** - `kind: markdown` carries `body`, which the lab's markdown renderer shows as
   untrusted content, so it sanitises any HTML in it
 - **HTML entry** - `kind: html` carries `url`, a page that the browser loads in a frame, as
   [5. HTML pages](#5.-HTML-pages) states
-- **Dropped entries** - the extension drops an entry with another `kind`, a `group` that is not a
-  string, or a missing `body` or `url`
+- **Dropped entries** - the extension drops an entry with another `kind`, or a missing `body` or
+  `url`
 - **Empty list** - `{"entries": []}` means the hub has the motd feature and the user has no
   welcome entry
 

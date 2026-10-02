@@ -41,13 +41,15 @@ const row = (
 ) => ({ ts: minutesAgo(minutes), message, type, audience });
 
 const MARKDOWN = {
-  group: 'analysts',
+  group: 'grp-analysts',
+  label: 'analysts',
   kind: 'markdown',
   body: '# Welcome to the analysts lab\n\nThe **GPU 0** is shared.'
 };
 
 const HTML = {
-  group: 'interns',
+  group: 'grp-interns',
+  label: 'interns',
   kind: 'html',
   url: '/hub/api/extensions/motd/rich/pkg-1/index.html'
 };
@@ -208,10 +210,10 @@ test.describe('tab content', () => {
   test('renders one section per entry in hub order, markdown through the lab renderer', async ({
     page
   }) => {
-    const second = { group: 'alpha', kind: 'markdown', body: '* one\n* two' };
+    const second = { label: 'alpha', kind: 'markdown', body: '* one\n* two' };
     hub.rich = {
       status: 200,
-      body: { entries: [{ ...MARKDOWN, group: 'zulu' }, second] }
+      body: { entries: [{ ...MARKDOWN, label: 'zulu' }, second] }
     };
     await page.goto();
     await expectOpenAndCurrent(page);
@@ -221,7 +223,7 @@ test.describe('tab content', () => {
       'alpha',
       'Notifications'
     ]);
-    const zulu = page.locator('.jp-MotdPanel-section[data-group="zulu"]');
+    const zulu = page.locator('.jp-MotdPanel-section[data-label="zulu"]');
     await expect(zulu.locator('.jp-RenderedMarkdown h1')).toContainText(
       'Welcome to the analysts lab'
     );
@@ -230,9 +232,56 @@ test.describe('tab content', () => {
     );
     await expect(
       page.locator(
-        '.jp-MotdPanel-section[data-group="alpha"] .jp-RenderedMarkdown li'
+        '.jp-MotdPanel-section[data-label="alpha"] .jp-RenderedMarkdown li'
       )
     ).toHaveText(['one', 'two']);
+  });
+
+  test('an entry with no label shows its card without the header strip', async ({
+    page
+  }) => {
+    const url = '/hub/api/extensions/motd/rich/pkg-3/index.html';
+    await page.route(`**${url}`, route =>
+      route.fulfill({
+        status: 200,
+        contentType: 'text/html',
+        body: '<!doctype html><p>Team page</p>'
+      })
+    );
+    hub.rich = {
+      status: 200,
+      body: {
+        entries: [
+          // the hub's group is not read: with no label the card has no header strip
+          { group: 'grp-analysts', kind: 'markdown', body: MARKDOWN.body },
+          { group: 'grp-interns', label: '', kind: 'html', url },
+          MARKDOWN
+        ]
+      }
+    };
+    await page.goto();
+    await expectOpenAndCurrent(page);
+
+    const cards = page.locator('.jp-MotdPanel-section');
+    await expect(cards).toHaveCount(3);
+    await expect(page.locator('.jp-MotdPanel-strip')).toHaveCount(1);
+    await expect(page.locator('.jp-MotdPanel-heading')).toHaveText([
+      'analysts',
+      'Notifications'
+    ]);
+    await expect(page.locator('.jp-MotdPanel-entries')).not.toContainText(
+      'grp-'
+    );
+    await expect(cards.nth(0).locator('.jp-RenderedMarkdown h1')).toContainText(
+      'Welcome to the analysts lab'
+    );
+    // the frame starts at the card's top edge, its top border under the card's border
+    const card = (await cards.nth(1).boundingBox())!;
+    const frame = (await cards
+      .nth(1)
+      .locator('.jp-MotdPanel-frame')
+      .boundingBox())!;
+    expect(frame.y).toBeCloseTo(card.y, 0);
   });
 
   test('shows an html entry in a sandboxed iframe at the hub url', async ({
@@ -476,7 +525,7 @@ test.describe('two-column layout', () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
   const SECOND = {
-    group: 'interns',
+    label: 'interns',
     kind: 'markdown',
     body: '## Getting started\n\nRead the onboarding notebook first.'
   };
@@ -553,7 +602,7 @@ test.describe('two-column layout', () => {
       body: {
         entries: [
           { ...MARKDOWN, body: `Data lives in \`${path}\`.` },
-          { group, kind: 'html', url }
+          { label: group, kind: 'html', url }
         ]
       }
     };
@@ -749,6 +798,26 @@ test.describe('two-column layout', () => {
       await page.locator('.jp-MotdPanel-section').evaluate(el => el.clientWidth)
     ).toBe(960);
   });
+
+  test('keeps the content close to the tab and card edges', async ({
+    page
+  }) => {
+    hub.rich = { status: 200, body: { entries: [MARKDOWN, SECOND] } };
+    await page.goto();
+    await expectOpenAndCurrent(page);
+    await expect(page.locator('.jp-MotdPanel-section')).toHaveCount(2);
+    const column = await box(page, '.jp-MotdPanel-entries');
+    const first = await box(page, '.jp-MotdPanel-section >> nth=0');
+    const second = await box(page, '.jp-MotdPanel-section >> nth=1');
+    // 16 px from the column's left and top edge to the first card
+    expect(first.x - column.x).toBeCloseTo(16, 0);
+    expect(first.y - column.y).toBeCloseTo(16, 0);
+    // 12 px between two cards
+    expect(second.y - (first.y + first.height)).toBeCloseTo(12, 0);
+    // the markdown starts 12 px inside the card's 1 px border
+    const heading = await box(page, '.jp-MotdPanel-body h1');
+    expect(heading.x - first.x).toBeCloseTo(13, 0);
+  });
 });
 
 test.describe('html page frame', () => {
@@ -758,11 +827,11 @@ test.describe('html page frame', () => {
     '<!doctype html><h1>Package welcome</h1><p>Read the onboarding notebook first.</p>';
 
   /**
-   * The frame of the html entry of a group.
+   * The frame of the html entry with this label.
    */
-  const frameOf = (page: IJupyterLabPageFixture, group = HTML.group) =>
+  const frameOf = (page: IJupyterLabPageFixture, label = HTML.label) =>
     page.locator(
-      `.jp-MotdPanel-section[data-group="${group}"] .jp-MotdPanel-frame`
+      `.jp-MotdPanel-section[data-label="${label}"] .jp-MotdPanel-frame`
     );
 
   /**
@@ -1006,12 +1075,12 @@ test.describe('html page frame', () => {
     page
   }) => {
     const absolute = {
-      group: 'absolute',
+      label: 'absolute',
       kind: 'html',
       url: '/hub/api/extensions/motd/rich/pkg-absolute/index.html'
     };
     const fixed = {
-      group: 'fixed',
+      label: 'fixed',
       kind: 'html',
       url: '/hub/api/extensions/motd/rich/pkg-fixed/index.html'
     };
@@ -1029,14 +1098,14 @@ test.describe('html page frame', () => {
     await page.goto();
     await expectOpenAndCurrent(page);
 
-    const absoluteFrame = frameOf(page, absolute.group);
+    const absoluteFrame = frameOf(page, absolute.label);
     await loaded(page, absoluteFrame);
     const { frame, scroll, viewport } = await heights(absoluteFrame);
     expect(frame).toBe(480);
     expect(scroll).toBeGreaterThan(viewport);
     await expectScrollsInside(page, absoluteFrame);
 
-    const fixedFrame = frameOf(page, fixed.group);
+    const fixedFrame = frameOf(page, fixed.label);
     await loaded(page, fixedFrame);
     expect((await heights(fixedFrame)).frame).toBe(480);
     // the card lies inside the frame's viewport
@@ -1317,7 +1386,7 @@ test.describe('built-in page', () => {
           body: JSON.stringify({
             entries: [
               {
-                group: TAB,
+                label: TAB,
                 kind: 'html',
                 url: '/jupyterlab-galaxahub-motd-extension/about/index.html'
               }
@@ -1473,7 +1542,11 @@ test.describe('command line', () => {
     });
     expect(run.stderr).toBe('');
     expect(run.code).toBe(0);
-    expect(JSON.parse(run.stdout)).toEqual({ entries: [MARKDOWN] });
+    // the CLI emits the label, the kind and the body; the hub's group is not passed on
+    const { label, kind, body } = MARKDOWN;
+    expect(JSON.parse(run.stdout)).toEqual({
+      entries: [{ label, kind, body }]
+    });
     expect(hub.count(RICH)).toBe(1);
   });
 

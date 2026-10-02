@@ -31,7 +31,8 @@ has none.
 - **Two columns** - the entry cards on the left in 3/4 of the width, the Notifications column in
   the other 1/4; a tab narrower than 800 px stacks them
 - **One card per group** - markdown rendered by the lab's own markdown renderer, an HTML package
-  shown in a sandboxed iframe at its hub address, sized to fit its page
+  shown in a sandboxed iframe at its hub address, sized to fit its page; the entry's `label` heads
+  the card, and an entry with no label has no header bar
 - **Notifications catch-up** - the broadcasts of the last 24 hours, 3 days or 7 days (a setting)
   sent to all users and those naming the user, newest first, each marked by an icon in its
   type's colour, with the relative time and an all or direct marker

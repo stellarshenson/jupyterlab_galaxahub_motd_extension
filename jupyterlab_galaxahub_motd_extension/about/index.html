@@ -113,7 +113,9 @@ c.GalaxaHubMotd.open_on_start = True                    # once per lab server st
       <tr>
         <td><code>GET &lt;motd_api_url&gt;/rich</code></td>
         <td>
-          <code>{"entries": [{"group", "kind": "markdown", "body"} or {"group", "kind": "html", "url"}]}</code>
+          <code>{"entries": [{"label", "kind": "markdown", "body"} or {"label", "kind": "html", "url"}]}</code>;
+          <code>label</code> heads the entry's card, and an entry with an empty
+          label has no header bar
         </td>
       </tr>
       <tr>

@@ -63,12 +63,13 @@ What the extension pulls on lab start and when it opens the tab or stays silent
 
 What the Message of the day tab renders and in which order
 
-- [x] `ACC-VIEW-6` **One section per rich entry, headed by its group** - HIGH; the tab renders one section per rich entry in the order the hub answered, each headed by the group name, before the Notifications section
+- [x] `ACC-VIEW-6` **One section per rich entry, headed by its label** - HIGH; the tab renders one section per rich entry in the order the hub answered, each headed by the entry's label, before the Notifications section
   - evidence: Galata 17/17 on 0.1.4: 'renders one section per entry in hub order' - headings zulu, alpha, Notifications
   - test: Galata ui-tests/tests/motd.spec.ts 'renders one section per entry in hub order, markdown through the lab renderer'
   - test-tags: FUNCTIONAL, UNIT
   - log: 2026-09-28T09:19:17Z @kj added
   - log: 2026-09-28T09:54:13Z @kj closed: verified on 0.1.4
+  - log: 2026-10-01T23:50:25Z @kj amended title "One section per rich entry, headed by its group" -> "One section per rich entry, headed by its label"; text "the tab renders one section per rich entry in the order the hub answered, each headed by the group name, before the Notifications section" -> "the tab renders one section per rich entry in the order the hub answered, each headed by the entry's label, before the Notifications section"
 - [x] `ACC-VIEW-7` **Markdown through the lab renderer** - HIGH; a markdown entry is rendered by the lab's own markdown renderer (IRenderMimeRegistry, text/markdown), as untrusted content
   - evidence: Galata 17/17 on 0.1.4: same test - h1 and strong inside .jp-RenderedMarkdown; Jest 36/36 on 0.1.4 renderer asked for text/markdown, trusted false
   - test: Galata ui-tests/tests/motd.spec.ts 'renders one section per entry in hub order, markdown through the lab renderer'
@@ -120,6 +121,17 @@ What the Message of the day tab renders and in which order
   - log: 2026-09-29T21:47:36Z @kj amended title "Notifications of the last 7 days only" -> "Notifications window setting"; text "the Notifications column lists and counts only rows whose ts lies within 7 days before now; an older row, or one whose ts cannot be read, is not shown" -> "the Notifications column lists and counts only rows whose ts lies inside the notificationWindow setting before now: 24h (default), 3d or 7d; a changed setting redraws the open tab; an older row, or one whose ts cannot be read, is not shown"
   - log: 2026-09-29T21:47:36Z @kj edited test "Jest notificationView with a fixed now; Galata: a row 8 days old is not shown" -> "Jest notificationView per choice, readSettings, panel redraw; Galata: 24 hours by default, 3d and 7d set live redraw the tab"
   - log: 2026-09-30T07:26:40Z @kj closed
+- [x] `ACC-VIEW-73` **Card heading from the entry's label** - HIGH; a rich entry's card is headed by its label; group is not read; a missing or empty label leaves the card without its header strip; the CLI prints and emits label and prints no heading for an empty one; the local page entry carries label
+  - related: ACC-VIEW-6, ACC-LAYOUT-32, ACC-CLI-42 - reworded from group to label
+  - evidence: Jest 52/52, pytest 51/51, Galata 51/51 on installed 1.0.11: cards headed by label, group not shown, no-label cards without strip, CLI prints no heading for an empty label; review wf_79c548e7-308 SHIP
+  - test: Jest: 'reads the label and no other field; a missing or blank label is empty (ACC-VIEW-73)', 'draws an entry with no label as a card without the header strip', the card strip starts with the label; pytest: test_rich_entry_with_no_label_has_no_heading, CLI text and JSON carry label, local entry carries label; Galata: 'an entry with no label shows its card without the header strip', stub entries carry both fields, cards are found by their label
+  - test-tags: UNIT, FUNCTIONAL
+  - mechanism: 2026-10-02T01:04:12Z @kj richRows in src/model.ts and read_entries in cli.py set a missing, non-string or blank label to empty and keep the entry; _entrySection in panel.ts and entries_text in cli.py omit the header for an empty label
+  - mechanism: 2026-10-01T23:50:24Z @kj RichEntry in src/model.ts and read_entries in cli.py require label; panel.ts heads the card with it
+  - log: 2026-10-01T23:50:24Z @kj added
+  - log: 2026-10-01T23:51:25Z @kj amended text "each rich entry's card is headed by the entry's label field; the group field is not read; an entry with no string label is dropped; the CLI prints and emits label; the local and built-in page entry carries label" -> "HIGH; a rich entry's card is headed by its label; group is not read; a missing or empty label leaves the card without its header strip; the CLI prints and emits label and prints no heading for an empty one; the local page entry carries label"
+  - log: 2026-10-02T01:04:12Z @kj edited test "Jest: richRows drops an entry with group and no label, the card strip starts with the label; pytest: CLI text and JSON carry label, local entry carries label; Galata: stub entries carry both fields, cards are found by their label" -> "Jest: 'reads the label and no other field; a missing or blank label is empty (ACC-VIEW-73)', 'draws an entry with no label as a card without the header strip', the card strip starts with the label; pytest: test_rich_entry_with_no_label_has_no_heading, CLI text and JSON carry label, local entry carries label; Galata: 'an entry with no label shows its card without the header strip', stub entries carry both fields, cards are found by their label"; reason: names four test cases by their titles
+  - log: 2026-10-02T01:12:50Z @kj closed
 
 ## Open command `OPEN`
 
@@ -303,20 +315,23 @@ the tab as drawn on board B of the design canvas: entry cards left, Notification
   - log: 2026-09-29T21:31:41Z @kj amended title "Entries left, Notifications right" -> "Entries 3/4 left, Notifications 1/4 right"; text "the tab shows the rich entries in a left column and the Notifications section in a right column 380 px wide, side by side" -> "HIGH; the tab shows the rich entries in a left column 3/4 of the tab width and the Notifications section in a right column 1/4 of it, side by side"
   - log: 2026-09-29T21:31:41Z @kj edited test "Galata: stub with 2 entries and 4 rows, 1440 px window; assert the Notifications box starts right of the entries box and is 380 px wide" -> "Galata: stub with 2 entries and 4 rows, 1440 px window; assert the Notifications box starts right of the entries box and is 1/4 of the tab width"
   - log: 2026-09-30T07:26:40Z @kj closed
-- [x] `ACC-LAYOUT-32` **Entry card with a group header strip** - HIGH; each rich entry is a card: a header strip with a group icon and the group name, then the rendered content
+- [x] `ACC-LAYOUT-32` **Entry card with a label header strip** - HIGH; each rich entry with a label is a card: a header strip with a group icon and the label, then the rendered content
   - evidence: Jest 40/40 on 0.1.7: panel.spec.ts 'draws each entry as a card: a header strip with its group, then the content' - 2 cards, each strip opens with the group icon and starts with the group name, the body is the renderer node or the iframe
   - test: Jest: render 2 entries; assert each card header starts with its group name and the card body holds the renderer node or the iframe; Galata 'keeps wide markdown and a long group name inside the card': a markdown body holding a 200-character inline code path scrolls sideways far enough to bring the code's right edge inside the card
   - test-tags: UNIT, FUNCTIONAL
   - log: 2026-09-28T11:40:00Z @kj added
   - log: 2026-09-28T12:06:56Z @kj closed: verified on 0.1.7
   - log: 2026-09-28T13:13:28Z @kj edited test "Jest: render 2 entries; assert each card header starts with its group name and the card body holds the renderer node or the iframe" -> "Jest: render 2 entries; assert each card header starts with its group name and the card body holds the renderer node or the iframe; Galata 'keeps wide markdown and a long group name inside the card': a markdown body holding a 200-character inline code path scrolls sideways far enough to bring the code's right edge inside the card"; reason: the test line now names the Galata case its FUNCTIONAL tag claims
-- [x] `ACC-LAYOUT-33` **HTML page label in the header** - LOW; an html entry's header strip shows HTML page after the group name; a markdown entry's header shows the group name only
+  - log: 2026-10-01T23:50:25Z @kj amended title "Entry card with a group header strip" -> "Entry card with a label header strip"; text "each rich entry is a card: a header strip with a group icon and the group name, then the rendered content" -> "each rich entry is a card: a header strip with a group icon and the entry's label, then the rendered content"
+  - log: 2026-10-01T23:51:25Z @kj amended text "each rich entry is a card: a header strip with a group icon and the entry's label, then the rendered content" -> "each rich entry with a label is a card: a header strip with a group icon and the label, then the rendered content"
+- [x] `ACC-LAYOUT-33` **HTML page label in the header** - LOW; an html entry's header strip shows HTML page after the entry's label; a markdown entry's header shows the label only
   - evidence: Jest 40/40 on 0.1.7: panel.spec.ts 'labels an html entry HTML page after its group, a markdown entry not' - html strip reads 'interns- HTML page', markdown strip reads 'analysts' with no label
   - test: Jest: render one markdown and one html entry; assert the label is on the html header only; Galata 'keeps wide markdown and a long group name inside the card': with a 200-character group name the heading and the label end inside the card, the label on one line
   - test-tags: UNIT, FUNCTIONAL
   - log: 2026-09-28T11:40:00Z @kj added
   - log: 2026-09-28T12:06:56Z @kj closed: verified on 0.1.7
   - log: 2026-09-28T13:13:28Z @kj edited test "Jest: render one markdown and one html entry; assert the label is on the html header only" -> "Jest: render one markdown and one html entry; assert the label is on the html header only; Galata 'keeps wide markdown and a long group name inside the card': with a 200-character group name the heading and the label end inside the card, the label on one line"; test-tags "UNIT" -> "UNIT, FUNCTIONAL"
+  - log: 2026-10-01T23:50:25Z @kj amended text "an html entry's header strip shows HTML page after the group name; a markdown entry's header shows the group name only" -> "an html entry's header strip shows HTML page after the entry's label; a markdown entry's header shows the label only"
 - [x] `ACC-LAYOUT-34` **Notification row layout** - MEDIUM; a row shows the message on its first line, then the audience marker at the left and the relative time at the right on the second line
   - evidence: Galata 22/22 on 0.1.7: 'lays a row out as the message, then the marker left and the time right' - marker right edge left of the time, both below the message, marker at the left edge of the row text, time at its right edge
   - test: Galata: assert the marker's right edge is left of the time's left edge, both below the message
@@ -393,6 +408,13 @@ the tab as drawn on board B of the design canvas: entry cards left, Notification
   - log: 2026-09-28T20:03:45Z @kj added
   - log: 2026-09-28T20:03:52Z @kj closed
   - log: 2026-09-28T20:25:57Z @kj mechanism overridden; reason: DEF-LAYOUT-21 and DEF-LAYOUT-22 changed the tabIndex and the focus call
+- [x] `ACC-LAYOUT-74` **Compact spacing around the content** - MEDIUM; both columns are padded 16 px on every side; a card's content starts 12 px from the card's left edge and 8 px from its top edge or its header strip; 12 px separate two cards
+  - evidence: Galata 52/52 on installed 1.0.12: 'keeps the content close to the tab and card edges'; renders tmp/screens/margins-after.png and margins-after-md.png
+  - test: Galata 'keeps the content close to the tab and card edges': first card 16 px from the entries column's left and top edge, markdown heading 13 px inside the card, 12 px between two cards
+  - test-tags: FUNCTIONAL
+  - log: 2026-10-02T01:25:08Z @kj added
+  - log: 2026-10-02T01:30:47Z @kj edited test "Galata 'keeps the content close to the tab and card edges': first card 16 px from the tab's left and top edge, markdown body 13 px inside the card, 12 px between two cards" -> "Galata 'keeps the content close to the tab and card edges': first card 16 px from the entries column's left and top edge, markdown heading 13 px inside the card, 12 px between two cards"
+  - log: 2026-10-02T01:33:47Z @kj closed
 
 ## Agent CLI `CLI`
 
@@ -418,12 +440,13 @@ the jupyterlab-galaxahub-motd command and its agent skill: the motd read from a 
   - log: 2026-09-29T18:26:36Z @kj closed: verified on 0.8.6
   - log: 2026-09-29T19:21:16Z @kj reopened: review round 7 DEFER-R1-01: evidence cites the superseded config-file mechanism; evidence retired: make test on 0.8.6: test_each_subcommand_reads_its_hub_path_with_the_token, URLs from a jupyter_server_config.json in the patched config path
   - log: 2026-09-29T19:21:16Z @kj closed: verified on source after 0.8.8
-- [x] `ACC-CLI-42` **show prints the whole motd** - HIGH; show prints the terminal text, then each rich entry under its group name (markdown body, or the absolute url of an html page), then the notifications newest first
+- [x] `ACC-CLI-42` **show prints the whole motd** - HIGH; show prints the terminal text, then each rich entry under its label (markdown body, or the absolute url of an html page), then the notifications newest first
   - evidence: make test on 0.1.13: pytest jupyterlab_galaxahub_motd_extension/tests/test_cli.py::test_show_prints_the_whole_motd passed - terminal text, then ## analysts with its markdown, ## ops with the absolute url, then ## Notifications newest first, in that order
   - test: pytest with a stub hub: assert the three parts in that order and their content
   - test-tags: UNIT
   - log: 2026-09-28T14:50:00Z @kj added
   - log: 2026-09-28T15:32:04Z @kj closed
+  - log: 2026-10-01T23:50:25Z @kj amended text "show prints the terminal text, then each rich entry under its group name (markdown body, or the absolute url of an html page), then the notifications newest first" -> "show prints the terminal text, then each rich entry under its label (markdown body, or the absolute url of an html page), then the notifications newest first"
 - [x] `ACC-CLI-43` **One feed per subcommand** - MEDIUM; terminal, rich and notifications each print only their own feed; terminal prints the text verbatim, escape sequences kept
   - evidence: make test on 0.1.13: pytest jupyterlab_galaxahub_motd_extension/tests/test_cli.py::test_one_feed_per_subcommand passed - terminal output equals the stub text byte for byte, escape sequences kept; rich and notifications hold only their own feed
   - test: pytest with a stub hub: each subcommand's output holds its feed and none of the other two

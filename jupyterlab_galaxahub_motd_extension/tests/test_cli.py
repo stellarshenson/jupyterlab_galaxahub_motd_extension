@@ -32,8 +32,8 @@ COMMANDS = ("show", "terminal", "rich", "notifications")
 
 TERMINAL = "\x1b[1;36mWelcome\x1b[0m to the analysts lab\n\nsecond group\n"
 RICH = {"entries": [
-    {"group": "analysts", "kind": "markdown", "body": "# Analysts\n\nRead the wiki first."},
-    {"group": "ops", "kind": "html", "url": "/hub/api/extensions/motd/rich/p1/index.html"},
+    {"group": "grp-analysts", "label": "analysts", "kind": "markdown", "body": "# Analysts\n\nRead the wiki first."},
+    {"group": "grp-ops", "label": "ops", "kind": "html", "url": "/hub/api/extensions/motd/rich/p1/index.html"},
 ]}
 NOW = datetime.now(timezone.utc).replace(microsecond=0)
 
@@ -192,7 +192,7 @@ def test_one_feed_per_subcommand(capsys, hub):
     assert out == TERMINAL
     code, out, _ = run(capsys, "rich")
     assert code == 0
-    assert "## analysts" in out and "## ops" in out
+    assert "## analysts" in out and "## ops" in out and "grp-" not in out
     assert "Welcome" not in out and "broadcast" not in out
     code, out, _ = run(capsys, "notifications")
     assert code == 0
@@ -214,7 +214,7 @@ def test_json_output(capsys, hub):
     motd = json.loads(run(capsys, "show", "--json")[1])
     assert motd["terminal"] == TERMINAL
     assert motd["entries"][1] == {
-        "group": "ops", "kind": "html",
+        "label": "ops", "kind": "html",
         "url": f"http://127.0.0.1:{hub.server_port}/hub/api/extensions/motd/rich/p1/index.html",
     }
     assert [n["message"] for n in motd["notifications"]] == [
@@ -262,6 +262,20 @@ def test_notification_window_and_notifications_alone_are_no_motd(capsys, hub):
     code, out, err = run(capsys, "notifications")
     assert (code, out) == (1, "")
     assert _one_line(err) and "last 24h" in err and "notificationWindow" in err
+
+
+def test_rich_entry_with_no_label_has_no_heading(capsys, hub):
+    # ACC-VIEW-73: group is not read; a missing or blank label prints no heading and is emitted empty
+    hub.answers["extensions/motd/rich"] = (200, JSON, json.dumps({"entries": [
+        {"group": "grp-analysts", "kind": "markdown", "body": "Read the wiki first."},
+        {"group": "grp-ops", "label": " ", "kind": "markdown", "body": "Second entry."},
+    ]}).encode())
+    code, out, _ = run(capsys, "rich")
+    assert (code, out) == (0, "Read the wiki first.\n\nSecond entry.\n")
+    assert json.loads(run(capsys, "rich", "--json")[1])["entries"] == [
+        {"label": "", "kind": "markdown", "body": "Read the wiki first."},
+        {"label": "", "kind": "markdown", "body": "Second entry."},
+    ]
 
 
 def test_token_never_printed(capsys, hub):

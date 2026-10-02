@@ -141,16 +141,18 @@ def read_terminal(motd):
 
 
 def read_entries(motd):
-    """The rich entries: markdown with its body, html with the absolute url of its page."""
+    """The rich entries: markdown with its body, html with the absolute url of its page. `label`
+    is the entry's heading, empty when the hub gives none or a blank one."""
     entries = []
     for e in rows(motd, "rich", "entries"):
-        if not isinstance(e, dict) or not isinstance(e.get("group"), str):
+        if not isinstance(e, dict):
             continue
+        label = e["label"].strip() if isinstance(e.get("label"), str) else ""
         if e.get("kind") == "markdown" and isinstance(e.get("body"), str):
-            entries.append({"group": e["group"], "kind": "markdown", "body": e["body"]})
+            entries.append({"label": label, "kind": "markdown", "body": e["body"]})
         elif e.get("kind") == "html" and isinstance(e.get("url"), str):
             url = urllib.parse.urljoin(motd.motd_api_url, e["url"])
-            entries.append({"group": e["group"], "kind": "html", "url": url})
+            entries.append({"label": label, "kind": "html", "url": url})
     return entries
 
 
@@ -172,7 +174,10 @@ def read_notifications(motd, window):
 
 
 def entries_text(entries):
-    return "\n\n".join(f"## {e['group']}\n\n" + e.get("body", e.get("url")).rstrip("\n") for e in entries)
+    # an entry with no label is printed with no heading
+    return "\n\n".join(
+        (f"## {e['label']}\n\n" if e["label"] else "") + e.get("body", e.get("url")).rstrip("\n")
+        for e in entries)
 
 
 def notification_lines(notifications):
@@ -271,7 +276,7 @@ COMMANDS = [
 Print the whole message of the day in three parts, in this order:
 
   the terminal text, as `terminal` prints it
-  each rich entry under a `## <group>` heading, as `rich` prints it
+  each rich entry under a `## <label>` heading, as `rich` prints it
   `## Notifications`, then one line per broadcast of the lab's notificationWindow setting,
   as `notifications` prints it
 
@@ -281,7 +286,7 @@ and no rich entry, whatever the notifications, or when any of the three feeds an
         f"""
 examples:
   {PROG} show
-  {PROG} show --json | jq -r '.entries[].group'
+  {PROG} show --json | jq -r '.entries[].label'
 """,
         "print one JSON document instead: "
         '{"terminal": "...", "entries": [...], "notifications": [...]}, each as the command of that name gives it',
@@ -303,14 +308,15 @@ examples:
         'print one JSON document instead: {"terminal": "<the text>"}',
     ),
     (
-        "rich", cmd_rich, "the rich entries, each under its group name",
+        "rich", cmd_rich, "the rich entries, each under its label",
         """
-Print each rich entry of the user's groups, in the hub's order (by group name): a
-`## <group>` heading, a blank line, then the markdown body, or for an html entry the url of
-its page on the hub, made absolute against motd_api_url. That is the hub address inside
-the lab, which a browser may not reach, and the hub answers it only to an authenticated
-caller; the page itself is read in the lab's Message of the day tab. Entries are separated by
-a blank line. Exits 1 when no group of the user carries a rich entry.
+Print each rich entry of the user's groups, in the hub's order: a `## <label>` heading
+and a blank line (neither for an entry with no label), then the markdown body, or for an
+html entry the url of its page on the hub, made absolute against motd_api_url. That is the
+hub address inside the lab, which a browser may not reach, and the hub answers it only to
+an authenticated caller; the page itself is read in the lab's Message of the day tab.
+Entries are separated by a blank line. Exits 1 when no group of the user carries a rich
+entry.
 """,
         f"""
 examples:
@@ -318,7 +324,7 @@ examples:
   {PROG} rich --json | jq -r '.entries[] | select(.kind == "html") | .url'
 """,
         "print one JSON document instead: "
-        '{"entries": [{"group", "kind": "markdown", "body"} or {"group", "kind": "html", "url"}]}',
+        '{"entries": [{"label", "kind": "markdown", "body"} or {"label", "kind": "html", "url"}]}',
     ),
     (
         "notifications", cmd_notifications, "the broadcasts of the notificationWindow setting, newest first",

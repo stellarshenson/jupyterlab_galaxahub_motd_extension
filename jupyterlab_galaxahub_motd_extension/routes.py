@@ -155,7 +155,7 @@ class MotdProxyHandler(APIHandler):
             url = url_path_join(self.base_url, NAMESPACE, "local", os.path.basename(page))
         else:
             url = url_path_join(self.base_url, NAMESPACE, "about", "index.html")
-        self.finish(json.dumps({"entries": [{"group": self.motd.label, "kind": "html", "url": url}]}))
+        self.finish(json.dumps({"entries": [{"label": self.motd.label, "kind": "html", "url": url}]}))
         return True
 
 

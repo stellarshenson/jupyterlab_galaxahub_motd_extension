@@ -63,12 +63,12 @@ function modelAnswering(entries: RichEntry[], rows: INotificationRow[]) {
 describe('MotdPanel drawing', () => {
   const entries: RichEntry[] = [
     {
-      group: 'analysts',
+      label: 'analysts',
       kind: 'markdown',
       body: '# Welcome to the analysts lab'
     },
     {
-      group: 'interns',
+      label: 'interns',
       kind: 'html',
       url: '/hub/api/extensions/motd/rich/p1/index.html'
     }
@@ -128,7 +128,7 @@ describe('MotdPanel drawing', () => {
       expect(strip.firstElementChild!.getAttribute('class')).toBe(
         'jp-MotdPanel-groupIcon'
       );
-      expect(strip.textContent!.startsWith(entries[i].group)).toBe(true);
+      expect(strip.textContent!.startsWith(entries[i].label)).toBe(true);
     });
     const [markdown, html] = cards.map(card => card.children[1]);
     expect(markdown.classList.contains('jp-MotdPanel-body')).toBe(true);
@@ -136,6 +136,37 @@ describe('MotdPanel drawing', () => {
       'rendered: # Welcome to the analysts lab'
     );
     expect(html.tagName).toBe('IFRAME');
+    panel.dispose();
+  });
+
+  it('draws an entry with no label as a card without the header strip', async () => {
+    const { model } = modelAnswering(
+      [
+        { label: '', kind: 'markdown', body: 'Welcome' },
+        { label: '', kind: 'html', url: '/pkg-1/index.html' }
+      ],
+      []
+    );
+    await model.pull();
+    const panel = new MotdPanel(model, fakeRendermime().registry);
+    await panel.render();
+
+    const cards = Array.from(
+      panel.node.querySelectorAll(
+        '.jp-MotdPanel-entries > .jp-MotdPanel-section'
+      )
+    );
+    expect(cards).toHaveLength(2);
+    expect(panel.node.querySelector('.jp-MotdPanel-strip')).toBeNull();
+    const [markdown, html] = cards.map(card => {
+      expect(card.children).toHaveLength(1);
+      return card.children[0];
+    });
+    expect(markdown.textContent).toBe('rendered: Welcome');
+    expect(html.tagName).toBe('IFRAME');
+    expect(html.getAttribute('title')).toBe(
+      'Message of the day - /pkg-1/index.html'
+    );
     panel.dispose();
   });
 
@@ -357,7 +388,7 @@ describe('MotdPanel html page frames', () => {
       RecordingObserver as unknown as typeof ResizeObserver;
     try {
       const { model } = modelAnswering(
-        [{ group: 'interns', kind: 'html', url: '/pkg-1/index.html' }],
+        [{ label: 'interns', kind: 'html', url: '/pkg-1/index.html' }],
         []
       );
       await model.pull();
@@ -391,8 +422,8 @@ describe('MotdPanel html page frames', () => {
 describe('MotdPanel cards across pulls', () => {
   it('keeps the cards and their frames when a pull brings no new entries', async () => {
     const entries: RichEntry[] = [
-      { group: 'analysts', kind: 'markdown', body: 'Welcome' },
-      { group: 'interns', kind: 'html', url: '/pkg-1/index.html' }
+      { label: 'analysts', kind: 'markdown', body: 'Welcome' },
+      { label: 'interns', kind: 'html', url: '/pkg-1/index.html' }
     ];
     // a 304, the proxy's 204 for an unreachable hub, and a failed pull keep the rows
     const rich: IAnswer[] = [
@@ -433,7 +464,7 @@ describe('MotdPanel activation', () => {
 
   it('focuses the entries column when activated with entries', async () => {
     const { model } = modelAnswering(
-      [{ group: 'analysts', kind: 'markdown', body: 'Welcome' }],
+      [{ label: 'analysts', kind: 'markdown', body: 'Welcome' }],
       []
     );
     await model.pull();
@@ -460,7 +491,7 @@ describe('MotdPanel activation', () => {
 
   it('moves the focus to the entries column when the first cards are drawn after activation', async () => {
     const { model } = modelAnswering(
-      [{ group: 'analysts', kind: 'markdown', body: 'Welcome' }],
+      [{ label: 'analysts', kind: 'markdown', body: 'Welcome' }],
       []
     );
     const panel = new MotdPanel(model, fakeRendermime().registry);

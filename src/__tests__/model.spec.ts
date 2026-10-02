@@ -34,7 +34,7 @@ const failed = <T>(): IFeedState<T> => ({
   rows: []
 });
 
-const ENTRY: RichEntry = { group: 'analysts', kind: 'markdown', body: '# Hi' };
+const ENTRY: RichEntry = { label: 'analysts', kind: 'markdown', body: '# Hi' };
 const ROW: INotificationRow = {
   ts: '2026-09-28T08:00:00+00:00',
   message: 'maintenance tonight',
@@ -91,15 +91,33 @@ describe('richRows', () => {
       entries: [
         {
           group: 'b-group',
+          label: 'B',
           kind: 'html',
           url: '/hub/api/extensions/motd/rich/p1/index.html'
         },
-        { group: 'a-group', kind: 'markdown', body: 'text' },
-        { group: 'c-group', kind: 'terminal', body: 'x' },
-        { group: 'd-group', kind: 'html' }
+        { group: 'a-group', label: 'A', kind: 'markdown', body: 'text' },
+        { group: 'c-group', label: 'C', kind: 'terminal', body: 'x' },
+        { group: 'd-group', label: 'D', kind: 'html' }
       ]
     });
-    expect(rows.map(r => r.group)).toEqual(['b-group', 'a-group']);
+    expect(rows.map(r => r.label)).toEqual(['B', 'A']);
+  });
+
+  it('reads the label and no other field; a missing or blank label is empty (ACC-VIEW-73)', () => {
+    const rows = richRows({
+      entries: [
+        { group: 'a-group', label: ' A ', kind: 'markdown', body: 'text' },
+        { group: 'b-group', kind: 'markdown', body: 'no label' },
+        { group: 'c-group', label: '  ', kind: 'html', url: '/p/index.html' },
+        { group: 'd-group', label: 7, kind: 'markdown', body: 'a number' }
+      ]
+    });
+    expect(rows).toEqual([
+      { label: 'A', kind: 'markdown', body: 'text' },
+      { label: '', kind: 'markdown', body: 'no label' },
+      { label: '', kind: 'html', url: '/p/index.html' },
+      { label: '', kind: 'markdown', body: 'a number' }
+    ]);
   });
 
   it('answers no rows for a body without entries', () => {

@@ -211,6 +211,13 @@ The Galata and pytest harness around the extension
   - root-cause: 2026-09-29T19:29:55Z @kj the stub thread appends to sent after sendall, and the test asserts right after the last CLI run returns, without joining the thread
   - log: 2026-09-29T19:29:55Z @kj added
   - log: 2026-09-29T19:32:41Z @kj closed: fixed before the 0.8.10 publish
+- [x] `DEF-TEST-26` **Galata lab takes motd settings from the machine's Jupyter config** - MEDIUM; on a machine whose jupyter_lab_config.py sets c.GalaxaHubMotd.label, 43 of 51 Galata tests fail: the tab carries that label, not Message of the day
+  - evidence: Galata 51/51 on installed 1.0.10, on a machine whose jupyter_lab_config.py sets label Welcome; before the fix 43 failed
+  - repro: set c.GalaxaHubMotd.label = "Welcome" in ~/.jupyter/jupyter_lab_config.py, run the Galata suite
+  - test-tags: FUNCTIONAL
+  - root-cause: 2026-10-02T00:05:17Z @kj ui-tests/jupyter_server_test_config.py sets only the two URLs and fallback_html; label and open_on_start come from the machine's config directories, which the test lab also reads
+  - log: 2026-10-02T00:05:17Z @kj added
+  - log: 2026-10-02T00:11:37Z @kj closed: fixed: jupyter_server_test_config.py sets label and open_on_start itself
 
 ## Live broadcasts `LIVE`
 

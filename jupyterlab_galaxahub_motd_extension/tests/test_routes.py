@@ -208,7 +208,7 @@ async def test_no_other_route(jp_fetch, hub):
 
 
 async def test_etag_and_cache_control_pass_through(jp_fetch, hub):
-    body = json.dumps({"entries": [{"group": "analysts", "kind": "markdown", "body": "# Hi"}]})
+    body = json.dumps({"entries": [{"label": "analysts", "kind": "markdown", "body": "# Hi"}]})
     hub.answers["extensions/motd/rich"] = (
         200, {**JSON, "Etag": '"abc123"', "Cache-Control": "no-cache"}, body.encode())
     response = await _fetch(jp_fetch, "rich")
@@ -230,7 +230,7 @@ async def test_hub_304_passes_through(jp_fetch, hub):
 
 async def test_matching_etag_answers_304(jp_fetch, hub):
     # the hub's rich route answers 200 whatever If-None-Match says
-    body = json.dumps({"entries": [{"group": "analysts", "kind": "markdown", "body": "# Hi"}]}).encode()
+    body = json.dumps({"entries": [{"label": "analysts", "kind": "markdown", "body": "# Hi"}]}).encode()
     hub.answers["extensions/motd/rich"] = (200, {**JSON, "Etag": '"r1"'}, body)
     response = await _fetch(jp_fetch, "rich", headers={"If-None-Match": '"r1"'})
     assert response.code == 304
@@ -313,11 +313,11 @@ async def test_token_never_in_the_answer(jp_fetch, hub):
 
 
 def _local_entry(jp_base_url, label="Message of the day"):
-    return {"entries": [{"group": label, "kind": "html", "url": f"{jp_base_url}{NS}/local/index.html"}]}
+    return {"entries": [{"label": label, "kind": "html", "url": f"{jp_base_url}{NS}/local/index.html"}]}
 
 
 def _about_entry(jp_base_url):
-    return {"entries": [{"group": "Message of the day", "kind": "html", "url": f"{jp_base_url}{NS}/about/index.html"}]}
+    return {"entries": [{"label": "Message of the day", "kind": "html", "url": f"{jp_base_url}{NS}/about/index.html"}]}
 
 
 async def test_local_page_when_the_hub_gives_no_entry(jp_fetch, jp_base_url, hub, page_dir):
@@ -359,7 +359,7 @@ async def test_label_in_the_page_config_by_default(jp_serverapp):
 
 async def test_hub_entries_win_over_the_local_page(jp_fetch, hub, page_dir):
     # ACC-LOCAL-68: entries and a 304 pass through unchanged
-    body = json.dumps({"entries": [{"group": "analysts", "kind": "markdown", "body": "# Hi"}]})
+    body = json.dumps({"entries": [{"label": "analysts", "kind": "markdown", "body": "# Hi"}]})
     hub.answers["extensions/motd/rich"] = (200, {**JSON, "Etag": '"r1"'}, body.encode())
     response = await _fetch(jp_fetch, "rich")
     assert (response.code, json.loads(response.body), response.headers["Etag"]) == (200, json.loads(body), '"r1"')

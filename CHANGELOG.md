@@ -4,6 +4,21 @@
 
 <!-- <END NEW CHANGELOG ENTRY> -->
 
+## [1.0.13] - 2026-10-02
+
+### Added
+
+- An entry with no label shows its card without the header bar, and the CLI prints it without a heading
+
+### Changed
+
+- Each rich entry's card is headed by the entry's `label`; the `group` field is no longer read, in the tab and in the CLI (`## <label>` heading, `label` in `--json`)
+- Smaller spacing in the tab: 16 px around both columns, 8 px by 12 px inside a card, 12 px between two cards
+
+### Fixed
+
+- The Galata suite failed on a machine whose Jupyter config sets `c.GalaxaHubMotd.label`; the suite's lab config now sets the label and the open-on-start switch itself
+
 ## [1.0.8] - 2026-10-01
 
 ### Fixed

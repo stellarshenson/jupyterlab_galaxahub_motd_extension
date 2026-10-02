@@ -250,21 +250,24 @@ export class MotdPanel extends Widget {
   ): Promise<HTMLElement> {
     const section = document.createElement('section');
     section.className = 'jp-MotdPanel-section';
-    section.dataset.group = entry.group;
+    section.dataset.label = entry.label;
     section.dataset.kind = entry.kind;
-    const strip = document.createElement('header');
-    strip.className = 'jp-MotdPanel-strip';
-    strip.append(
-      icon(GROUP_ICON, 'jp-MotdPanel-groupIcon'),
-      this._heading(entry.group)
-    );
-    if (entry.kind === 'html') {
-      const kind = document.createElement('span');
-      kind.className = 'jp-MotdPanel-kind';
-      kind.textContent = '- HTML page';
-      strip.appendChild(kind);
+    // an entry with no label has no header strip
+    if (entry.label) {
+      const strip = document.createElement('header');
+      strip.className = 'jp-MotdPanel-strip';
+      strip.append(
+        icon(GROUP_ICON, 'jp-MotdPanel-groupIcon'),
+        this._heading(entry.label)
+      );
+      if (entry.kind === 'html') {
+        const kind = document.createElement('span');
+        kind.className = 'jp-MotdPanel-kind';
+        kind.textContent = '- HTML page';
+        strip.appendChild(kind);
+      }
+      section.appendChild(strip);
     }
-    section.appendChild(strip);
     if (entry.kind === 'markdown') {
       // the lab's own markdown renderer, sanitised as untrusted content
       const renderer = this._rendermime.createRenderer('text/markdown');
@@ -287,7 +290,8 @@ export class MotdPanel extends Widget {
         'sandbox',
         'allow-same-origin allow-popups allow-popups-to-escape-sandbox'
       );
-      frame.title = `Message of the day - ${entry.group}`;
+      // with no label the page's url tells the frames apart for a screen reader
+      frame.title = `Message of the day - ${entry.label || entry.url}`;
       frame.src = entry.url;
       // the observer reports the page root on load and on every size change after it, so the
       // frame follows a page that changes its height, a tab width change and a tab shown after

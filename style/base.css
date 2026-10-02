@@ -32,7 +32,7 @@
 .jp-MotdPanel-entries {
   flex: 1 1 0;
   min-width: 0;
-  padding: 32px 40px;
+  padding: 16px;
 }
 
 .jp-MotdPanel-entries:empty {
@@ -41,7 +41,7 @@
 
 .jp-MotdPanel-notifications {
   flex: 0 0 25%;
-  padding: 32px 24px;
+  padding: 16px;
   border-left: 1px solid var(--jp-border-color2);
 }
 
@@ -64,7 +64,6 @@
   }
 
   .jp-MotdPanel-notifications {
-    padding: 32px 40px;
     border-left: none;
   }
 
@@ -88,20 +87,20 @@
 }
 
 .jp-MotdPanel-section + .jp-MotdPanel-section {
-  margin-top: 20px;
+  margin-top: 12px;
 }
 
 .jp-MotdPanel-strip {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 14px;
+  padding: 6px 12px;
   background: var(--jp-layout-color2);
   color: var(--jp-ui-font-color2);
   font-size: 12px;
 }
 
-/* a long group name wraps inside the card; the icon and the label keep their width */
+/* a long entry label wraps inside the card; the icon and the HTML page mark keep their width */
 .jp-MotdPanel-strip .jp-MotdPanel-heading {
   min-width: 0;
   font-size: inherit;
@@ -121,7 +120,7 @@
 /* markdown wider than the card scrolls sideways inside the body, not past the card edge */
 .jp-MotdPanel-section .jp-MotdPanel-body {
   overflow-x: auto;
-  padding: 16px 20px;
+  padding: 8px 12px;
 }
 
 /* the frame's side and bottom borders lie under the card's border, which the card clips */
@@ -133,6 +132,11 @@
   margin: 0 -1px -1px;
   border: 1px solid var(--jp-border-color2);
   background: var(--jp-layout-color1);
+}
+
+/* with no header strip above it, the frame's top border lies under the card's border too */
+.jp-MotdPanel-frame:first-child {
+  margin-top: -1px;
 }
 
 .jp-MotdPanel-title {
