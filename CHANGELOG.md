@@ -4,6 +4,17 @@
 
 <!-- <END NEW CHANGELOG ENTRY> -->
 
+## [1.0.15] - 2026-10-02
+
+### Changed
+
+- The command label, caption and palette category, the tab label, the HTML page mark and the Notifications texts go through the lab translator
+- The `Message of the day: Open` command declares that it takes no arguments
+
+### Fixed
+
+- `lint:check` reported 9 warnings; it now reports none
+
 ## [1.0.13] - 2026-10-02
 
 ### Added

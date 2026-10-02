@@ -2,6 +2,8 @@ import { Time } from '@jupyterlab/coreutils';
 
 import { IRenderMime, IRenderMimeRegistry } from '@jupyterlab/rendermime';
 
+import { TranslationBundle, nullTranslator } from '@jupyterlab/translation';
+
 import { Message } from '@lumino/messaging';
 
 import { Widget } from '@lumino/widgets';
@@ -122,12 +124,19 @@ function fitFrame(frame: HTMLIFrameElement): void {
  * is open it pulls again every `pollMinutes`.
  */
 export class MotdPanel extends Widget {
-  constructor(model: MotdModel, rendermime: IRenderMimeRegistry) {
+  constructor(
+    model: MotdModel,
+    rendermime: IRenderMimeRegistry,
+    trans: TranslationBundle = nullTranslator.load(
+      'jupyterlab_galaxahub_motd_extension'
+    )
+  ) {
     super();
     this._model = model;
     this._rendermime = rendermime;
+    this._trans = trans;
     this.id = 'galaxahub-motd';
-    this.title.label = 'Message of the day';
+    this.title.label = trans.__('Message of the day');
     this.title.closable = true;
     this.addClass('jp-MotdPanel');
     // the shell's current widget follows focus, so the panel must be able to take it
@@ -263,7 +272,7 @@ export class MotdPanel extends Widget {
       if (entry.kind === 'html') {
         const kind = document.createElement('span');
         kind.className = 'jp-MotdPanel-kind';
-        kind.textContent = '- HTML page';
+        kind.textContent = this._trans.__('- HTML page');
         strip.appendChild(kind);
       }
       section.appendChild(strip);
@@ -310,7 +319,7 @@ export class MotdPanel extends Widget {
   private _notificationsContent(): HTMLElement[] {
     const title = document.createElement('div');
     title.className = 'jp-MotdPanel-title';
-    title.appendChild(this._heading('Notifications'));
+    title.appendChild(this._heading(this._trans.__('Notifications')));
     const rows = notificationView(
       this._model.notifications.rows,
       this._notificationWindow
@@ -318,7 +327,7 @@ export class MotdPanel extends Widget {
     if (rows.length === 0) {
       const empty = document.createElement('p');
       empty.className = 'jp-MotdPanel-empty';
-      empty.textContent = 'No notifications';
+      empty.textContent = this._trans.__('No notifications');
       return [title, empty];
     }
     const count = document.createElement('span');
@@ -380,6 +389,7 @@ export class MotdPanel extends Widget {
 
   private _model: MotdModel;
   private _rendermime: IRenderMimeRegistry;
+  private _trans: TranslationBundle;
   private _entries = document.createElement('div');
   private _notifications = document.createElement('aside');
   private _renderers: IRenderMime.IRenderer[] = [];

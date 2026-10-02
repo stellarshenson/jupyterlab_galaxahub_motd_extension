@@ -280,6 +280,13 @@ The three settings in schema/plugin.json and what each changes
   - test-tags: UNIT
   - log: 2026-09-28T09:19:18Z @kj added
   - log: 2026-09-28T09:54:16Z @kj closed: verified on 0.1.4
+- [x] `ACC-CONFIG-75` **Lint reports no warning** - MEDIUM; lint:check reports 0 errors and 0 warnings; the command label, caption and palette category, the tab label and the tab's HTML page mark and Notifications texts go through the lab translator; the Open command declares its arguments
+  - evidence: jlpm run lint:check on 1.0.14: exit 0, no problem line (9 warnings before); Jest 52/52, pytest 51/51, Galata 52/52 on the installed build
+  - test: jlpm run lint:check prints no problem line; Jest and Galata suites pass with the translator absent
+  - test-tags: UNIT, FUNCTIONAL
+  - mechanism: 2026-10-02T01:42:58Z @kj optional ITranslator in index.ts, its bundle passed to MotdPanel; describedBy on the command; the two imports activation needs at once are exempt from prefer-lazy-imports
+  - log: 2026-10-02T01:42:58Z @kj added
+  - log: 2026-10-02T01:47:28Z @kj closed
 
 ## Theming `THEME`
 
