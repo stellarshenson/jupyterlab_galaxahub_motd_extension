@@ -12,7 +12,7 @@ import { MessageLoop } from '@lumino/messaging';
 import { Widget } from '@lumino/widgets';
 
 import { INotificationRow, MotdModel, RichEntry } from '../model';
-import { MotdPanel, motdIcon } from '../panel';
+import { MotdPanel } from '../panel';
 import { Feed, IAnswer } from '../request';
 
 /**
@@ -292,16 +292,11 @@ describe('MotdPanel drawing', () => {
     panel.dispose();
   });
 
-  it('shows the dot icon in its tab (ACC-VIEW-80)', () => {
+  it('marks its tab for the stylesheet and sets no icon (ACC-VIEW-80)', () => {
     const { model } = modelAnswering([], []);
     const panel = new MotdPanel(model, fakeRendermime().registry);
-    expect(panel.title.icon).toBe(motdIcon);
-    // one circle; the lab's jp-jupyter-icon-color class gives a filled shape the orange
-    expect(motdIcon.svgstr).toContain(
-      '<circle class="jp-jupyter-icon-color" fill="currentColor" fill-opacity="0.8" '
-    );
-    expect(motdIcon.svgstr).toContain(' r="9"/>');
-    expect(motdIcon.svgstr.match(/<(circle|path|g)\b/g)).toEqual(['<circle']);
+    expect(panel.title.className).toBe('jp-MotdPanel-tab');
+    expect(panel.title.icon).toBeUndefined();
     panel.dispose();
   });
 

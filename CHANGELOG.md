@@ -4,6 +4,16 @@
 
 <!-- <END NEW CHANGELOG ENTRY> -->
 
+## [1.0.45] - 2026-10-03
+
+### Changed
+
+- The tab is solid orange in the lab's tab bar: the lab's Jupyter icon colour, or the warn colour where a theme sets none, with the label and the close mark in the theme's inverse text colour
+
+### Removed
+
+- The tab's dot icon, together with the room the lab keeps before the label of every tab for an icon
+
 ## [1.0.43] - 2026-10-02
 
 ### Changed

@@ -2020,31 +2020,44 @@ test.describe('tab label', () => {
     await expect(tab(page)).toHaveCount(0);
   });
 
-  test('the tab shows the semi-transparent orange dot icon before its label', async ({
+  test('the tab is solid orange with inverse text and no icon', async ({
     page
   }) => {
     hub.rich = { status: 200, body: { entries: [MARKDOWN] } };
     await page.goto();
     await expectOpenAndCurrent(page);
-    const icon = tab(page).locator(
-      'svg[data-icon="jupyterlab_galaxahub_motd_extension:tab"]'
-    );
-    await expect(icon).toBeVisible();
-    const iconBox = (await icon.boundingBox())!;
-    const labelBox = (await tab(page)
-      .locator('.lm-TabBar-tabLabel')
-      .boundingBox())!;
-    expect(iconBox.x + iconBox.width).toBeLessThanOrEqual(labelBox.x);
-    // one circle in the stock light theme's Jupyter icon colour, #f37626, at 80 % fill opacity,
-    // 9 of the 24 grid units in radius: three quarters of the icon's width
-    const circle = icon.locator('circle');
-    const paint = await circle.evaluate(el => {
-      const style = getComputedStyle(el);
-      return { fill: style.fill, opacity: style.fillOpacity };
-    });
-    expect(paint).toEqual({ fill: 'rgb(243, 118, 38)', opacity: '0.8' });
-    expect((await circle.boundingBox())!.width).toBeCloseTo(
-      iconBox.width * 0.75,
+    const paint = () =>
+      tab(page).evaluate(el => {
+        const probe = document.createElement('span');
+        probe.style.color = 'var(--jp-ui-inverse-font-color1)';
+        document.body.appendChild(probe);
+        const inverse = getComputedStyle(probe).color;
+        probe.remove();
+        const close = el.querySelector('.lm-TabBar-tabCloseIcon .jp-icon3')!;
+        return {
+          background: getComputedStyle(el).backgroundColor,
+          label: getComputedStyle(el).color === inverse,
+          close: getComputedStyle(close).fill === inverse
+        };
+      });
+    // the stock light theme's Jupyter icon colour, #f37626
+    const solid = { background: 'rgb(243, 118, 38)', label: true, close: true };
+    expect(await paint()).toEqual(solid);
+    // with another tab current the tab keeps its colours, also under the pointer
+    await execute(page, 'launcher:create');
+    await expect(tab(page)).not.toHaveClass(/lm-mod-current/);
+    expect(await paint()).toEqual(solid);
+    await tab(page).hover();
+    expect(await paint()).toEqual(solid);
+    // no icon and no room kept for one: the label starts where the launcher's icon starts
+    await expect(tab(page).locator('.lm-TabBar-tabIcon')).toBeHidden();
+    const offset = async (name: string, part: string) => {
+      const owner = page.activity.getTabLocator(name);
+      const partBox = (await owner.locator(part).boundingBox())!;
+      return partBox.x - (await owner.boundingBox())!.x;
+    };
+    expect(await offset(TAB, '.lm-TabBar-tabLabel')).toBeCloseTo(
+      await offset('Launcher', '.lm-TabBar-tabIcon'),
       1
     );
   });

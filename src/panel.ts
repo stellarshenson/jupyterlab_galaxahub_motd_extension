@@ -4,8 +4,6 @@ import { IRenderMime, IRenderMimeRegistry } from '@jupyterlab/rendermime';
 
 import { TranslationBundle, nullTranslator } from '@jupyterlab/translation';
 
-import { LabIcon } from '@jupyterlab/ui-components';
-
 import { Message } from '@lumino/messaging';
 
 import { Widget } from '@lumino/widgets';
@@ -35,18 +33,6 @@ const TYPE_ICONS: Record<string, string[]> = {
   'in-progress': [CIRCLE, 'M12 7v5l3 2'],
   default: ['M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z', 'M10 21h4']
 };
-
-/**
- * The tab's icon, a filled circle. The lab's class gives it the Jupyter icon colour, orange;
- * the fill opacity makes it semi-transparent.
- */
-export const motdIcon = new LabIcon({
-  name: 'jupyterlab_galaxahub_motd_extension:tab',
-  svgstr:
-    '<svg xmlns="http://www.w3.org/2000/svg" width="16" viewBox="0 0 24 24">' +
-    '<circle class="jp-jupyter-icon-color" fill="currentColor" fill-opacity="0.8" ' +
-    'cx="12" cy="12" r="9"/></svg>'
-});
 
 /**
  * The words a screen reader says for each type; the default type has none.
@@ -134,7 +120,8 @@ export class MotdPanel extends Widget {
     this._trans = trans;
     this.id = 'galaxahub-motd';
     this.title.label = trans.__('Message of the day');
-    this.title.icon = motdIcon;
+    // the stylesheet colours the tab by this class and removes the room the lab keeps for an icon
+    this.title.className = 'jp-MotdPanel-tab';
     this.title.closable = true;
     this.addClass('jp-MotdPanel');
     // the shell's current widget follows focus, so the panel must be able to take it
