@@ -2787,7 +2787,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@jupyterlab/ui-components@npm:^4.6.0, @jupyterlab/ui-components@npm:^4.6.4":
+"@jupyterlab/ui-components@npm:^4.6.4":
   version: 4.6.4
   resolution: "@jupyterlab/ui-components@npm:4.6.4"
   dependencies:
@@ -7631,7 +7631,6 @@ __metadata:
     "@jupyterlab/settingregistry": ^4.6.0
     "@jupyterlab/testutils": ^4.6.0
     "@jupyterlab/translation": ^4.6.0
-    "@jupyterlab/ui-components": ^4.6.0
     "@lumino/coreutils": ^2.2.0
     "@lumino/messaging": ^2.0.0
     "@lumino/signaling": ^2.1.0
