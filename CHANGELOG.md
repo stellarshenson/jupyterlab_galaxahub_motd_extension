@@ -4,6 +4,16 @@
 
 <!-- <END NEW CHANGELOG ENTRY> -->
 
+## [1.0.48] - 2026-10-03
+
+### Changed
+
+- The tab's label is bold
+
+### Removed
+
+- The solid orange colour of the tab: the tab has the lab's own tab colours again; it still has no icon
+
 ## [1.0.45] - 2026-10-03
 
 ### Changed

@@ -2020,44 +2020,41 @@ test.describe('tab label', () => {
     await expect(tab(page)).toHaveCount(0);
   });
 
-  test('the tab is solid orange with inverse text and no icon', async ({
+  test('the tab has a bold label, the colours of any other tab and no icon', async ({
     page
   }) => {
     hub.rich = { status: 200, body: { entries: [MARKDOWN] } };
     await page.goto();
     await expectOpenAndCurrent(page);
-    const paint = () =>
-      tab(page).evaluate(el => {
-        const probe = document.createElement('span');
-        probe.style.color = 'var(--jp-ui-inverse-font-color1)';
-        document.body.appendChild(probe);
-        const inverse = getComputedStyle(probe).color;
-        probe.remove();
-        const close = el.querySelector('.lm-TabBar-tabCloseIcon .jp-icon3')!;
-        return {
-          background: getComputedStyle(el).backgroundColor,
-          label: getComputedStyle(el).color === inverse,
-          close: getComputedStyle(close).fill === inverse
-        };
-      });
-    // the stock light theme's Jupyter icon colour, #f37626
-    const solid = { background: 'rgb(243, 118, 38)', label: true, close: true };
-    expect(await paint()).toEqual(solid);
-    // with another tab current the tab keeps its colours, also under the pointer
+    await expect(tab(page).locator('.lm-TabBar-tabLabel')).toHaveCSS(
+      'font-weight',
+      '700'
+    );
+    // with two launchers open, the tab and the first launcher are both not current
     await execute(page, 'launcher:create');
+    await execute(page, 'launcher:create');
+    const launcher = page.activity.getTabLocator('Launcher').first();
     await expect(tab(page)).not.toHaveClass(/lm-mod-current/);
-    expect(await paint()).toEqual(solid);
-    await tab(page).hover();
-    expect(await paint()).toEqual(solid);
+    await expect(launcher).not.toHaveClass(/lm-mod-current/);
+    const colours = (el: Element) => {
+      const close = el.querySelector('.lm-TabBar-tabCloseIcon .jp-icon3')!;
+      return [
+        getComputedStyle(el).backgroundColor,
+        getComputedStyle(el).color,
+        getComputedStyle(close).fill
+      ];
+    };
+    expect(await tab(page).evaluate(colours)).toEqual(
+      await launcher.evaluate(colours)
+    );
     // no icon and no room kept for one: the label starts where the launcher's icon starts
     await expect(tab(page).locator('.lm-TabBar-tabIcon')).toBeHidden();
-    const offset = async (name: string, part: string) => {
-      const owner = page.activity.getTabLocator(name);
+    const offset = async (owner: Locator, part: string) => {
       const partBox = (await owner.locator(part).boundingBox())!;
       return partBox.x - (await owner.boundingBox())!.x;
     };
-    expect(await offset(TAB, '.lm-TabBar-tabLabel')).toBeCloseTo(
-      await offset('Launcher', '.lm-TabBar-tabIcon'),
+    expect(await offset(tab(page), '.lm-TabBar-tabLabel')).toBeCloseTo(
+      await offset(launcher, '.lm-TabBar-tabIcon'),
       1
     );
   });

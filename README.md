@@ -19,7 +19,7 @@ has none.
 
 - **Welcome tab on start** - opens the Message of the day tab and makes it current when the hub
   carries at least one welcome entry for the user; notifications alone never open it. The tab
-  is solid orange in the tab bar, the lab's Jupyter icon colour, and has no icon
+  has a bold label and no icon
 - **Once per server start** - the tab opens by itself on the first load of the lab after each lab
   server start; a later load, a browser refresh included, opens no tab, and the palette command
   opens it at any time
