@@ -736,12 +736,16 @@ The two hub URLs the lab's Jupyter config sets for the extension
   - test-tags: UNIT
   - log: 2026-09-29T19:20:10Z @kj added
   - log: 2026-09-29T19:21:16Z @kj closed: verified on source after 0.8.8
-- [x] `ACC-SERVER-66` **Tab label setting** - HIGH; c.GalaxaHubMotd.label, default Message of the day, is the label of the tab and of the local page card; the lab page config carries it as galaxahubMotdLabel
-  - evidence: pytest 49/49 on 1.0.2: page_config_data carries galaxahubMotdLabel, default and configured, local card carries it; Galata 49/49 on 1.0.2: default label on the tab, page config label shows on the tab
-  - test: pytest jupyterlab_galaxahub_motd_extension/tests/test_routes.py: page_config_data carries the label; Galata ui-tests/tests/motd.spec.ts: default label on the tab, a page config label shows on the tab
+- [x] `ACC-SERVER-66` **Tab label setting** - HIGH; c.GalaxaHubMotd.label is the label of the tab and of the local page card; default Welcome; the lab page config carries it as galaxahubMotdLabel; with no label in the page config the tab is labelled Welcome
+  - evidence: build 1.0.49: pytest 55/55 (default Welcome in the trait, in page_config_data and on the local card; configured label in both); Jest 58/58 (the panel's own label is Welcome); Galata 67/67 (a page config label on the tab; Welcome with an empty one)
+  - test: pytest tests/test_routes.py: default and configured label in page_config_data and on the local card; Jest src/**tests**/panel.spec.ts: the panel's own label; Galata ui-tests/tests/motd.spec.ts: a page config label on the tab, Welcome with none
   - test-tags: UNIT, FUNCTIONAL
   - log: 2026-09-30T07:29:52Z @kj added
   - log: 2026-09-30T08:58:09Z @kj closed
+  - log: 2026-10-05T14:36:23Z @kj reopened: reopened: owner asked on 2026-10-04 for the default label Welcome; evidence retired: pytest 49/49 on 1.0.2: page_config_data carries galaxahubMotdLabel, default and configured, local card carries it; Galata 49/49 on 1.0.2: default label on the tab, page config label shows on the tab
+  - log: 2026-10-05T14:36:24Z @kj amended text "c.GalaxaHubMotd.label, default Message of the day, is the label of the tab and of the local page card; the lab page config carries it as galaxahubMotdLabel" -> "c.GalaxaHubMotd.label is the label of the tab and of the local page card; default Welcome; the lab page config carries it as galaxahubMotdLabel; with no label in the page config the tab is labelled Welcome"
+  - log: 2026-10-05T14:36:24Z @kj edited test "pytest jupyterlab_galaxahub_motd_extension/tests/test_routes.py: page_config_data carries the label; Galata ui-tests/tests/motd.spec.ts: default label on the tab, a page config label shows on the tab" -> "pytest tests/test_routes.py: default and configured label in page_config_data and on the local card; Jest src/**tests**/panel.spec.ts: the panel's own label; Galata ui-tests/tests/motd.spec.ts: a page config label on the tab, Welcome with none"
+  - log: 2026-10-05T14:42:30Z @kj closed
 - [x] `ACC-SERVER-71` **Open on start switch for the lab** - HIGH; c.GalaxaHubMotd.open_on_start, default true; false: no tab opens on lab start, hub entries included, and the palette command still opens it; the lab page config carries it as galaxahubMotdOpenOnStart
   - evidence: pytest 49/49 on 1.0.2: page_config_data galaxahubMotdOpenOnStart true by default, false when set; Galata 49/49 on 1.0.2: false keeps the tab closed on start, the command opens it
   - related: ACC-CONFIG-26 - the per-user openOnStart; both must be on for the tab to open on start

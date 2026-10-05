@@ -10,8 +10,8 @@
 
 Shows the GalaxaHub message of the day in a JupyterLab tab. When the lab starts, the extension pulls
 the welcome content that the user's groups carry and the broadcasts sent to the user. It opens a
-**Message of the day** tab with the hub's entries, or with the local or built-in page when the hub
-has none.
+tab, labelled **Welcome** by default, with the hub's entries, or with the local or built-in page
+when the hub has none.
 
 ![Message of the day tab](.resources/screenshot.png)
 
@@ -84,7 +84,7 @@ only the local or built-in page.
 | `c.GalaxaHubMotd.motd_api_url`          | base URL of the motd API; the extension reads `<url>/rich` and `<url>/terminal`                                                                           |
 | `c.GalaxaHubMotd.notifications_api_url` | URL that answers the broadcasts sent to the user; while it is empty the tab has no Notifications column, and its cards take the full width                |
 | `c.GalaxaHubMotd.fallback_html`         | absolute path of a local HTML page, shown when the hub gives no welcome entry; the files in its folder are served too; empty (default): the built-in page |
-| `c.GalaxaHubMotd.label`                 | label of the tab and of the local page's card; default `Message of the day`                                                                               |
+| `c.GalaxaHubMotd.label`                 | label of the tab and of the local page's card; default `Welcome`                                                                                          |
 | `c.GalaxaHubMotd.open_on_start`         | `True` (default): the tab opens on the first load after each lab server start; `False`: no load opens the tab, whatever each user's `openOnStart`         |
 | `c.GalaxaHubMotd.html_allow_scripts`    | `True` (default): the JavaScript of an HTML page runs, in a hub page and in the local page; `False`: no script in a page runs                             |
 
@@ -120,7 +120,7 @@ if hub:
     c.GalaxaHubMotd.motd_api_url = f"{hub}/extensions/motd"
     c.GalaxaHubMotd.notifications_api_url = f"{hub}/user-notifications"
 c.GalaxaHubMotd.fallback_html = "/opt/motd/index.html"  # optional; empty shows the built-in page
-c.GalaxaHubMotd.label = "Message of the day"            # optional
+c.GalaxaHubMotd.label = "Welcome"                       # optional; the tab label
 c.GalaxaHubMotd.open_on_start = True                    # optional; once per lab server start
 c.GalaxaHubMotd.html_allow_scripts = True               # optional; False runs no script in a page
 ```

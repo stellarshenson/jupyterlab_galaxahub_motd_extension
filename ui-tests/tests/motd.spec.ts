@@ -1997,9 +1997,12 @@ test.describe('once per server start', () => {
 });
 
 test.describe('tab label', () => {
-  test('the tab carries the label of the lab page config', async ({ page }) => {
-    // the server puts c.GalaxaHubMotd.label in the page config; this lab runs the default, so
-    // the page is served with another value in its place
+  // the server puts c.GalaxaHubMotd.label in the page config, and the suite's lab config sets
+  // it to TAB; this serves the lab page with another value in its place
+  async function servePageConfigLabel(
+    page: IJupyterLabPageFixture,
+    label: string
+  ) {
     await page.route('**/lab**', async route => {
       if (route.request().resourceType() !== 'document') {
         // fallback, not continue: the settings and state requests go on to galata's own mocks
@@ -2008,15 +2011,32 @@ test.describe('tab label', () => {
       const response = await route.fetch();
       const html = (await response.text()).replace(
         /"galaxahubMotdLabel":\s*"Message of the day"/,
-        '"galaxahubMotdLabel": "Welcome to the lab"'
+        `"galaxahubMotdLabel": ${JSON.stringify(label)}`
       );
       await route.fulfill({ response, body: html });
     });
+  }
+
+  const motdTabLabel = (page: IJupyterLabPageFixture) =>
+    page.locator(
+      '.lm-TabBar-tab[data-id="galaxahub-motd"] .lm-TabBar-tabLabel'
+    );
+
+  test('the tab carries the label of the lab page config', async ({ page }) => {
+    await servePageConfigLabel(page, 'Welcome to the lab');
     hub.rich = { status: 200, body: { entries: [MARKDOWN] } };
     await page.goto();
-    await expect(page.activity.getTabLocator('Welcome to the lab')).toHaveCount(
-      1
-    );
+    await expect(motdTabLabel(page)).toHaveText('Welcome to the lab');
+    await expect(tab(page)).toHaveCount(0);
+  });
+
+  test('the tab is labelled Welcome when the lab page config gives no label', async ({
+    page
+  }) => {
+    await servePageConfigLabel(page, '');
+    hub.rich = { status: 200, body: { entries: [MARKDOWN] } };
+    await page.goto();
+    await expect(motdTabLabel(page)).toHaveText('Welcome');
     await expect(tab(page)).toHaveCount(0);
   });
 

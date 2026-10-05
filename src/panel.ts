@@ -119,8 +119,9 @@ export class MotdPanel extends Widget {
     this._rendermime = rendermime;
     this._trans = trans;
     this.id = 'galaxahub-motd';
-    this.title.label = trans.__('Message of the day');
-    // the stylesheet colours the tab by this class and removes the room the lab keeps for an icon
+    this.title.label = trans.__('Welcome');
+    // the stylesheet makes the tab's label bold by this class and removes the room the lab keeps
+    // for an icon
     this.title.className = 'jp-MotdPanel-tab';
     this.title.closable = true;
     this.addClass('jp-MotdPanel');

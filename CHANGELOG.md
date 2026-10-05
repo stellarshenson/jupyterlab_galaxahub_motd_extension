@@ -4,6 +4,14 @@
 
 <!-- <END NEW CHANGELOG ENTRY> -->
 
+## [1.0.50] - 2026-10-05
+
+### Changed
+
+- The default of `c.GalaxaHubMotd.label`, the label of the tab and of the local page's card, is `Welcome`; it was `Message of the day`. A label set to an empty string shows `Welcome` on the tab too
+- The package description says what the extension does; it was the package name. npm, PyPI and the GalaxaLab skill index show it
+- Makefile 1.45: `make install` installs the optional dependency groups of `pyproject.toml` with the wheel
+
 ## [1.0.48] - 2026-10-03
 
 ### Changed

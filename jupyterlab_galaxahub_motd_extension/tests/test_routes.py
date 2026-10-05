@@ -193,7 +193,7 @@ async def test_cli_asks_the_running_lab(jp_fetch, jp_serverapp, jp_http_port, jp
 def test_settings_are_empty_by_default():
     motd = GalaxaHubMotd()
     assert (motd.motd_api_url, motd.notifications_api_url, motd.fallback_html) == ("", "", "")
-    assert (motd.label, motd.open_on_start, motd.html_allow_scripts) == ("Message of the day", True, True)
+    assert (motd.label, motd.open_on_start, motd.html_allow_scripts) == ("Welcome", True, True)
     assert set(GalaxaHubMotd.class_trait_names(config=True)) == {
         "motd_api_url", "notifications_api_url", "fallback_html", "label", "open_on_start", "html_allow_scripts"}
 
@@ -312,12 +312,12 @@ async def test_token_never_in_the_answer(jp_fetch, hub):
         assert all(TOKEN not in value for _, value in response.headers.get_all()), name
 
 
-def _local_entry(jp_base_url, label="Message of the day"):
+def _local_entry(jp_base_url, label="Welcome"):
     return {"entries": [{"label": label, "kind": "html", "url": f"{jp_base_url}{NS}/local/index.html"}]}
 
 
 def _about_entry(jp_base_url):
-    return {"entries": [{"label": "Message of the day", "kind": "html", "url": f"{jp_base_url}{NS}/about/index.html"}]}
+    return {"entries": [{"label": "Welcome", "kind": "html", "url": f"{jp_base_url}{NS}/about/index.html"}]}
 
 
 async def test_local_page_when_the_hub_gives_no_entry(jp_fetch, jp_base_url, hub, page_dir):
@@ -354,7 +354,7 @@ async def test_local_page_with_an_empty_setting_carries_the_label(jp_fetch, jp_b
 
 async def test_label_in_the_page_config_by_default(jp_serverapp):
     # ACC-SERVER-66
-    assert jp_serverapp.web_app.settings["page_config_data"]["galaxahubMotdLabel"] == "Message of the day"
+    assert jp_serverapp.web_app.settings["page_config_data"]["galaxahubMotdLabel"] == "Welcome"
 
 
 async def test_hub_entries_win_over_the_local_page(jp_fetch, hub, page_dir):

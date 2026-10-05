@@ -51,7 +51,7 @@ class GalaxaHubMotd(Configurable):
              "extension's built-in page, which states what it does, its settings and the hub API it reads.",
     )
     label = Unicode(
-        "Message of the day", config=True,
+        "Welcome", config=True,
         help="The label of the tab, and of the local page's card.",
     )
     open_on_start = Bool(

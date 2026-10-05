@@ -300,6 +300,13 @@ describe('MotdPanel drawing', () => {
     panel.dispose();
   });
 
+  it('labels its tab Welcome until the lab page config gives a label (ACC-SERVER-66)', () => {
+    const { model } = modelAnswering([], []);
+    const panel = new MotdPanel(model, fakeRendermime().registry);
+    expect(panel.title.label).toBe('Welcome');
+    panel.dispose();
+  });
+
   it('holds both columns in the element that scrolls a stacked tab (ACC-LAYOUT-38)', () => {
     const { model } = modelAnswering([], []);
     const panel = new MotdPanel(model, fakeRendermime().registry);
