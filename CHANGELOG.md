@@ -4,6 +4,12 @@
 
 <!-- <END NEW CHANGELOG ENTRY> -->
 
+## [1.0.53] - 2026-10-05
+
+### Changed
+
+- No change in the package: a republish of 1.0.52
+
 ## [1.0.52] - 2026-10-05
 
 ### Changed
