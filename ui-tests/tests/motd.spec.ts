@@ -227,10 +227,10 @@ test.describe('tab content', () => {
     await page.goto();
     await expectOpenAndCurrent(page);
 
+    // the hub holds no notification, so the tab has no Notifications heading
     await expect(page.locator('.jp-MotdPanel-heading')).toHaveText([
       'zulu',
-      'alpha',
-      'Notifications'
+      'alpha'
     ]);
     const zulu = page.locator('.jp-MotdPanel-section[data-label="zulu"]');
     await expect(zulu.locator('.jp-RenderedMarkdown h1')).toContainText(
@@ -339,8 +339,7 @@ test.describe('tab content', () => {
     await expect(cards).toHaveCount(3);
     await expect(page.locator('.jp-MotdPanel-strip')).toHaveCount(1);
     await expect(page.locator('.jp-MotdPanel-heading')).toHaveText([
-      'analysts',
-      'Notifications'
+      'analysts'
     ]);
     await expect(page.locator('.jp-MotdPanel-entries')).not.toContainText(
       'grp-'
@@ -1003,6 +1002,41 @@ test.describe('two-column layout', () => {
       .evaluate(el => el.clientWidth);
     expect(card.width).toBeCloseTo(inside - 32, 0);
     expect(card.width).toBeGreaterThan(960);
+  });
+
+  test('hides the Notifications column while it lists no notification', async ({
+    page
+  }) => {
+    hub.rich = { status: 200, body: { entries: [MARKDOWN] } };
+    await page.goto();
+    await expectOpenAndCurrent(page);
+    await expect(page.locator('.jp-MotdPanel-section')).toHaveCount(1);
+    await expect(page.locator('.jp-MotdPanel-notifications')).toBeHidden();
+
+    // the entries column is as wide as the tab, and the card passes the 960 px cap of a
+    // two-column tab
+    const tabBox = await box(page, '.jp-MotdPanel');
+    const column = await box(page, '.jp-MotdPanel-entries');
+    const card = await box(page, '.jp-MotdPanel-section');
+    expect(tabBox.width - column.width).toBeLessThanOrEqual(2);
+    expect(card.width).toBeGreaterThan(960);
+
+    // a pull that finds a notification brings the column back, in 1/4 of the width
+    hub.notifications = { status: 200, body: { notifications: manyRows(1) } };
+    await execute(page, 'galaxahub-motd:open');
+    await expect(page.locator('.jp-MotdPanel-row')).toHaveCount(1);
+    await expect(page.locator('.jp-MotdPanel-notifications')).toBeVisible();
+    const entries = await box(page, '.jp-MotdPanel-entries');
+    const notifications = await box(page, '.jp-MotdPanel-notifications');
+    expect(
+      notifications.width / (entries.width + notifications.width)
+    ).toBeCloseTo(0.25, 2);
+
+    // a pull that finds none hides it again
+    hub.notifications = { status: 200, body: { notifications: [] } };
+    await execute(page, 'galaxahub-motd:open');
+    await expect(page.locator('.jp-MotdPanel-notifications')).toBeHidden();
+    await expect(page.locator('.jp-MotdPanel-section')).toHaveCount(1);
   });
 });
 
@@ -1826,9 +1860,7 @@ test.describe('local page', () => {
     await hub.stop();
     await page.goto();
     await expectLocalPage(page);
-    await expect(page.locator('.jp-MotdPanel-empty')).toHaveText(
-      'No notifications'
-    );
+    await expect(page.locator('.jp-MotdPanel-notifications')).toBeHidden();
   });
 
   test('shows the hub entries, not the local page, when the hub holds one', async ({

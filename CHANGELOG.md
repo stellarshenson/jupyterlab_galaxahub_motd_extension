@@ -4,6 +4,17 @@
 
 <!-- <END NEW CHANGELOG ENTRY> -->
 
+## [1.0.52] - 2026-10-05
+
+### Changed
+
+- The tab has no Notifications column while there is no notification to list inside the `notificationWindow` setting, and the entry cards take the full width of the tab; the column returns when a pull or a change of the setting gives a notification
+- A Notifications column that is hidden while it has the keyboard focus passes the focus to the entries column
+
+### Removed
+
+- The text `No notifications`, which no state of the tab shows any more
+
 ## [1.0.50] - 2026-10-05
 
 ### Changed

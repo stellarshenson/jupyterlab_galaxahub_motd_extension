@@ -96,7 +96,7 @@ ${css}
 <div class="jp-MotdPanel-entries" tabindex="0"><div id="spacer"></div>
 <section class="jp-MotdPanel-section"><header class="jp-MotdPanel-strip"><h2 class="jp-MotdPanel-heading">Research</h2><span class="jp-MotdPanel-kind">- HTML page</span></header>
 <iframe class="jp-MotdPanel-frame" sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-scripts"></iframe></section>
-</div><aside class="jp-MotdPanel-notifications" tabindex="0"><div class="jp-MotdPanel-title"><h2 class="jp-MotdPanel-heading">Notifications</h2></div><p class="jp-MotdPanel-empty">No notifications</p></aside>
+</div><aside class="jp-MotdPanel-notifications" tabindex="0"><div class="jp-MotdPanel-title"><h2 class="jp-MotdPanel-heading">Notifications</h2></div></aside>
 </div></div>
 <script type="module">
 import { fitFrame } from '/fit.js';

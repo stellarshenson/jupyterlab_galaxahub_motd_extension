@@ -12,6 +12,7 @@ import { fitFrame } from './fit';
 
 import {
   DEFAULT_SETTINGS,
+  INotificationView,
   MotdModel,
   NotificationWindow,
   RichEntry,
@@ -140,6 +141,7 @@ export class MotdPanel extends Widget {
     columns.className = 'jp-MotdPanel-columns';
     columns.append(this._entries, this._notifications);
     this.node.appendChild(columns);
+    this._drawNotifications();
     model.changed.connect(() => void this.render(), this);
   }
 
@@ -150,11 +152,12 @@ export class MotdPanel extends Widget {
   htmlAllowScripts = false;
 
   /**
-   * Whether the tab has its Notifications column, which it has while the lab config names a
-   * notifications URL; without the column the cards take the full width.
+   * Whether the lab config names a notifications URL; without one the tab has no Notifications
+   * column.
    */
   set notifications(shown: boolean) {
-    this.toggleClass('jp-mod-noNotifications', !shown);
+    this._notificationsUrl = shown;
+    this._drawNotifications();
   }
 
   /**
@@ -170,7 +173,7 @@ export class MotdPanel extends Widget {
    */
   set notificationWindow(span: NotificationWindow) {
     this._notificationWindow = span;
-    this._notifications.replaceChildren(...this._notificationsContent());
+    this._drawNotifications();
   }
 
   /**
@@ -197,7 +200,7 @@ export class MotdPanel extends Widget {
       // the old frames leave with their cards; each new frame joins the observer on load
       this._frameObserver.disconnect();
       // a tab activated before its first cards were drawn gave the focus to Notifications, or
-      // to the tab itself in a lab with no Notifications column
+      // to the tab itself while it has no Notifications column
       const refocus =
         !this._entries.childElementCount &&
         document.activeElement === this._besideEntries;
@@ -208,7 +211,7 @@ export class MotdPanel extends Widget {
         this._focusColumn();
       }
     }
-    this._notifications.replaceChildren(...this._notificationsContent());
+    this._drawNotifications();
   }
 
   dispose(): void {
@@ -238,7 +241,7 @@ export class MotdPanel extends Widget {
 
   /**
    * What takes the focus while the entries column is empty: the Notifications column, or the
-   * tab itself in a lab with no Notifications column.
+   * tab itself while it has no Notifications column.
    */
   private get _besideEntries(): HTMLElement {
     return this.hasClass('jp-mod-noNotifications')
@@ -350,20 +353,33 @@ export class MotdPanel extends Widget {
     return section;
   }
 
-  private _notificationsContent(): HTMLElement[] {
-    const title = document.createElement('div');
-    title.className = 'jp-MotdPanel-title';
-    title.appendChild(this._heading(this._trans.__('Notifications')));
+  /**
+   * Draw the Notifications column. The tab has the column while the lab config names a
+   * notifications URL and the column lists at least one notification; without the column the
+   * cards take the full width.
+   */
+  private _drawNotifications(): void {
     const rows = notificationView(
       this._model.notifications.rows,
       this._notificationWindow
     );
-    if (rows.length === 0) {
-      const empty = document.createElement('p');
-      empty.className = 'jp-MotdPanel-empty';
-      empty.textContent = this._trans.__('No notifications');
-      return [title, empty];
+    const hidden = !this._notificationsUrl || rows.length === 0;
+    // a hidden column cannot keep the focus, so the column the page keys scroll takes it
+    const refocus =
+      hidden && this._notifications.contains(document.activeElement);
+    this.toggleClass('jp-mod-noNotifications', hidden);
+    this._notifications.replaceChildren(
+      ...(rows.length ? this._notificationsContent(rows) : [])
+    );
+    if (refocus) {
+      this._focusColumn();
     }
+  }
+
+  private _notificationsContent(rows: INotificationView[]): HTMLElement[] {
+    const title = document.createElement('div');
+    title.className = 'jp-MotdPanel-title';
+    title.appendChild(this._heading(this._trans.__('Notifications')));
     const count = document.createElement('span');
     count.className = 'jp-MotdPanel-count';
     count.textContent = String(rows.length);
@@ -436,6 +452,7 @@ export class MotdPanel extends Widget {
   );
   private _renderToken = 0;
   private _pollMinutes = 0;
+  private _notificationsUrl = true;
   private _notificationWindow: NotificationWindow =
     DEFAULT_SETTINGS.notificationWindow;
   private _timer = 0;

@@ -415,12 +415,16 @@ the tab as drawn on board B of the design canvas: entry cards left, Notification
   - log: 2026-10-02T08:21:35Z @kj amended title "Notification row layout" -> "Notification row is a tinted card"; text "a row shows the message on its first line, then the audience marker at the left and the relative time at the right on the second line" -> "MEDIUM; a row is a card with a 1 px border and a background tinted with the lab colour of its type, 8 px from the next; it shows the message, then the audience marker and the relative time on one line"
   - log: 2026-10-02T08:21:37Z @kj edited test "Galata: assert the marker's right edge is left of the time's left edge, both below the message" -> "Galata: lays a row out as a tinted card: the message, then the marker and the time on one line; Jest: each row's data-type sets --jp-private-motd-tone to a lab variable"; test-tags "FUNCTIONAL" -> "UNIT, FUNCTIONAL"
   - log: 2026-10-02T08:33:02Z @kj closed
-- [x] `ACC-LAYOUT-35` **Row count beside the heading** - LOW; the Notifications heading carries the number of rows in a pill; with no rows there is no pill and the column says No notifications
-  - evidence: Jest 40/40 on 0.1.7: panel.spec.ts 'shows the row count in a pill beside the Notifications heading' - 4 rows show pill 4; 'says so when there are no notifications' - 0 rows show no pill and No notifications
-  - test: Jest: 4 rows show pill text 4; 0 rows show no pill and the text No notifications
+- [x] `ACC-LAYOUT-35` **Row count beside the heading** - LOW; the Notifications heading carries the number of rows in a pill
+  - evidence: build 1.0.51: Jest 59/59, 'shows the row count in a pill beside the Notifications heading' - 4 rows show pill 4
+  - test: Jest: 4 rows show pill text 4
   - test-tags: UNIT
   - log: 2026-09-28T11:40:00Z @kj added
   - log: 2026-09-28T12:06:57Z @kj closed: verified on 0.1.7
+  - log: 2026-10-05T16:42:20Z @kj reopened: owner asked on 2026-10-05 for no Notifications column when it lists nothing, so the No notifications text goes; evidence retired: Jest 40/40 on 0.1.7: panel.spec.ts 'shows the row count in a pill beside the Notifications heading' - 4 rows show pill 4; 'says so when there are no notifications' - 0 rows show no pill and No notifications
+  - log: 2026-10-05T16:42:20Z @kj amended text "the Notifications heading carries the number of rows in a pill; with no rows there is no pill and the column says No notifications" -> "the Notifications heading carries the number of rows in a pill"
+  - log: 2026-10-05T16:42:20Z @kj edited test "Jest: 4 rows show pill text 4; 0 rows show no pill and the text No notifications" -> "Jest: 4 rows show pill text 4"
+  - log: 2026-10-05T16:53:00Z @kj closed
 - [x] `ACC-LAYOUT-36` **HTML page frame fits its page** - MEDIUM; the html entry frame follows its page: page height plus borders, measured again when the page or the tab width changes; a page that cannot be measured (root as tall as the frame, or only absolute or fixed content) keeps the 480 px box and scrolls inside it
   - evidence: 1.0.28: Galata 65/65 with visible scrollbars, describe 'html page frame' 16/16: the 13 earlier cases, content that appears below the body, and the tab height changed in 2 px steps in the two-column and the stacked tab; fit sweep 0 failed of 12309 at scale 1
   - test: Galata 'html page frame' against stub-hub packages - short page, a page that grows after load (`<details>` opened), text that wraps after the tab narrows, load behind another tab, a 700 px page with no doctype (quirks mode), a 700 px page with an html margin of 20 px (content past the root), a page with an html margin of 20 px whose opened `<details>` adds exactly 40 px (growth equal to the content past the root), html and body height 100%, absolute and fixed content; assert frame = page height + 2 for the first four under 480 px and for the quirks page above 480 px with compatMode BackCompat, frame = root height + 40 px html margin + 2 with no inner scroll for the html margin page, frame = root height + 40 px html margin + 2 before and after the opening for the page that grows by its margin, 480 px with inner scroll for html and body height 100% and for absolute content, 480 px with the content inside the viewport for fixed content; Jest: one resize observer per panel, connected on load, disconnected on re-render and dispose; 'fits a page whose script adds lines of one height': frame = page height + 2; with visible scrollbars: 'leaves no scrollbar in the frame of a page that grows and whose height follows its width' and 'fits a page that shows a scrollbar by its own rule', each frame = page height + 2
@@ -534,6 +538,12 @@ the tab as drawn on board B of the design canvas: entry cards left, Notification
   - mechanism: 2026-10-02T08:06:55Z @kj scrollbar-gutter: stable on .jp-MotdPanel-entries and, in a stacked tab, on .jp-MotdPanel-columns; an html frame's width must not depend on the scroller's scrollbar (DEF-LAYOUT-28-2)
   - log: 2026-10-02T08:06:55Z @kj added
   - log: 2026-10-02T08:33:00Z @kj closed
+- [x] `ACC-LAYOUT-84` **No Notifications column while it lists nothing** - HIGH; with no notification to list inside notificationWindow, the tab has no Notifications column and the entry cards take the full width, 960 px cap lifted; the column returns once a pull or a setting change gives a row; a column hidden while focused passes the focus to the entries column
+  - evidence: build 1.0.51: Jest 59/59 (the class follows the listed rows and the window setting; a focused column that leaves passes the focus on); Galata 68/68 'hides the Notifications column while it lists no notification': hidden, card wider than 960 px, back after a pull with a row
+  - test: Jest panel.spec.ts: jp-mod-noNotifications follows the listed rows, a focused column that leaves passes the focus on; Galata motd.spec.ts 'hides the Notifications column while it lists no notification'
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-05T16:42:20Z @kj added
+  - log: 2026-10-05T16:53:00Z @kj closed
 
 ## Agent CLI `CLI`
 

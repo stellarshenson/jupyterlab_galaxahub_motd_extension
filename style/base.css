@@ -69,7 +69,8 @@
   border-left: none;
 }
 
-/* a lab with no notifications URL has no Notifications column */
+/* a lab with no notifications URL, and a tab with no notification to list, have no
+   Notifications column */
 .jp-MotdPanel.jp-mod-noNotifications .jp-MotdPanel-notifications {
   display: none;
 }
@@ -291,9 +292,4 @@
 .jp-MotdPanel-audience::after {
   margin: 0 5px;
   content: '\00b7';
-}
-
-.jp-MotdPanel-empty {
-  margin: 0;
-  color: var(--jp-ui-font-color2);
 }

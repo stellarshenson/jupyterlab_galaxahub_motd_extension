@@ -281,8 +281,9 @@ describe('MotdPanel drawing', () => {
     panel.dispose();
   });
 
-  it('carries jp-mod-noNotifications while the lab names no notifications URL (ACC-LAYOUT-77)', () => {
-    const { model } = modelAnswering(entries, []);
+  it('carries jp-mod-noNotifications while the lab names no notifications URL (ACC-LAYOUT-77)', async () => {
+    const { model } = modelAnswering(entries, rows);
+    await model.pull();
     const panel = new MotdPanel(model, fakeRendermime().registry);
     expect(panel.hasClass('jp-mod-noNotifications')).toBe(false);
     panel.notifications = false;
@@ -466,15 +467,31 @@ describe('MotdPanel drawing', () => {
     panel.dispose();
   });
 
-  it('says so when there are no notifications', async () => {
-    const { model } = modelAnswering(entries.slice(0, 1), []);
-    await model.pull();
+  it('has no Notifications column while it lists no notification (ACC-LAYOUT-84)', async () => {
+    // the hub's answer, which the test replaces between pulls
+    const sent: INotificationRow[] = [];
+    const { model } = modelAnswering(entries.slice(0, 1), sent);
     const panel = new MotdPanel(model, fakeRendermime().registry);
+    const column = panel.node.querySelector('.jp-MotdPanel-notifications')!;
+    await model.pull();
     await panel.render();
-    expect(panel.node.querySelector('.jp-MotdPanel-empty')!.textContent).toBe(
-      'No notifications'
-    );
-    expect(panel.node.querySelector('.jp-MotdPanel-count')).toBeNull();
+    expect(panel.hasClass('jp-mod-noNotifications')).toBe(true);
+    expect(column.childElementCount).toBe(0);
+
+    // a pull that gives a row brings the column back
+    sent.push(rows[1]);
+    await model.pull();
+    await panel.render();
+    expect(panel.hasClass('jp-mod-noNotifications')).toBe(false);
+    expect(column.querySelectorAll('.jp-MotdPanel-row')).toHaveLength(1);
+
+    // a row older than the window is not listed, so the column leaves again
+    sent[0] = { ...rows[1], ts: ago(2 * 24 * 60) };
+    await model.pull();
+    await panel.render();
+    expect(panel.hasClass('jp-mod-noNotifications')).toBe(true);
+    panel.notificationWindow = '3d';
+    expect(panel.hasClass('jp-mod-noNotifications')).toBe(false);
     panel.dispose();
   });
 });
@@ -594,13 +611,47 @@ describe('MotdPanel activation', () => {
     panel.dispose();
   });
 
-  it('focuses the Notifications column when activated without entries', () => {
-    const { model } = modelAnswering([], []);
+  const ROW: INotificationRow = {
+    ts: ago(5),
+    message: 'maintenance tonight',
+    type: 'info',
+    audience: 'all'
+  };
+
+  it('focuses the Notifications column when activated without entries', async () => {
+    const { model } = modelAnswering([], [ROW]);
+    await model.pull();
     const panel = new MotdPanel(model, fakeRendermime().registry);
     Widget.attach(panel, document.body);
     MessageLoop.sendMessage(panel, Widget.Msg.ActivateRequest);
     expect(document.activeElement).toBe(
       panel.node.querySelector('.jp-MotdPanel-notifications')
+    );
+    panel.dispose();
+  });
+
+  it('passes the focus to the entries column when a focused Notifications column leaves (ACC-LAYOUT-84)', async () => {
+    const sent = [ROW];
+    const { model } = modelAnswering(
+      [{ label: 'analysts', kind: 'markdown', body: 'Welcome' }],
+      sent
+    );
+    await model.pull();
+    const panel = new MotdPanel(model, fakeRendermime().registry);
+    await panel.render();
+    Widget.attach(panel, document.body);
+    const column = panel.node.querySelector<HTMLElement>(
+      '.jp-MotdPanel-notifications'
+    )!;
+    column.focus();
+    expect(document.activeElement).toBe(column);
+
+    sent.length = 0;
+    await model.pull();
+    await panel.render();
+    expect(panel.hasClass('jp-mod-noNotifications')).toBe(true);
+    expect(document.activeElement).toBe(
+      panel.node.querySelector('.jp-MotdPanel-entries')
     );
     panel.dispose();
   });
