@@ -30,6 +30,13 @@
   height: 100%;
 }
 
+/* the scrollbar of each column, and of a stacked tab, is thin */
+.jp-MotdPanel-entries,
+.jp-MotdPanel-notifications,
+.jp-MotdPanel-columns {
+  scrollbar-width: thin;
+}
+
 /* the tab and its columns take the focus with no outline, as the lab's main-area widgets */
 .jp-MotdPanel:focus,
 .jp-MotdPanel-columns > :focus {

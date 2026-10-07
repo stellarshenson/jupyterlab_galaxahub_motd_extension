@@ -32,8 +32,8 @@ when the hub has none.
 - **Two columns** - the entry cards on the left in 3/4 of the width, the Notifications column in
   the other 1/4; a tab narrower than 800 px stacks them. The tab has no Notifications column
   while there is no notification to list, or when the lab config names no notifications URL; its
-  cards then take the full width of the tab. The room of the scrollbar beside the cards is kept
-  while they do not scroll, so a card keeps its width
+  cards then take the full width of the tab. The scrollbars are thin. The room of the scrollbar
+  beside the cards is kept while they do not scroll, so a card keeps its width
 - **One card per group** - markdown rendered by the lab's own markdown renderer, an HTML package
   shown in a sandboxed iframe at its hub address, sized to fit its page; the entry's `label` heads
   the card, and an entry with no label has no header bar. In a markdown entry a link to a heading

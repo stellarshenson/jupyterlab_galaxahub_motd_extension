@@ -794,6 +794,70 @@ test.describe('two-column layout', () => {
     }
   });
 
+  test('draws thin scrollbars', async ({ page }) => {
+    hub.rich = {
+      status: 200,
+      body: {
+        entries: [
+          MARKDOWN,
+          SECOND,
+          { ...MARKDOWN, label: 'staff' },
+          { ...SECOND, label: 'guests' }
+        ]
+      }
+    };
+    hub.notifications = { status: 200, body: { notifications: manyRows(60) } };
+    await page.setViewportSize({ width: 1300, height: 420 });
+    await page.goto();
+    await expectOpenAndCurrent(page);
+    await expect(page.locator('.jp-MotdPanel-row')).toHaveCount(60);
+
+    // the bar of the browser, on an element this test adds
+    const defaultBar = await page.evaluate(() => {
+      const probe = document.createElement('div');
+      probe.style.cssText =
+        'position: absolute; width: 100px; height: 100px; overflow: scroll; scrollbar-width: auto';
+      document.body.appendChild(probe);
+      const bar = probe.offsetWidth - probe.clientWidth;
+      probe.remove();
+      return bar;
+    });
+    expect(defaultBar).toBeGreaterThan(0);
+    // the width the vertical bar of a scrolling element takes, without the element's borders
+    const bar = (selector: string) =>
+      page.locator(selector).evaluate(el => {
+        const style = getComputedStyle(el);
+        return (
+          (el as HTMLElement).offsetWidth -
+          el.clientWidth -
+          parseFloat(style.borderLeftWidth) -
+          parseFloat(style.borderRightWidth)
+        );
+      });
+    for (const column of [
+      '.jp-MotdPanel-entries',
+      '.jp-MotdPanel-notifications'
+    ]) {
+      expect(
+        await page
+          .locator(column)
+          .evaluate(el => el.scrollHeight > el.clientHeight)
+      ).toBe(true);
+      expect(await bar(column)).toBeGreaterThan(0);
+      expect(await bar(column)).toBeLessThan(defaultBar);
+    }
+
+    // a stacked tab scrolls as one
+    await page.setViewportSize({ width: 820, height: 420 });
+    const panel = page.locator('.jp-MotdPanel-columns');
+    await expect
+      .poll(() => panel.evaluate(el => el.scrollHeight > el.clientHeight))
+      .toBe(true);
+    expect(await panel.evaluate(el => el.clientWidth)).toBeLessThan(800);
+    expect(await bar('.jp-MotdPanel-columns')).toBeGreaterThan(0);
+    expect(await bar('.jp-MotdPanel-columns')).toBeLessThan(defaultBar);
+  });
+
   test('scrolls a long notification list in its own column', async ({
     page
   }) => {

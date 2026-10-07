@@ -4,6 +4,12 @@
 
 <!-- <END NEW CHANGELOG ENTRY> -->
 
+## [1.0.55] - 2026-10-07
+
+### Changed
+
+- The scrollbar of the entries column, of the Notifications column and of a stacked tab is thin, in the theme colours; in Chromium on Linux it is 10 px wide where the default bar is 15 px
+
 ## [1.0.53] - 2026-10-05
 
 ### Changed

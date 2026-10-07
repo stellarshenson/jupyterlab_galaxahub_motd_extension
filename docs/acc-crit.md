@@ -544,6 +544,12 @@ the tab as drawn on board B of the design canvas: entry cards left, Notification
   - test-tags: UNIT, FUNCTIONAL
   - log: 2026-10-05T16:42:20Z @kj added
   - log: 2026-10-05T16:53:00Z @kj closed
+- [x] `ACC-LAYOUT-85` **Thin scrollbars** - MEDIUM; the entries column, the Notifications column and a stacked tab have a thin scrollbar in the theme colours, narrower than the browser default bar; the room of the bar is kept, so a card keeps its width when its column starts to scroll
+  - evidence: build 1.0.54: Galata 69/69, 'draws thin scrollbars' - each of the three bars narrower than the browser default bar and wider than 0, card width test passes; frame fit sweep at scales 1, 1.1, 1.25 and 1.5: 12,309 samples each, 0 failed
+  - test: Galata motd.spec.ts 'draws thin scrollbars': each of the three bars is narrower than the browser default bar and wider than 0; 'keeps the width of a card when the entries column starts to scroll'
+  - test-tags: FUNCTIONAL
+  - log: 2026-10-07T07:58:35Z @kj added
+  - log: 2026-10-07T08:19:09Z @kj closed
 
 ## Agent CLI `CLI`
 
