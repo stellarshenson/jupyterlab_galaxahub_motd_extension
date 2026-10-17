@@ -51,8 +51,8 @@ describe('MotdPanel notification times (ACC-VIEW-92)', () => {
   it('redraws the Notifications column each minute without a pull and keeps the cards', async () => {
     const { model, calls } = modelAnswering(ENTRIES, [
       row('recent', 5),
-      // inside the 24 hour window for one minute and a half more
-      row('leaving', 24 * 60 - 1.5)
+      // inside the default 7 day window for one minute and a half more
+      row('leaving', 7 * 24 * 60 - 1.5)
     ]);
     await model.pull();
     const panel = new MotdPanel(model, RENDERMIME);
@@ -70,14 +70,14 @@ describe('MotdPanel notification times (ACC-VIEW-92)', () => {
     ]);
     expect(texts(panel, '.jp-MotdPanel-time')).toEqual([
       '5 minutes ago',
-      '23 hours ago'
+      '6 days ago'
     ]);
     expect(texts(panel, '.jp-MotdPanel-count')).toEqual(['2']);
 
     jest.advanceTimersByTime(60_000);
     expect(texts(panel, '.jp-MotdPanel-time')).toEqual([
       '6 minutes ago',
-      '23 hours ago'
+      '6 days ago'
     ]);
 
     jest.advanceTimersByTime(60_000);

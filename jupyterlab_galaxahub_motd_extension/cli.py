@@ -273,7 +273,7 @@ configuration:
   whatever configured that lab applies: its config files and its command line. Either one
   empty means no hub to ask (exit 1).
   notificationWindow                     the tab's setting in the lab's Settings Editor:
-                                         24h (default), 3d or 7d, how far back show and
+                                         24h, 3d or 7d (default), how far back show and
                                          notifications list broadcasts; the CLI asks the
                                          running lab for it
 
@@ -362,7 +362,7 @@ examples:
         """
 Print the broadcasts the hub recorded for the user - those sent to all users and those naming
 the user - one line per broadcast, newest first, as far back as the lab's notificationWindow
-setting reaches: 24h (default), 3d or 7d. Each line holds four fields separated by a tab: time
+setting reaches: 24h, 3d or 7d (default). Each line holds four fields separated by a tab: time
 (ISO 8601), type, audience (all or direct), message. Whitespace inside a message, line breaks
 included, prints as one space. Exits 1 when the hub holds none inside that span.
 """,

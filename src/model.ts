@@ -66,7 +66,7 @@ export const DEFAULT_SETTINGS: IMotdSettings = {
   openOnStart: true,
   reopenOnBroadcast: false,
   pollMinutes: 0,
-  notificationWindow: '24h'
+  notificationWindow: '7d'
 };
 
 /**

@@ -67,7 +67,7 @@ def _ago(hours):
     return (NOW - timedelta(hours=hours)).isoformat()
 
 
-# out of order on purpose: the CLI sorts newest first; times inside the default 24 hours
+# out of order on purpose: the CLI sorts newest first; times inside 24 hours, the shortest window
 NOTIFICATIONS = {"notifications": [
     {"ts": _ago(20), "message": "Older broadcast", "type": "info", "audience": "all"},
     {"ts": _ago(1), "message": "Newest\nbroadcast", "type": "warning", "audience": "direct"},
@@ -272,7 +272,7 @@ def test_notification_lines(capsys, hub):
 
 
 def test_notification_window_and_notifications_alone_are_no_motd(capsys, hub):
-    # ACC-CLI-65: the lab's notificationWindow setting, 24h by default, sets how far back; a row
+    # ACC-CLI-65: the lab's notificationWindow setting, 7d by default, sets how far back; a row
     # with a time that cannot be read is left out
     def row(hours, message):
         return {"ts": _ago(hours), "message": message, "type": "info", "audience": "all"}
@@ -281,7 +281,7 @@ def test_notification_window_and_notifications_alone_are_no_motd(capsys, hub):
     unreadable = {**older[0], "ts": "yesterday", "message": "Unreadable"}
     hub.answers["user-notifications"] = (200, JSON, json.dumps(
         {"notifications": [*older, unreadable, *NOTIFICATIONS["notifications"]]}).encode())
-    listed = {None: [], "3d": ["Yesterday", "Three days"], "7d": ["Yesterday", "Three days", "Six days"]}
+    listed = {None: ["Yesterday", "Three days", "Six days"], "24h": [], "3d": ["Yesterday", "Three days"]}
     for window, messages in listed.items():
         if window:
             hub.tab["notificationWindow"] = window
@@ -297,11 +297,11 @@ def test_notification_window_and_notifications_alone_are_no_motd(capsys, hub):
     code, out, err = run(capsys, "show")
     assert (code, out) == (1, "")
     assert _one_line(err) and "no terminal text and no rich entry" in err
-    # only rows older than the default 24 hours: notifications prints nothing and exits 1
-    hub.answers["user-notifications"] = (200, JSON, json.dumps({"notifications": older}).encode())
+    # only a row older than the default 7 days: notifications prints nothing and exits 1
+    hub.answers["user-notifications"] = (200, JSON, json.dumps({"notifications": older[-1:]}).encode())
     code, out, err = run(capsys, "notifications")
     assert (code, out) == (1, "")
-    assert _one_line(err) and "last 24h" in err and "notificationWindow" in err
+    assert _one_line(err) and "last 7d" in err and "notificationWindow" in err
 
 
 def test_rich_entry_with_no_label_has_no_heading(capsys, hub):

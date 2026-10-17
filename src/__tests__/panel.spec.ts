@@ -352,9 +352,9 @@ describe('MotdPanel drawing', () => {
       Array.from(panel.node.querySelectorAll('.jp-MotdPanel-message')).map(
         m => m.textContent
       );
-    expect(messages()).toEqual(['newer', 'older']);
-    panel.notificationWindow = '3d';
     expect(messages()).toEqual(['newer', 'older', 'three days']);
+    panel.notificationWindow = '24h';
+    expect(messages()).toEqual(['newer', 'older']);
     panel.dispose();
   });
 
@@ -486,6 +486,7 @@ describe('MotdPanel drawing', () => {
     expect(column.querySelectorAll('.jp-MotdPanel-row')).toHaveLength(1);
 
     // a row older than the window is not listed, so the column leaves again
+    panel.notificationWindow = '24h';
     sent[0] = { ...rows[1], ts: ago(2 * 24 * 60) };
     await model.pull();
     await panel.render();

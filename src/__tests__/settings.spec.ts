@@ -41,7 +41,7 @@ describe('schema/plugin.json', () => {
         { const: '3d', title: 'Last 3 days' },
         { const: '7d', title: 'Last 7 days' }
       ],
-      default: '24h'
+      default: '7d'
     });
   });
 

@@ -124,7 +124,7 @@ one `notifications` list.
 - **Limit** - GalaxaHub returns the newest 100 broadcasts
 - **`message`** - required string, and the extension drops a row without it
 - **`ts`** - ISO 8601 timestamp; the tab shows only the rows inside its `notificationWindow`
-  setting (the last 24 hours, 3 days or 7 days, 24 hours by default), newest first, and leaves
+  setting (the last 24 hours, 3 days or 7 days, 7 days by default), newest first, and leaves
   out a row whose `ts` it cannot parse
 - **`type`** - one of the lab notification types `info`, `success`, `warning`, `error` and
   `in-progress`, and the tab shows any other value as `default`

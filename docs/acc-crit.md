@@ -120,15 +120,19 @@ What the Message of the day tab renders and in which order
   - test-tags: FUNCTIONAL
   - log: 2026-09-28T09:19:17Z @kj added
   - log: 2026-09-28T09:54:14Z @kj closed: verified on 0.1.4
-- [x] `ACC-VIEW-64` **Notifications window setting** - HIGH; the Notifications column lists and counts only rows whose ts lies inside the notificationWindow setting before now: 24h (default), 3d or 7d; a changed setting redraws the open tab; an older row, or one whose ts cannot be read, is not shown
-  - evidence: Jest 49/49 and Galata 43/43 on 0.8.16: 24 hours by default leaves out 2 and 8 days; 3d and 7d set live redraw the tab without a pull
-  - test: Jest notificationView per choice, panel redraw; Galata: 24 hours by default, 3d and 7d set live redraw the tab
+- [x] `ACC-VIEW-64` **Notifications window setting** - HIGH; the Notifications column lists and counts only rows whose ts lies inside the notificationWindow setting before now: 24h, 3d or 7d (default); a changed setting redraws the open tab; an older row, or one whose ts cannot be read, is not shown
+  - evidence: 1.0.75: Galata 78/78, 7 days by default lists 2 days and leaves out 8 days, 24h and 3d set live redraw the tab; Jest 62/62 panel redraw for 24h; failed on 1.0.74 (logs/make-test-before-7d-default.log)
+  - test: Jest notificationView per choice, panel redraw; Galata: 7 days by default leaves out 8 days, 24h and 3d set live redraw the tab
   - test-tags: UNIT, FUNCTIONAL
   - log: 2026-09-29T21:24:18Z @kj added
   - log: 2026-09-29T21:47:36Z @kj amended title "Notifications of the last 7 days only" -> "Notifications window setting"; text "the Notifications column lists and counts only rows whose ts lies within 7 days before now; an older row, or one whose ts cannot be read, is not shown" -> "the Notifications column lists and counts only rows whose ts lies inside the notificationWindow setting before now: 24h (default), 3d or 7d; a changed setting redraws the open tab; an older row, or one whose ts cannot be read, is not shown"
   - log: 2026-09-29T21:47:36Z @kj edited test "Jest notificationView with a fixed now; Galata: a row 8 days old is not shown" -> "Jest notificationView per choice, readSettings, panel redraw; Galata: 24 hours by default, 3d and 7d set live redraw the tab"
   - log: 2026-09-30T07:26:40Z @kj closed
   - log: 2026-10-16T20:07:20Z @kj edited test "Jest notificationView per choice, readSettings, panel redraw; Galata: 24 hours by default, 3d and 7d set live redraw the tab" -> "Jest notificationView per choice, panel redraw; Galata: 24 hours by default, 3d and 7d set live redraw the tab"
+  - log: 2026-10-17T08:33:00Z @kj reopened: the owner made 7d the default notificationWindow; evidence retired: Jest 49/49 and Galata 43/43 on 0.8.16: 24 hours by default leaves out 2 and 8 days; 3d and 7d set live redraw the tab without a pull
+  - log: 2026-10-17T08:33:07Z @kj amended text "the Notifications column lists and counts only rows whose ts lies inside the notificationWindow setting before now: 24h (default), 3d or 7d; a changed setting redraws the open tab; an older row, or one whose ts cannot be read, is not shown" -> "the Notifications column lists and counts only rows whose ts lies inside the notificationWindow setting before now: 24h, 3d or 7d (default); a changed setting redraws the open tab; an older row, or one whose ts cannot be read, is not shown"
+  - log: 2026-10-17T08:33:13Z @kj edited test "Jest notificationView per choice, panel redraw; Galata: 24 hours by default, 3d and 7d set live redraw the tab" -> "Jest notificationView per choice, panel redraw; Galata: 7 days by default leaves out 8 days, 24h and 3d set live redraw the tab"
+  - log: 2026-10-17T08:43:03Z @kj closed
 - [x] `ACC-VIEW-73` **Card heading from the entry's label** - HIGH; a rich entry's card is headed by its label; group is not read; a missing or empty label leaves the card without its header strip; the CLI prints and emits label and prints no heading for an empty one; the local page entry carries label
   - related: ACC-VIEW-6, ACC-LAYOUT-32, ACC-CLI-42 - reworded from group to label
   - evidence: Jest 52/52, pytest 51/51, Galata 51/51 on installed 1.0.11: cards headed by label, group not shown, no-label cards without strip, CLI prints no heading for an empty label; review wf_79c548e7-308 SHIP
@@ -335,8 +339,8 @@ How the tab reacts to broadcasts that jupyterlab_notifications_extension deliver
 
 The three settings in schema/plugin.json and what each changes
 
-- [x] `ACC-CONFIG-26` **Four settings with their defaults** - MEDIUM; schema/plugin.json declares openOnStart true, reopenOnBroadcast false, pollMinutes 0, an integer from 0 to 35791, and notificationWindow 24h, one of 24h, 3d and 7d
-  - evidence: Jest 49/49 after the notificationWindow change: settings.spec.ts schema declares the four settings, notificationWindow oneOf 24h, 3d, 7d default 24h; defaults match DEFAULT_SETTINGS
+- [x] `ACC-CONFIG-26` **Four settings with their defaults** - MEDIUM; schema/plugin.json declares openOnStart true, reopenOnBroadcast false, pollMinutes 0, an integer from 0 to 35791, and notificationWindow 7d, one of 24h, 3d and 7d
+  - evidence: 1.0.75: Jest 62/62, settings.spec.ts schema declares notificationWindow oneOf 24h, 3d, 7d default 7d, defaults match DEFAULT_SETTINGS; failed on 1.0.74 (logs/make-test-before-7d-default.log)
   - test: Jest src/**tests**/settings.spec.ts
   - test-tags: UNIT
   - log: 2026-09-28T09:19:18Z @kj added
@@ -346,6 +350,9 @@ The three settings in schema/plugin.json and what each changes
   - log: 2026-09-29T21:47:36Z @kj reopened; evidence retired: Jest 40/40 on 0.1.8: settings.spec.ts schema declares pollMinutes minimum 0, maximum 35791, default 0; defaults match DEFAULT_SETTINGS, readSettings fills and clamps; reason: a fourth setting, notificationWindow, joins the schema
   - log: 2026-09-29T21:47:36Z @kj amended title "Three settings with their defaults" -> "Four settings with their defaults"; text "schema/plugin.json declares openOnStart true, reopenOnBroadcast false and pollMinutes 0, an integer from 0 to 35791" -> "schema/plugin.json declares openOnStart true, reopenOnBroadcast false, pollMinutes 0, an integer from 0 to 35791, and notificationWindow 24h, one of 24h, 3d and 7d"
   - log: 2026-09-29T21:47:42Z @kj closed
+  - log: 2026-10-17T08:33:03Z @kj reopened: the owner made 7d the default notificationWindow; evidence retired: Jest 49/49 after the notificationWindow change: settings.spec.ts schema declares the four settings, notificationWindow oneOf 24h, 3d, 7d default 24h; defaults match DEFAULT_SETTINGS
+  - log: 2026-10-17T08:33:08Z @kj amended text "schema/plugin.json declares openOnStart true, reopenOnBroadcast false, pollMinutes 0, an integer from 0 to 35791, and notificationWindow 24h, one of 24h, 3d and 7d" -> "schema/plugin.json declares openOnStart true, reopenOnBroadcast false, pollMinutes 0, an integer from 0 to 35791, and notificationWindow 7d, one of 24h, 3d and 7d"
+  - log: 2026-10-17T08:43:04Z @kj closed
 - [x] `ACC-CONFIG-27` **openOnStart off keeps the tab closed** - MEDIUM; with openOnStart false the tab does not open on lab start; the command still opens it
   - evidence: Galata 17/17 on 0.1.4: 'openOnStart off keeps the tab closed on start' - closed after the pull, command still opens it
   - test: Galata ui-tests/tests/motd.spec.ts 'openOnStart off keeps the tab closed on start'
@@ -738,16 +745,20 @@ the jupyterlab-galaxahub-motd command and its agent skill: the motd read from a 
   - test-tags: UNIT
   - log: 2026-09-29T19:53:49Z @kj added
   - log: 2026-09-29T19:55:42Z @kj closed
-- [x] `ACC-CLI-65` **CLI follows the notificationWindow setting and the motd-only rule** - HIGH; notifications and show print only rows inside the running lab's notificationWindow setting (24h by default); show exits 1 when the hub holds no terminal text and no rich entry, even with notifications, and leaves the Notifications part out when that feed answers 404 or an error or cannot be reached
-  - evidence: pytest 49/49 on 1.0.2: test_notification_window_and_notifications_alone_are_no_motd lists 24h by default, 3d and 7d, show exits 1 with only notifications; Galata 49/49 on 1.0.2: CLI follows the setting stored in the lab
+- [x] `ACC-CLI-65` **CLI follows the notificationWindow setting and the motd-only rule** - HIGH; notifications and show print only rows inside the running lab's notificationWindow setting (7d by default); show exits 1 when the hub holds no terminal text and no rich entry, even with notifications, and leaves the Notifications part out when that feed answers 404 or an error or cannot be reached
+  - evidence: 1.0.75: pytest 62/62, test_notification_window_and_notifications_alone_are_no_motd lists 7d by default, 24h and 3d; failed on 1.0.74 (logs/pytest-before-7d-default.log); Galata 78/78, CLI follows a stored 24h setting
   - related: ACC-VIEW-64 - same 7-day window; ACC-START-2 - same motd-only rule; ACC-CLI-47 - exit 1
-  - test: pytest with a stub lab and hub: 24h default, 3d, 7d; show with only notifications exits 1; Galata: the CLI follows a setting stored in the lab
+  - test: pytest with a stub lab and hub: 7d default, 24h, 3d; show with only notifications exits 1; test_show_leaves_out_a_failed_notifications_feed; Galata: the CLI follows a setting stored in the lab
   - test-tags: UNIT, FUNCTIONAL
   - log: 2026-09-29T21:24:18Z @kj added
   - log: 2026-09-29T21:47:36Z @kj amended title "CLI follows the 7-day and motd-only rules" -> "CLI follows the notificationWindow setting and the motd-only rule"; text "notifications and show print only rows of the last 7 days; show exits 1 when the hub holds no terminal text and no rich entry, even with notifications" -> "notifications and show print only rows inside the lab's notificationWindow setting, which the CLI reads from the running lab (24h by default); show exits 1 when the hub holds no terminal text and no rich entry, even with notifications"
   - log: 2026-09-29T21:47:36Z @kj edited test "pytest with a stub hub: an 8-day-old row is left out; show with only notifications exits 1" -> "pytest with a stub lab and hub: 24h default, 3d, 7d; show with only notifications exits 1; Galata: the CLI follows a setting stored in the lab"; test-tags "UNIT" -> "UNIT, FUNCTIONAL"
   - log: 2026-09-30T08:58:08Z @kj closed
   - log: 2026-10-16T21:42:00Z @kj amended text "notifications and show print only rows inside the lab's notificationWindow setting, which the CLI reads from the running lab (24h by default); show exits 1 when the hub holds no terminal text and no rich entry, even with notifications" -> "notifications and show print only rows inside the running lab's notificationWindow setting (24h by default); show exits 1 when the hub holds no terminal text and no rich entry, even with notifications, and leaves the Notifications part out when that feed answers 404 or an error or cannot be reached"
+  - log: 2026-10-17T08:33:04Z @kj reopened: the owner made 7d the default notificationWindow; evidence retired: pytest 49/49 on 1.0.2: test_notification_window_and_notifications_alone_are_no_motd lists 24h by default, 3d and 7d, show exits 1 with only notifications; Galata 49/49 on 1.0.2: CLI follows the setting stored in the lab
+  - log: 2026-10-17T08:33:10Z @kj amended text "notifications and show print only rows inside the running lab's notificationWindow setting (24h by default); show exits 1 when the hub holds no terminal text and no rich entry, even with notifications, and leaves the Notifications part out when that feed answers 404 or an error or cannot be reached" -> "notifications and show print only rows inside the running lab's notificationWindow setting (7d by default); show exits 1 when the hub holds no terminal text and no rich entry, even with notifications, and leaves the Notifications part out when that feed answers 404 or an error or cannot be reached"
+  - log: 2026-10-17T08:33:14Z @kj edited test "pytest with a stub lab and hub: 24h default, 3d, 7d; show with only notifications exits 1; Galata: the CLI follows a setting stored in the lab" -> "pytest with a stub lab and hub: 7d default, 24h, 3d; show with only notifications exits 1; test_show_leaves_out_a_failed_notifications_feed; Galata: the CLI follows a setting stored in the lab"
+  - log: 2026-10-17T08:43:06Z @kj closed
 
 ## Server settings `SERVER`
 

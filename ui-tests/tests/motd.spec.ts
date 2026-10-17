@@ -489,10 +489,10 @@ test.describe('tab content', () => {
     ).toBeGreaterThan(0);
   });
 
-  test('lists the notifications of the last 24 hours by default, newest first with type style, relative time and audience', async ({
+  test('lists the notifications of the last 7 days by default, newest first with type style, relative time and audience', async ({
     page
   }) => {
-    // oldest first on the wire: the tab must reorder and leave out the rows older than 24 hours
+    // oldest first on the wire: the tab must reorder and leave out the row older than 7 days
     hub.notifications = {
       status: 200,
       body: {
@@ -512,12 +512,13 @@ test.describe('tab content', () => {
     await expect(page.locator('.jp-MotdPanel-heading').last()).toHaveText(
       'Notifications'
     );
-    await expect(page.locator('.jp-MotdPanel-count')).toHaveText('3');
+    await expect(page.locator('.jp-MotdPanel-count')).toHaveText('4');
     const rows = page.locator('.jp-MotdPanel-row');
     await expect(rows.locator('.jp-MotdPanel-message')).toHaveText([
       'newest',
       'middle',
-      'oldest'
+      'oldest',
+      'two days'
     ]);
     await expect(rows.nth(0)).toHaveAttribute('data-type', 'warning');
     await expect(rows.nth(1)).toHaveAttribute('data-type', 'error');
@@ -525,15 +526,17 @@ test.describe('tab content', () => {
     await expect(rows.locator('.jp-MotdPanel-audience')).toHaveText([
       'All users',
       'Direct',
+      'All users',
       'All users'
     ]);
     await expect(rows.locator('.jp-MotdPanel-time')).toHaveText([
       '5 minutes ago',
       '1 hour ago',
-      '23 hours ago'
+      '23 hours ago',
+      '2 days ago'
     ]);
     // each row starts with its type icon, coloured by the lab's own variable of the type
-    await expect(rows.locator(':scope > svg.jp-MotdPanel-icon')).toHaveCount(3);
+    await expect(rows.locator(':scope > svg.jp-MotdPanel-icon')).toHaveCount(4);
     const [icon, warn] = await rows.nth(0).evaluate(el => [
       getComputedStyle(el.firstElementChild!).color,
       (() => {
@@ -548,7 +551,7 @@ test.describe('tab content', () => {
     expect(icon).toBe(warn);
   });
 
-  test('the notificationWindow setting lists the last 3 days or 7 days, and redraws the open tab', async ({
+  test('the notificationWindow setting lists the last 24 hours or 3 days, and redraws the open tab', async ({
     page
   }) => {
     hub.notifications = {
@@ -567,11 +570,16 @@ test.describe('tab content', () => {
     await page.goto();
     await expectOpenAndCurrent(page);
     const messages = page.locator('.jp-MotdPanel-row .jp-MotdPanel-message');
-    await expect(messages).toHaveText(['newest']);
+    await expect(messages).toHaveText([
+      'newest',
+      'yesterday',
+      'three days',
+      'six days'
+    ]);
     const pulled = hub.count(NOTIFICATIONS);
     for (const [span, listed] of [
-      ['3d', ['newest', 'yesterday', 'three days']],
-      ['7d', ['newest', 'yesterday', 'three days', 'six days']]
+      ['24h', ['newest']],
+      ['3d', ['newest', 'yesterday', 'three days']]
     ] as const) {
       await page.evaluate(
         async ([id, value]) => {
@@ -2286,15 +2294,15 @@ test.describe('command line', () => {
         .split('\n')
         .map(line => line.split('\t')[3]);
     };
-    expect(await listed()).toEqual(['newest']);
+    expect(await listed()).toEqual(['newest', 'yesterday']);
     // the lab server's own settings store, where the Settings Editor writes
     const settings = `${baseURL}/lab/api/settings/${PLUGIN}`;
     const stored = await request.put(settings, {
-      data: { raw: '{"notificationWindow": "3d"}' }
+      data: { raw: '{"notificationWindow": "24h"}' }
     });
     expect(stored.ok()).toBe(true);
     try {
-      expect(await listed()).toEqual(['newest', 'yesterday']);
+      expect(await listed()).toEqual(['newest']);
     } finally {
       await request.put(settings, { data: { raw: '{}' } });
     }

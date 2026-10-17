@@ -81,7 +81,7 @@ test.describe('notification times', () => {
     hub.notifications = {
       status: 200,
       body: {
-        notifications: [row('recent', 5), row('leaving', 24 * 60 - 1)]
+        notifications: [row('recent', 5), row('leaving', 7 * 24 * 60 - 1)]
       }
     };
     // installed before the lab loads; the page's clock then runs as the real one until it is
@@ -95,7 +95,7 @@ test.describe('notification times', () => {
     ]);
     await expect(column.locator('.jp-MotdPanel-time')).toHaveText([
       '5 minutes ago',
-      '23 hours ago'
+      '6 days ago'
     ]);
     await expect(column.locator('.jp-MotdPanel-count')).toHaveText('2');
     // a mark on the loaded page, which a new load of the frame would not carry

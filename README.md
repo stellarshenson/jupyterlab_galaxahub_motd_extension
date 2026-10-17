@@ -42,7 +42,7 @@ when the hub has none.
 - **Scripts in HTML pages** - the JavaScript of an HTML page runs in the tab, in a hub page and in
   the local page; `c.GalaxaHubMotd.html_allow_scripts = False` in the lab's Jupyter config stops
   it
-- **Notifications catch-up** - the broadcasts of the last 24 hours, 3 days or 7 days (a setting)
+- **Notifications catch-up** - the broadcasts of the last 7 days, 3 days or 24 hours (a setting)
   sent to all users and those naming the user, newest first, each a card tinted in its type's
   colour, with the type's icon, the relative time and an all or direct marker; while the tab is
   open the column redraws once a minute, so the times follow the clock
@@ -72,7 +72,7 @@ pip install jupyterlab_galaxahub_motd_extension
 | `openOnStart`        | `true`  | open the tab once per lab server start; `c.GalaxaHubMotd.open_on_start` must be on   |
 | `reopenOnBroadcast`  | `false` | reopen the tab when a live broadcast arrives through the notifications extension     |
 | `pollMinutes`        | `0`     | pull again on this interval while the tab is open; `0` never polls                   |
-| `notificationWindow` | `24h`   | how far back Notifications lists broadcasts: `24h`, `3d` or `7d`; the CLI follows it |
+| `notificationWindow` | `7d`    | how far back Notifications lists broadcasts: `24h`, `3d` or `7d`; the CLI follows it |
 
 ## Server configuration
 

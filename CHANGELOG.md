@@ -4,6 +4,12 @@
 
 <!-- <END NEW CHANGELOG ENTRY> -->
 
+## [1.0.76] - 2026-10-17
+
+### Changed
+
+- The Notifications column and the CLI list the broadcasts of the last 7 days by default, in place of the last 24 hours; the `notificationWindow` setting still offers 24 hours and 3 days
+
 ## [1.0.74] - 2026-10-17
 
 ### Added
