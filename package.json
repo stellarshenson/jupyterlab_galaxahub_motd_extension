@@ -1,6 +1,6 @@
 {
     "name": "jupyterlab_galaxahub_motd_extension",
-    "version": "1.0.56",
+    "version": "1.0.74",
     "description": "JupyterLab extension that shows the GalaxaHub message of the day in a lab tab: the welcome content of the user's groups and the broadcasts sent to the user. Its jupyterlab-galaxahub-motd command line tool prints the message of the day in a terminal",
     "keywords": [
         "jupyter",
@@ -64,7 +64,6 @@
         "@jupyterlab/services": "^7.6.0",
         "@jupyterlab/settingregistry": "^4.6.0",
         "@jupyterlab/translation": "^4.6.0",
-        "@lumino/coreutils": "^2.2.0",
         "@lumino/messaging": "^2.0.0",
         "@lumino/signaling": "^2.1.0",
         "@lumino/widgets": "^2.8.0"
