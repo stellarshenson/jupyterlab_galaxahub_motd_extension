@@ -131,8 +131,8 @@ class MotdProxyHandler(APIHandler):
         for header in PASSED_HEADERS:
             if header in answer.headers:
                 self.set_header(header, answer.headers[header])
-        # the hub's rich route answers 200 whatever If-None-Match says; the browser leg is
-        # still a 304 when the Etag it holds is the current one
+        # a hub that answers 200 to a matching If-None-Match still gives the browser a 304 when
+        # the Etag the browser holds is the current one
         if answer.code == 200 and self.check_etag_header():
             self.set_status(304)
         if self.get_status() in (204, 304):

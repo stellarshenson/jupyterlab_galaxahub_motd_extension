@@ -8,7 +8,7 @@ import { ServerConnection } from '@jupyterlab/services';
 export const NAMESPACE = 'jupyterlab-galaxahub-motd-extension';
 
 /**
- * The two feeds the tab pulls. The terminal route exists for the terminal hook, not for the tab.
+ * The two feeds the tab pulls; the tab never reads the terminal route.
  */
 export type Feed = 'rich' | 'notifications';
 

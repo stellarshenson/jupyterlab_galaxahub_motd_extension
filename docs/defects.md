@@ -199,6 +199,12 @@ How the tab lays out its columns, cards and html page frames
   - log: 2026-10-02T08:06:46Z @kj regression of DEF-LAYOUT-29: review round 4 (wf_8514c144-fda): at scale 1.1 a 55 px page keeps a scrollbar; at 1.25 a page with a margin on the html element keeps the 480 px box or a scrollbar, 8 of 55 widths; a page wider than its frame keeps the box at 1.1 and 1.25
   - log: 2026-10-02T08:32:42Z @kj closed
   - log: 2026-10-02T08:33:18Z @kj edited repro added "node ui-tests/fit-sweep/sweep.js --scale 1.25 --only 'margin on the html element': fails on the 1.0.26 fit"; test-tags added "FUNCTIONAL"
+- [-] `DEF-LAYOUT-42` **No focus ring on the columns** - MINOR; a column focused from the keyboard shows no outline, so a keyboard user does not see which column Page Down scrolls
+  - repro: open the tab, press Tab until a column has the focus; no outline is drawn
+  - test-tags: MANUAL
+  - root-cause: 2026-10-16T19:03:53Z @kj style/base.css .jp-MotdPanel-columns > :focus sets outline none
+  - log: 2026-10-16T19:03:53Z @kj added
+  - log: 2026-10-16T19:03:58Z @kj rejected: by design: the lab's own rule .jp-MainAreaWidget > :focus { outline: none } (apputils mainareawidget.css:6) gives main-area content no ring; a ring here returns on every activation, the DEF-LAYOUT-3 symptom, because activation focuses the entries column
 
 ## Agent CLI `CLI`
 
@@ -214,6 +220,13 @@ the jupyterlab-galaxahub-motd command
   - log: 2026-09-28T18:41:50Z @kj edited repro "stub answers HTTP/1.1 4O3 plus the received Authorization value; rich --json exits 4, stderr holds the token over two lines" -> "stub answers HTTP/1.1 4O3 plus the received Authorization value; rich --json exits 4, stderr holds the token over two lines; test_cli.py test_token_never_printed_from_a_malformed_status_line"
   - log: 2026-09-28T18:41:50Z @kj closed: fixed on 0.1.18
   - log: 2026-09-28T18:49:14Z @kj amended text "cli.py prints the text of an http.client exception; for a malformed status line that text is what the hub sent, so a hub echoing the Authorization header puts JUPYTERHUB_API_TOKEN on stderr, over two lines; breaks ACC-CLI-45 and ACC-CLI-47" -> "cli.py prints the text of an http.client exception; for a malformed status line that text is what the hub sent, so a hub echoing the Authorization header puts JUPYTERHUB_API_TOKEN on stderr, over two lines; breaks ACC-CLI-46 and ACC-CLI-48"
+- [x] `DEF-CLI-47` **CLI show prints no motd when the notifications feed fails** - MAJOR; cmd_show reads the notifications feed inline, so a 404 from it exits 1 with a false no-motd line, and a 403, 5xx, unreachable hub or non-JSON answer exits 4, before the terminal text and rich entries print; the tab reads each feed on its own
+  - evidence: test_show_leaves_out_a_failed_notifications_feed failed on 1.0.72 (logs/pytest-before-fix-DEF-CLI-47.log), passes after
+  - repro: stub user-notifications answers 500 or 404 while terminal and rich answer 200: show exits 4 or 1 and prints nothing on stdout; test_cli.py test_show_leaves_out_a_failed_notifications_feed
+  - test-tags: UNIT
+  - root-cause: 2026-10-16T21:40:48Z @kj cmd_show calls read_notifications inside the dict that holds the terminal text and entries, so the Stop it raises ends the run before anything prints
+  - log: 2026-10-16T21:40:48Z @kj added
+  - log: 2026-10-16T21:42:04Z @kj closed
 
 ## Tab content `VIEW`
 
@@ -269,6 +282,61 @@ What the open tab shows after a pull
   - log: 2026-10-02T11:58:05Z @kj regression of DEF-VIEW-30: review round 1 (wf_aee95217-36b): a lab-form link to a heading with a bare % and a letter outside ASCII, [x](#Résumé-100%), scrolls nothing
   - log: 2026-10-02T12:03:33Z @kj edited title "Same-document link opens another window" -> "Link to a heading with % and a letter outside ASCII does not scroll"; text "in a markdown entry a link to a heading of the same entry, [text](#heading), opens another browser window at the lab's address and scrolls nothing; fix: a click listener on the entry's body stops the link and scrolls the heading of that entry into view; src/panel.ts" -> "MEDIUM; in a markdown entry the link [x](#Résumé-100%) to the heading 'Résumé 100%' scrolls nothing; fix: headingOf decodes each run of escapes by itself; src/panel.ts"; repro added "markdown entry with '## Résumé 100%' and the link [x](#Résumé-100%); click the link"; test-tags added "FUNCTIONAL"
   - log: 2026-10-02T12:03:33Z @kj closed
+- [-] `DEF-VIEW-33` **Uncoloured page unreadable on dark themes** - MAJOR; an html entry page that sets no colours, the built-in page included, shows black text on the dark frame background: contrast 1.30 on JupyterLab Dark, 1.77 on Galaxa Dark Steel
+  - repro: dark theme, html entry whose page sets no colours, or no hub with the built-in page
+  - root-cause: 2026-10-16T17:18:51Z @kj the frame paints --jp-layout-color1 behind a transparent page whose default text is black
+  - log: 2026-10-16T17:18:51Z @kj added
+  - log: 2026-10-16T17:25:16Z @kj rejected: does not reproduce: Chromium paints the framed page's own white canvas when the frame's colour scheme (dark, set by JupyterLab on body) differs from the page's; render on JupyterLab Dark and Galaxa Dark Steel shows black on white with the old background
+- [x] `DEF-VIEW-40` **Built-in page misstates a hub failure** - MINOR; the built-in page says the lab has no message of the day for the user yet, also when the hub is not configured or cannot be reached
+  - evidence: about/index.html says the lab shows no message of the day from the hub, true on every path to the page: test_routes.py 200-empty, 404 and 500 cases answer it; pytest 60 green on 1.0.61; review rounds 3 and 4 clean
+  - repro: point motd_api_url at a closed port; the tab shows the built-in page with that sentence
+  - root-cause: 2026-10-16T17:19:24Z @kj the sentence names one of the cases that show the page
+  - log: 2026-10-16T17:19:24Z @kj added
+  - log: 2026-10-16T18:04:52Z @kj closed
+- [x] `DEF-VIEW-41` **Open shows nothing during a stalled pull** - MINOR; Message of the day: Open waits for the pull before it opens the tab, so while the hub holds the answer, up to 10 s, the command shows nothing
+  - evidence: Galata open.spec.ts: with the rich answer held 5 s the tab is current within 2 s and redraws after; failed on 1.0.63 (Launcher still current), passes on 1.0.64 (77/77); make test green
+  - repro: open the tab, make another tab current, stall the hub rich answer 5 s, run Message of the day: Open; the tab becomes current only after 5 s
+  - test-tags: FUNCTIONAL
+  - root-cause: 2026-10-16T19:03:50Z @kj src/index.ts execute awaits model.pull() before open(), also when the tab already has content to show
+  - log: 2026-10-16T19:03:50Z @kj added
+  - log: 2026-10-16T19:12:55Z @kj closed
+  - log: 2026-10-16T19:21:47Z @kj regressed as DEF-VIEW-41-1
+- [x] `DEF-VIEW-41-1` **Open shows nothing during a stalled pull** - MINOR; Message of the day: Open waits for the pull before it opens the tab, so while the hub holds the answer, up to 10 s, the command shows nothing
+  - test-tags: FUNCTIONAL
+  - repro: hub answers an entry, then 404 (local page absent); Open with the rich answer held 5 s from another tab; the tab becomes current only after 5 s
+  - evidence: Galata open.spec.ts second test: hub 404 after an entry, slow Open makes the tab current within 2 s with its cards, no console line; failed on 1.0.64, passes on 1.0.65 (78/78)
+  - root-cause: 2026-10-16T19:21:50Z @kj src/index.ts execute reads model.hasContent (rich state ok) for shown and for the console line, not whether the tab holds cards (rich rows, kept on 204 and failed)
+  - log: 2026-10-16T19:21:47Z @kj regression of DEF-VIEW-41: review of 1.0.64: after a failed or 204 pull the tab keeps its cards but hasContent is false, so Open waits again, and logs nothing to show while the tab shows cards
+  - log: 2026-10-16T19:28:38Z @kj closed
+  - log: 2026-10-16T19:28:57Z @kj edited repro added "hub answers an entry, then 404 (local page absent); Open with the rich answer held 5 s from another tab; the tab becomes current only after 5 s"; test-tags added "FUNCTIONAL"
+- [x] `DEF-VIEW-43` **Reopened tab shows old notification times** - MINOR; a tab closed and opened again shows the Notifications column as drawn before it closed, old times and rows past the window, until the pull answers or the first minute passes
+  - evidence: Jest columns.spec.ts 'redraws on attach and each minute while the tab is open, and never after dispose' asserts times right after each attach; failed before the fix, passes on 1.0.65 (64/64); Galata 78/78
+  - repro: Jest: draw a row 5 minutes old, detach the tab, move the clock 25 h, attach it; the row still reads 5 minutes ago
+  - test-tags: UNIT
+  - root-cause: 2026-10-16T19:21:53Z @kj src/panel.ts onAfterAttach starts the minute clock but draws nothing; since DEF-VIEW-41 the Open command attaches the tab before its pull
+  - log: 2026-10-16T19:21:53Z @kj added
+  - log: 2026-10-16T19:28:39Z @kj closed
+- [x] `DEF-VIEW-44` **Focus lost when new cards replace a focused card** - MINOR; a pull with changed entries replaces the cards; a link or button in an old card that held the keyboard focus leaves, the focus falls to the page body, and Page Down no longer scrolls the entries column
+  - evidence: Jest columns.spec.ts 'gives the focus to the entries column when new cards replace a focused card' failed before the fix (activeElement body), passes on 1.0.66 (65/65); Galata 78/78
+  - repro: Jest: focus an element in a card, pull changed entries, render; document.activeElement is body
+  - test-tags: UNIT
+  - root-cause: 2026-10-16T19:36:42Z @kj src/panel.ts render refocuses only when the entries column was empty; since DEF-VIEW-41 Open shows the old cards while its pull runs
+  - log: 2026-10-16T19:36:42Z @kj added
+  - log: 2026-10-16T19:42:34Z @kj closed
+- [x] `DEF-VIEW-45` **A pull removes a text selection in Notifications** - MINOR; a poll or broadcast pull redraws the Notifications column, a 304 included, so text selected there to copy a broadcast URL is lost; only the minute clock skipped a selection
+  - evidence: Jest columns.spec.ts 'keeps a text selection in the Notifications column when a pull answers (DEF-VIEW-45)' failed before the fix (message replaced), passes on 1.0.67 (66/66); Galata 78/78
+  - repro: Jest: pollMinutes 1, select a notification message, let the poll answer; the message node is replaced and the selection is empty
+  - test-tags: UNIT
+  - root-cause: 2026-10-16T19:52:46Z @kj src/panel.ts render calls _drawNotifications on every model.changed; the selection check sat only in the minute clock
+  - log: 2026-10-16T19:52:46Z @kj added
+  - log: 2026-10-16T19:58:42Z @kj closed
+- [-] `DEF-VIEW-46` **Palette Open leaves a split tab behind** - MINOR; with the tab holding cards in another split area than a current notebook, Message of the day: Open run from the palette brings the tab forward but the notebook stays current and keeps the keys
+  - related: DEF-VIEW-41, ACC-OPEN-12 - the DEF-VIEW-41 fix opens the tab before the pull; ACC-OPEN-12 says Open makes it current
+  - repro: tab with cards split right of a current file editor; run Message of the day: Open from the command palette; the editor stays current
+  - test-tags: FUNCTIONAL
+  - root-cause: 2026-10-16T20:36:55Z @kj src/index.ts execute calls open() before its first await; the modal palette then restores the focus to the previous current widget, whose activation is processed after the tab's
+  - log: 2026-10-16T20:36:55Z @kj added
+  - log: 2026-10-16T20:50:35Z @kj rejected: JupyterLab limitation; the modal palette activates the previous current tab after every command, and a document tab focuses its content one frame later, so any extension fix depends on frame timing; the tab still comes to the front of its area
 
 ## Test harness `TEST`
 
@@ -295,6 +363,12 @@ The Galata and pytest harness around the extension
   - root-cause: 2026-10-02T00:05:17Z @kj ui-tests/jupyter_server_test_config.py sets only the two URLs and fallback_html; label and open_on_start come from the machine's config directories, which the test lab also reads
   - log: 2026-10-02T00:05:17Z @kj added
   - log: 2026-10-02T00:11:37Z @kj closed: fixed: jupyter_server_test_config.py sets label and open_on_start itself
+- [x] `DEF-TEST-31` **Skill test ships a bytecode file** - MINOR; test_authoring_skill.py imports scripts/serve.py with importlib, which writes scripts/**pycache**/serve.cpython-314.pyc; the wheel's shared-data copies the whole skill folder, so 1.0.57 installed the .pyc beside the skill
+  - evidence: test reads serve.py with runpy.run_path, which writes no bytecode; test_skill_folder_holds_no_bytecode failed with the .pyc present and passes after its removal; a pytest run leaves no **pycache**; the next install replaces the stray file in 1.0.57
+  - repro: run pytest test_authoring_skill.py, then make install; find share/jupyter/agents/skills/jupyterlab-galaxahub-motd-authoring -name '*.pyc'
+  - root-cause: 2026-10-16T16:42:20Z @kj exec_module of a SourceFileLoader writes bytecode; .gitignore keeps **pycache** out of git but hatch shared-data copies ignored files
+  - log: 2026-10-16T16:42:20Z @kj added
+  - log: 2026-10-16T16:42:37Z @kj closed
 
 ## Live broadcasts `LIVE`
 
@@ -333,3 +407,57 @@ Opening the tab when the lab starts
   - root-cause: 2026-10-01T12:10:41Z @kj index.ts opens the tab after every page load that has content; nothing records that the tab already opened for this server start
   - log: 2026-10-01T12:10:41Z @kj added
   - log: 2026-10-01T12:55:52Z @kj closed: fixed: server puts its start in the page config, the browser keeps the start it opened the tab for
+
+## Authoring skill `AUTHOR`
+
+the agent skill for writing motd posts: its recipes, references and check script
+
+- [x] `DEF-AUTHOR-32` **Two dollar signs break a command button** - MAJOR; a button built by the skill's recipe from a script with two $ signs runs a corrupted script: the lab's math pass escapes & < > between the signs again, attribute text included
+  - evidence: markdown.md recipe writes $ as &#36; and \ as &#92;; Galata command button test with $ and \( in the arguments passes, 74/74 on 1.0.60; the old recipe output opened no Run Command dialog; review rounds 3 and 4 clean
+  - repro: markdown post with data-commandlinker-args holding $HOME and $PATH around &amp;; press the button, Run
+  - root-cause: 2026-10-16T17:45:42Z @kj renderMarkdown always runs removeMath/replaceMath; its start markers are $, $$, \( , \[ and \begin{, so a plain $ or backslash in the attribute changes the text between markers; the recipe left $ and \ unescaped
+  - root-cause: 2026-10-16T17:18:48Z @kj renderMarkdown always runs removeMath/replaceMath, which re-escapes text between two $ signs; the recipe left $ unescaped
+  - log: 2026-10-16T17:18:48Z @kj added
+  - log: 2026-10-16T17:45:42Z @kj root-cause overridden; reason: round 2 review: a script holding \( also broke the button; Galata reproduced it
+  - log: 2026-10-16T18:04:41Z @kj closed
+- [x] `DEF-AUTHOR-34` **Sound recipe has no pause control** - MAJOR; the skill's sound recipe gives a looping audio element with no controls that starts on the first press anywhere in the page, and no line asks for a pause button
+  - evidence: images-and-sound.md Sound: start only from a press; one button starts, pauses and resumes; headless Chromium with the toggle alone: paused false, true, false over three presses; review rounds 3 and 4 clean
+  - repro: build a page from references/images-and-sound.md Sound bullets; music loops with nothing to stop it
+  - root-cause: 2026-10-16T17:18:53Z @kj the recipe carried an auto-start variant and no rule for a pause control
+  - log: 2026-10-16T17:18:53Z @kj added
+  - log: 2026-10-16T18:04:42Z @kj closed
+- [x] `DEF-AUTHOR-35` **Check script hides root-absolute addresses** - MAJOR; serve.py serves a package at / while the hub serves it under /hub/api/extensions/motd/rich/<id>/, so a page with /style.css or a bundler's default base passes the check and fails in the tab
+  - evidence: html-package.md Build: package addresses are relative, never /resources/app.js; why serve.py at / misses a root-absolute address; Vite base ./; review rounds 2 to 4 raised nothing on it
+  - repro: package whose index.html loads /app.js; serve.py shows it, the tab shows no script
+  - root-cause: 2026-10-16T17:18:55Z @kj the skill gave no rule that package addresses are relative
+  - log: 2026-10-16T17:18:55Z @kj added
+  - log: 2026-10-16T18:04:44Z @kj closed
+- [x] `DEF-AUTHOR-39` **Check script blocks an agent's shell** - MINOR; html-package.md gives the serve.py line without saying it runs until stopped and needs the folder argument, so an agent's shell waits on it
+  - evidence: html-package.md Check before upload: serve.py needs the folder argument and runs until stopped; an agent starts it in the background and stops it after the check; review rounds 2 to 4 refuted the remaining port claim
+  - repro: run the skill's serve.py line in an agent shell; the call never returns
+  - root-cause: 2026-10-16T17:19:23Z @kj the reference names the command but not how it runs
+  - log: 2026-10-16T17:19:23Z @kj added
+  - log: 2026-10-16T18:04:46Z @kj closed
+
+## Documentation `DOCS`
+
+README, design documents, code comments and agent skill text that state how the extension behaves
+
+- [x] `DEF-DOCS-36` **Downloads described wrongly** - MINOR; README says the frame sandbox blocks downloads, which allow-downloads now allows; README, SKILL.md and content-policy.md credit the content policy for downloads, which the frame controls
+  - evidence: README no longer says the frame blocks downloads; README, SKILL.md and content-policy.md say the frame allow-downloads allows them; Galata standard policy test downloads notes.txt and generated.txt, 74/74 on 1.0.60
+  - repro: read README.md Scripts bullet and the authoring skill's downloads lines against panel.ts sandbox
+  - root-cause: 2026-10-16T17:19:16Z @kj the allow-downloads change did not update every description
+  - log: 2026-10-16T17:19:16Z @kj added
+  - log: 2026-10-16T18:04:47Z @kj closed
+- [x] `DEF-DOCS-37` **Proxy comments and status table out of date** - MINOR; routes.py says the hub's rich route ignores If-None-Match (the hub answers 304); request.ts says a terminal hook reads the terminal route (nothing does); design-api.md says 404, 403 and 500 give 204 or a failed pull, where rich answers the local page
+  - evidence: routes.py:134-135 comment, request.ts:11 comment and design-api.md 404 and 403/500 rows match the code; code unchanged; make test green on 1.0.61, Jest 59, pytest 60; review rounds 2 to 4 found no false statement
+  - repro: compare the three texts with routes.py MotdProxyHandler.get and the hub's RichHandler
+  - root-cause: 2026-10-16T17:19:19Z @kj texts not updated when the hub added 304 and the proxy added the local page
+  - log: 2026-10-16T17:19:19Z @kj added
+  - log: 2026-10-16T18:04:49Z @kj closed
+- [x] `DEF-DOCS-38` **README link commands not safe to rerun** - MINOR; the README's plain ln -s lines make a nested link when run a second time, and the authoring skill's line relies on a mkdir in another block
+  - evidence: README link blocks use mkdir -p and ln -sfn; all three run twice in an empty HOME: exit 0 both times, every link resolves to a SKILL.md, no nested link in the skill folders
+  - repro: run the README's ln -s line twice; a link appears inside the skill folder
+  - root-cause: 2026-10-16T17:19:21Z @kj ln -s without -fn and a missing mkdir -p
+  - log: 2026-10-16T17:19:21Z @kj added
+  - log: 2026-10-16T18:04:50Z @kj closed

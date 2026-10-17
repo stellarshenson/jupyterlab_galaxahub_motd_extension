@@ -44,7 +44,8 @@ when the hub has none.
   it
 - **Notifications catch-up** - the broadcasts of the last 24 hours, 3 days or 7 days (a setting)
   sent to all users and those naming the user, newest first, each a card tinted in its type's
-  colour, with the type's icon, the relative time and an all or direct marker
+  colour, with the type's icon, the relative time and an all or direct marker; while the tab is
+  open the column redraws once a minute, so the times follow the clock
 - **Palette command** - `Message of the day: Open` pulls again and reopens the one tab; the tab
   closes, and the command opens nothing, only when `fallback_html` names a file that does not exist
 - **Token stays on the server** - a server extension calls the hub with the lab's API token and
@@ -102,8 +103,8 @@ only the local or built-in page.
   Settings Editor. A page on the lab's origin is read with the user's login, so its script has the
   access of the lab page itself: it can call the lab server as the user. Keep the setting on only
   where an administrator alone can write the pages. The frame's sandbox still blocks form
-  submission, `alert`, `confirm` and `prompt`, downloads and navigation of the lab page, without
-  a visible message
+  submission, `alert`, `confirm` and `prompt` and navigation of the lab page, without a visible
+  message
 - **Page height** - the tab sets the frame's height to the page's height, so a page whose script
   sets its height from the window height (`window.innerHeight` in a resize handler) makes its
   card grow for as long as the tab is visible; such a page must take its height from its content
@@ -257,6 +258,10 @@ jupyterlab-galaxahub-motd terminal 2>/dev/null   # in a lab startup script
 A lab startup script prints the motd with the last line and holds no motd URL and no token. With
 no motd, or a hub that fails, stdout stays empty.
 
+`show` prints a command button as `[button "<text>" runs <command id>]` and an html entry as a
+pointer to `Message of the day: Open`. A notifications feed that fails leaves only the
+Notifications part out of `show`.
+
 `jupyterlab-galaxahub-motd --help` lists the commands, the configuration, the environment
 variables and the exit codes, and each command's `--help` carries examples.
 
@@ -268,14 +273,29 @@ runs the lab:
 
 ```bash
 mkdir -p ~/.agents/skills
-ln -s "$(python -c 'import sys; print(sys.prefix)')/share/jupyter/agents/skills/jupyterlab-galaxahub-motd-extension" ~/.agents/skills/jupyterlab-galaxahub-motd-extension
+ln -sfn "$(python -c 'import sys; print(sys.prefix)')/share/jupyter/agents/skills/jupyterlab-galaxahub-motd-extension" ~/.agents/skills/jupyterlab-galaxahub-motd-extension
 ```
 
 Agents that read `.agents/skills` also find it in a clone of this repository; to make it available
 to Claude Code everywhere, link it into the skills directory from the clone:
 
 ```bash
-ln -s "$PWD/.agents/skills/jupyterlab-galaxahub-motd-extension" ~/.claude/skills/jupyterlab-galaxahub-motd-extension
+mkdir -p ~/.claude/skills
+ln -sfn "$PWD/.agents/skills/jupyterlab-galaxahub-motd-extension" ~/.claude/skills/jupyterlab-galaxahub-motd-extension
+```
+
+## Writing a motd post
+
+A second agent skill,
+[`.agents/skills/jupyterlab-galaxahub-motd-authoring/SKILL.md`](.agents/skills/jupyterlab-galaxahub-motd-authoring/SKILL.md),
+helps write the posts the tab shows: markdown with buttons that run lab commands, HTML pages and zip
+packages, the content policy of a package (the standard policy allows scripts and the files a page makes),
+images, fonts and sound. `pip install` puts it beside the CLI skill, and a lab image links it the
+same way:
+
+```bash
+mkdir -p ~/.agents/skills
+ln -sfn "$(python -c 'import sys; print(sys.prefix)')/share/jupyter/agents/skills/jupyterlab-galaxahub-motd-authoring" ~/.agents/skills/jupyterlab-galaxahub-motd-authoring
 ```
 
 ## Uninstall

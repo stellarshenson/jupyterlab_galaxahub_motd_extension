@@ -16,5 +16,5 @@ Runs in lab terminal. Asks running lab server (`JUPYTER_SERVER_URL`, set in ever
 - Exit 4 = lab server or hub refused, failed or unreachable. Stderr line names next step. Tell user, no retry loop
 - Parse `--json`, not text
 - Lab startup script: call CLI (`jupyterlab-galaxahub-motd terminal 2>/dev/null`). Never fetch motd API yourself, never put its URL or token in script
-- Html entry: CLI gives url only. Page needs hub auth. Send user to Message of the day tab (`Message of the day: Open`). Never put token on a command line to fetch it
+- Html entry: text output names the tab, `--json` gives url only. Page needs hub auth. Send user to Message of the day tab (`Message of the day: Open`). Never put token on a command line to fetch it
 - Read-only. Hub admin sets motd in group policy and sends broadcasts from hub. Nothing to change here

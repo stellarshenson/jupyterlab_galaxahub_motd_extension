@@ -7,6 +7,7 @@ directory at an empty one. The `hub` stub also answers the lab server's settings
 fixture points JUPYTER_SERVER_URL at it.
 """
 import argparse
+import html
 import http.server
 import json
 import os
@@ -36,6 +37,30 @@ RICH = {"entries": [
     {"group": "grp-ops", "label": "ops", "kind": "html", "url": "/hub/api/extensions/motd/rich/p1/index.html"},
 ]}
 NOW = datetime.now(timezone.utc).replace(microsecond=0)
+
+# a markdown body with command buttons: one built as the authoring skill builds it, with every
+# entity in its arguments and a tag and an entity in its text; one with its arguments first, a raw
+# > inside them and an entity in its command id; one with no command, which stays as it is; one in
+# upper case with its text over two lines
+_ARGS = html.escape(json.dumps({"argv": ["bash", "-c", "echo \"it's $HOME\" > out.txt && cat < out.txt\n"]}),
+                    quote=False).replace("'", "&#39;").replace("$", "&#36;").replace("\\", "&#92;")
+BUTTONS = (
+    "# Analysts\n\nRead the wiki first.\n\n"
+    '<button class="jp-mod-styled jp-mod-accept" data-commandlinker-command="basic-terminal:launch" '
+    f"data-commandlinker-args='{_ARGS}'>Install <b>R &amp; Python</b></button>\n\n"
+    """<button data-commandlinker-args='{"url": "https://example.org/a>b"}' """
+    'data-commandlinker-command="help&#58;open">Open the guide</button> or '
+    '<button class="jp-mod-styled">No command</button>, then <kbd>Ctrl</kbd>.\n\n'
+    '<BUTTON Data-Commandlinker-Command="help:open">Read\n  more</BUTTON>\n'
+)
+BUTTONS_TEXT = (
+    "# Analysts\n\nRead the wiki first.\n\n"
+    '[button "Install R & Python" runs basic-terminal:launch]\n\n'
+    '[button "Open the guide" runs help:open] or '
+    '<button class="jp-mod-styled">No command</button>, then <kbd>Ctrl</kbd>.\n\n'
+    '[button "Read more" runs help:open]'
+)
+HTML_PAGE = "HTML page: open it with Message of the day: Open in the lab"
 
 
 def _ago(hours):
@@ -170,20 +195,35 @@ def test_each_subcommand_reads_its_hub_path_with_the_token(capsys, hub):
 
 
 def test_show_prints_the_whole_motd(capsys, hub):
+    # ACC-CLI-42: a command button prints as one bracketed line and an html entry as the fixed
+    # HTML page line, never the hub url, whose host a browser outside the hub cannot reach
+    hub.answers["extensions/motd/rich"] = (200, JSON, json.dumps(
+        {"entries": [{**RICH["entries"][0], "body": BUTTONS}, RICH["entries"][1]]}).encode())
     code, out, err = run(capsys, "show")
-    assert code == 0
-    assert err == ""
-    order = [
+    assert (code, err) == (0, "")
+    assert out == "\n\n".join([
         "\x1b[1;36mWelcome\x1b[0m to the analysts lab\n\nsecond group",
-        "## analysts\n\n# Analysts\n\nRead the wiki first.",
-        "## ops\n\nhttp://127.0.0.1:%d/hub/api/extensions/motd/rich/p1/index.html" % hub.server_port,
-        "## Notifications\n\n",
-        "Newest broadcast",
-        "Middle broadcast",
-        "Older broadcast",
-    ]
-    positions = [out.index(part) for part in order]
-    assert positions == sorted(positions)
+        f"## analysts\n\n{BUTTONS_TEXT}",
+        f"## ops\n\n{HTML_PAGE}",
+        f"## Notifications\n\n{_ago(1)}\twarning\tdirect\tNewest broadcast\n"
+        f"{_ago(3.5)}\tsuccess\tall\tMiddle broadcast\n{_ago(20)}\tinfo\tall\tOlder broadcast",
+    ]) + "\n"
+
+
+def test_rich_prints_the_entries_as_show_does_and_json_keeps_them(capsys, hub):
+    # ACC-CLI-42: rich prints the same entries part; --json keeps the body and the url as before
+    hub.answers["extensions/motd/rich"] = (200, JSON, json.dumps(
+        {"entries": [{**RICH["entries"][0], "body": BUTTONS}, RICH["entries"][1]]}).encode())
+    code, out, _ = run(capsys, "rich")
+    assert (code, out) == (0, f"## analysts\n\n{BUTTONS_TEXT}\n\n## ops\n\n{HTML_PAGE}\n")
+    for command in ("show", "rich"):
+        code, out, _ = run(capsys, command, "--json")
+        assert code == 0, command
+        assert json.loads(out)["entries"] == [
+            {"label": "analysts", "kind": "markdown", "body": BUTTONS},
+            {"label": "ops", "kind": "html",
+             "url": f"http://127.0.0.1:{hub.server_port}/hub/api/extensions/motd/rich/p1/index.html"},
+        ], command
 
 
 def test_one_feed_per_subcommand(capsys, hub):
@@ -436,6 +476,27 @@ def test_refusal_or_failure_exits_4(capsys, hub):
     code, out, err = run(capsys, "show")
     assert (code, out) == (4, "")
     assert _one_line(err) and "cannot reach" in err and "GalaxaHubMotd.motd_api_url" in err
+
+
+def test_show_leaves_out_a_failed_notifications_feed(capsys, hub):
+    # DEF-CLI-47: a notifications feed that answers an error or 404 leaves its part out of show;
+    # notifications on its own still exits 4 and 1
+    expected = "\n\n".join([
+        "\x1b[1;36mWelcome\x1b[0m to the analysts lab\n\nsecond group",
+        "## analysts\n\n# Analysts\n\nRead the wiki first.",
+        f"## ops\n\n{HTML_PAGE}",
+    ]) + "\n"
+    hub.answers["user-notifications"] = (500, JSON, b'{"message": "Internal Server Error"}')
+    assert run(capsys, "show") == (0, expected, "")
+    code, out, err = run(capsys, "notifications")
+    assert (code, out) == (4, "") and _one_line(err) and "500" in err
+    # a hub without the broadcasts feed
+    hub.answers.pop("user-notifications")
+    assert run(capsys, "show") == (0, expected, "")
+    code, out, _ = run(capsys, "show", "--json")
+    assert code == 0 and json.loads(out)["notifications"] == []
+    code, out, err = run(capsys, "notifications")
+    assert (code, out) == (1, "") and _one_line(err) and "404" in err
 
 
 def _subcommands():

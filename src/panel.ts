@@ -105,7 +105,8 @@ function headingOf(body: HTMLElement, href: string): HTMLElement | undefined {
 /**
  * The Message of the day tab: the rich entries as cards in the left column, the Notifications
  * section in the right column. It draws whatever the model holds after each pull, and while it
- * is open it pulls again every `pollMinutes`.
+ * is open it pulls again every `pollMinutes` and redraws the Notifications column every minute,
+ * so the relative times and the notificationWindow follow the clock.
  */
 export class MotdPanel extends Widget {
   constructor(
@@ -135,6 +136,16 @@ export class MotdPanel extends Widget {
     // 0 keeps both in the Tab order
     this._entries.tabIndex = 0;
     this._notifications.tabIndex = 0;
+    // a screen reader announces a focused column by its name; the entries column carries the
+    // tab label, which index.ts replaces after construction
+    this._entries.setAttribute('role', 'region');
+    this._entries.setAttribute('aria-label', this.title.label);
+    this.title.changed.connect(
+      () => this._entries.setAttribute('aria-label', this.title.label),
+      this
+    );
+    this._notifications.setAttribute('role', 'region');
+    this._notifications.setAttribute('aria-label', trans.__('Notifications'));
     // the element that scrolls a stacked tab: the stylesheet cannot give the tab itself a rule
     // by the tab's width
     const columns = document.createElement('div');
@@ -200,10 +211,12 @@ export class MotdPanel extends Widget {
       // the old frames leave with their cards; each new frame joins the observer on load
       this._frameObserver.disconnect();
       // a tab activated before its first cards were drawn gave the focus to Notifications, or
-      // to the tab itself while it has no Notifications column
+      // to the tab itself while it has no Notifications column; a card that holds the focus
+      // leaves with the old cards
+      const active = document.activeElement;
       const refocus =
-        !this._entries.childElementCount &&
-        document.activeElement === this._besideEntries;
+        (!this._entries.childElementCount && active === this._besideEntries) ||
+        (active !== this._entries && this._entries.contains(active));
       // an empty entries column is hidden and the Notifications column takes the full width
       this._entries.replaceChildren(cards);
       this._drawnRows = rows;
@@ -218,7 +231,6 @@ export class MotdPanel extends Widget {
     if (this.isDisposed) {
       return;
     }
-    window.clearInterval(this._timer);
     this._renderers.forEach(r => r.dispose());
     this._frameObserver.disconnect();
     super.dispose();
@@ -230,12 +242,17 @@ export class MotdPanel extends Widget {
 
   protected onAfterAttach(msg: Message): void {
     super.onAfterAttach(msg);
+    // the times as of now: the Open command attaches the tab before its pull answers
+    this._drawNotifications();
     this._arm();
+    this._clock = window.setInterval(() => this._drawNotifications(), 60_000);
   }
 
   protected onBeforeDetach(msg: Message): void {
     window.clearInterval(this._timer);
     this._timer = 0;
+    window.clearInterval(this._clock);
+    this._clock = 0;
     super.onBeforeDetach(msg);
   }
 
@@ -322,13 +339,13 @@ export class MotdPanel extends Widget {
       section.appendChild(renderer.node);
     } else {
       // allow-same-origin keeps the hub cookie on the page's own files; allow-popups opens a
-      // target=_blank link in a browser tab outside the sandbox; allow-scripts, with
-      // htmlAllowScripts on, runs the page's scripts, which on the lab's origin have the access
-      // of the lab page itself
+      // target=_blank link in a browser tab outside the sandbox; allow-downloads lets a page
+      // save a generated file directly; allow-scripts, with htmlAllowScripts on, runs the
+      // page's scripts, which on the lab's origin have the access of the lab page itself
       const frame = document.createElement('iframe');
       frame.className = 'jp-MotdPanel-frame';
       const sandbox =
-        'allow-same-origin allow-popups allow-popups-to-escape-sandbox';
+        'allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-downloads';
       frame.setAttribute(
         'sandbox',
         this.htmlAllowScripts ? `${sandbox} allow-scripts` : sandbox
@@ -359,6 +376,17 @@ export class MotdPanel extends Widget {
    * cards take the full width.
    */
   private _drawNotifications(): void {
+    // a redraw replaces the rows and so removes a text selection in them: a draw while one is
+    // there is skipped, and the next minute catches up
+    const selection = document.getSelection();
+    const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
+    if (
+      range &&
+      !range.collapsed &&
+      range.intersectsNode(this._notifications)
+    ) {
+      return;
+    }
     const rows = notificationView(
       this._model.notifications.rows,
       this._notificationWindow
@@ -403,15 +431,12 @@ export class MotdPanel extends Widget {
       const time = document.createElement('time');
       time.className = 'jp-MotdPanel-time';
       time.dateTime = row.ts;
-      const sent = Date.parse(row.ts);
-      if (!Number.isNaN(sent)) {
-        // formatHuman reads any moment ahead of the browser clock as "next year", and the
-        // hub's clock can run seconds ahead; a row is never newer than now
-        time.textContent = Time.formatHuman(
-          new Date(Math.min(sent, Date.now()))
-        );
-        time.title = Time.format(row.ts);
-      }
+      // formatHuman reads any moment ahead of the browser clock as "next year", and the hub's
+      // clock can run seconds ahead; a row is never newer than now
+      time.textContent = Time.formatHuman(
+        new Date(Math.min(Date.parse(row.ts), Date.now()))
+      );
+      time.title = Time.format(row.ts);
       meta.append(audience, time);
       text.append(message, meta);
       // the icon's colour and the card's tint are the type's lab variable, set in the
@@ -456,4 +481,6 @@ export class MotdPanel extends Widget {
   private _notificationWindow: NotificationWindow =
     DEFAULT_SETTINGS.notificationWindow;
   private _timer = 0;
+  // the minute interval that redraws the Notifications column while the tab is open
+  private _clock = 0;
 }

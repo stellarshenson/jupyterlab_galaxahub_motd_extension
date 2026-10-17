@@ -56,7 +56,7 @@ const HTML = {
 
 // the frame sandbox of this lab, whose c.GalaxaHubMotd.html_allow_scripts is on
 const SANDBOX_WITH_SCRIPTS =
-  'allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-scripts';
+  'allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-downloads allow-scripts';
 
 // a page whose script replaces the text of #js
 const SCRIPT_PAGE =
@@ -426,6 +426,39 @@ test.describe('tab content', () => {
     const popup = await opened;
     await popup.waitForURL('**/hub/api/extensions/motd/rich/pkg-1/next.html');
     await popup.close();
+  });
+
+  test('downloads a generated file from an html welcome page', async ({
+    page
+  }) => {
+    await page.route(
+      '**/hub/api/extensions/motd/rich/pkg-1/index.html',
+      route =>
+        route.fulfill({
+          status: 200,
+          contentType: 'text/html',
+          body: `<!doctype html><button id="save">Save</button><script>
+            document.getElementById('save').addEventListener('click', () => {
+              const url = URL.createObjectURL(new Blob(['sermon'], {type: 'text/plain'}));
+              const link = document.createElement('a');
+              link.href = url;
+              link.download = 'sermon.txt';
+              link.click();
+            });
+          </script>`
+        })
+    );
+    hub.rich = { status: 200, body: { entries: [HTML] } };
+    await page.goto();
+    await expectOpenAndCurrent(page);
+
+    await expect(page.locator('.jp-MotdPanel-frame')).toHaveAttribute(
+      'sandbox',
+      SANDBOX_WITH_SCRIPTS
+    );
+    const saved = page.waitForEvent('download');
+    await page.frameLocator('.jp-MotdPanel-frame').locator('#save').click();
+    expect((await saved).suggestedFilename()).toBe('sermon.txt');
   });
 
   test('keeps the content of a page laid out to the frame height reachable', async ({
@@ -2049,7 +2082,7 @@ test.describe('scripts off for the lab', () => {
     const frame = page.locator('.jp-MotdPanel-frame');
     await expect(frame).toHaveAttribute(
       'sandbox',
-      'allow-same-origin allow-popups allow-popups-to-escape-sandbox'
+      'allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-downloads'
     );
     await loaded(page, frame);
     await expect(

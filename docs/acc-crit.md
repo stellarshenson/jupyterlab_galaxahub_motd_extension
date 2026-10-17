@@ -122,12 +122,13 @@ What the Message of the day tab renders and in which order
   - log: 2026-09-28T09:54:14Z @kj closed: verified on 0.1.4
 - [x] `ACC-VIEW-64` **Notifications window setting** - HIGH; the Notifications column lists and counts only rows whose ts lies inside the notificationWindow setting before now: 24h (default), 3d or 7d; a changed setting redraws the open tab; an older row, or one whose ts cannot be read, is not shown
   - evidence: Jest 49/49 and Galata 43/43 on 0.8.16: 24 hours by default leaves out 2 and 8 days; 3d and 7d set live redraw the tab without a pull
-  - test: Jest notificationView per choice, readSettings, panel redraw; Galata: 24 hours by default, 3d and 7d set live redraw the tab
+  - test: Jest notificationView per choice, panel redraw; Galata: 24 hours by default, 3d and 7d set live redraw the tab
   - test-tags: UNIT, FUNCTIONAL
   - log: 2026-09-29T21:24:18Z @kj added
   - log: 2026-09-29T21:47:36Z @kj amended title "Notifications of the last 7 days only" -> "Notifications window setting"; text "the Notifications column lists and counts only rows whose ts lies within 7 days before now; an older row, or one whose ts cannot be read, is not shown" -> "the Notifications column lists and counts only rows whose ts lies inside the notificationWindow setting before now: 24h (default), 3d or 7d; a changed setting redraws the open tab; an older row, or one whose ts cannot be read, is not shown"
   - log: 2026-09-29T21:47:36Z @kj edited test "Jest notificationView with a fixed now; Galata: a row 8 days old is not shown" -> "Jest notificationView per choice, readSettings, panel redraw; Galata: 24 hours by default, 3d and 7d set live redraw the tab"
   - log: 2026-09-30T07:26:40Z @kj closed
+  - log: 2026-10-16T20:07:20Z @kj edited test "Jest notificationView per choice, readSettings, panel redraw; Galata: 24 hours by default, 3d and 7d set live redraw the tab" -> "Jest notificationView per choice, panel redraw; Galata: 24 hours by default, 3d and 7d set live redraw the tab"
 - [x] `ACC-VIEW-73` **Card heading from the entry's label** - HIGH; a rich entry's card is headed by its label; group is not read; a missing or empty label leaves the card without its header strip; the CLI prints and emits label and prints no heading for an empty one; the local page entry carries label
   - related: ACC-VIEW-6, ACC-LAYOUT-32, ACC-CLI-42 - reworded from group to label
   - evidence: Jest 52/52, pytest 51/51, Galata 51/51 on installed 1.0.11: cards headed by label, group not shown, no-label cards without strip, CLI prints no heading for an empty label; review wf_79c548e7-308 SHIP
@@ -197,6 +198,16 @@ What the Message of the day tab renders and in which order
   - test-tags: FUNCTIONAL
   - log: 2026-10-03T19:33:33Z @kj added
   - log: 2026-10-03T19:44:45Z @kj rejected: owner dropped the tab colouring on 2026-10-03 after the render of build 1.0.46; the panel gets no strip
+- [x] `ACC-VIEW-92` **Notification times stay current** - MEDIUM; while the tab stays open, the Notifications column redraws once a minute without a pull: relative times follow the clock, a row older than the notificationWindow leaves the list and the count; entry cards are not redrawn; a minute with text selected in the column is skipped, keeping the selection
+  - evidence: on 1.0.63: Jest columns.spec.ts redraws each minute without a pull, only while open, skips a minute with text selected (64/64); Galata columns.spec.ts notification times passes (76/76); review rounds 2 and 3 clean
+  - related: ACC-VIEW-64 - the window filter this keeps current
+  - test: Jest fake clock and Galata page.clock move 2 min: the time text changes, a row past the window leaves the column and the count, entry frames keep their page
+  - test-tags: UNIT, FUNCTIONAL
+  - mechanism: 2026-10-16T18:34:30Z @kj panel.ts redraws only the Notifications column on a 60 s interval while the tab is attached and skips a tick while a non-collapsed selection touches the column; the interval stops on detach and dispose
+  - log: 2026-10-16T18:08:43Z @kj added
+  - log: 2026-10-16T18:34:28Z @kj amended text "while the tab stays open, the Notifications column redraws once a minute without a pull: each relative time follows the clock, a row older than the notificationWindow leaves the list and the count; the entry cards are not redrawn" -> "while the tab stays open, the Notifications column redraws once a minute without a pull: relative times follow the clock, a row older than the notificationWindow leaves the list and the count; entry cards are not redrawn; a minute with text selected in the column is skipped, keeping the selection"
+  - log: 2026-10-16T18:34:30Z @kj mechanism updated "2026-10-16T18:08:43Z @kj panel.ts redraws only the Notifications column on a 60 s interval while the tab is attached; the interval stops on detach and dispose" -> "panel.ts redraws only the Notifications column on a 60 s interval while the tab is attached and skips a tick while a non-collapsed selection touches the column; the interval stops on detach and dispose"
+  - log: 2026-10-16T18:47:50Z @kj closed
 
 ## Open command `OPEN`
 
@@ -254,7 +265,7 @@ The server extension that calls the hub with the lab token and answers the front
   - test-tags: UNIT
   - log: 2026-09-28T09:19:18Z @kj added
   - log: 2026-09-28T09:54:15Z @kj closed: verified on 0.1.4
-- [x] `ACC-PROXY-18` **One answer for an absent hub** - HIGH; a hub 404, a refused connection and an empty server setting all answer 204 with Cache-Control: no-cache and no body, and the server log names which
+- [x] `ACC-PROXY-18` **One answer for an absent hub** - HIGH; on the terminal and notifications routes, a hub 404, a refused connection and an empty server setting all answer 204 with Cache-Control: no-cache and no body, and the server log names which
   - evidence: make test on 0.8.6: test_hub_404_answers_204, test_refused_connection_answers_204, test_empty_setting_answers_204 asserts one server log line per route naming the empty setting
   - test: pytest jupyterlab_galaxahub_motd_extension/tests/test_routes.py::test_hub_404_answers_204, ::test_refused_connection_answers_204, ::test_unset_hub_url_answers_204
   - test-tags: UNIT
@@ -263,12 +274,14 @@ The server extension that calls the hub with the lab token and answers the front
   - log: 2026-09-29T18:16:54Z @kj amended text "a hub 404, a refused connection and an unset JUPYTERHUB_API_URL all answer 204 with Cache-Control: no-cache and no body, and the server log names which" -> "a hub 404, a refused connection and an empty server setting all answer 204 with Cache-Control: no-cache and no body, and the server log names which"
   - log: 2026-09-29T18:16:55Z @kj reopened: hub URLs move from JUPYTERHUB_API_URL to the GalaxaHubMotd server settings; proof retired until the new tests pass; evidence retired: pytest 12/12 on 0.1.4 source: test_hub_404_answers_204 (red when the 404 branch is removed), test_refused_connection_answers_204, test_unset_hub_url_answers_204
   - log: 2026-09-29T18:26:36Z @kj closed: verified on 0.8.6
-- [x] `ACC-PROXY-19` **Other hub statuses pass through** - MEDIUM; any other hub status, 403 included, reaches the browser unchanged with its body
+  - log: 2026-10-16T21:42:45Z @kj amended text "a hub 404, a refused connection and an empty server setting all answer 204 with Cache-Control: no-cache and no body, and the server log names which" -> "on the terminal and notifications routes, a hub 404, a refused connection and an empty server setting all answer 204 with Cache-Control: no-cache and no body, and the server log names which"
+- [x] `ACC-PROXY-19` **Other hub statuses pass through** - MEDIUM; on the terminal and notifications routes, any other hub status, 403 included, reaches the browser unchanged with its body
   - evidence: pytest 12/12 on 0.1.4 source: test_hub_403_passes_through
   - test: pytest jupyterlab_galaxahub_motd_extension/tests/test_routes.py::test_hub_403_passes_through
   - test-tags: UNIT
   - log: 2026-09-28T09:19:18Z @kj added
   - log: 2026-09-28T09:54:15Z @kj closed: verified on 0.1.4
+  - log: 2026-10-16T21:42:47Z @kj amended text "any other hub status, 403 included, reaches the browser unchanged with its body" -> "on the terminal and notifications routes, any other hub status, 403 included, reaches the browser unchanged with its body"
 - [x] `ACC-PROXY-20` **Terminal text keeps its bytes and type** - MEDIUM; the terminal route answers the hub's text/plain; charset=utf-8 bytes verbatim, and the hub's 204 as 204
   - evidence: pytest 12/12 on 0.1.4 source: test_terminal_text_passes_through - ANSI bytes verbatim, text/plain; charset=utf-8, 204 kept
   - test: pytest jupyterlab_galaxahub_motd_extension/tests/test_routes.py::test_terminal_text_passes_through
@@ -371,6 +384,11 @@ How the tab follows the lab theme
   - log: 2026-09-28T10:36:13Z @kj closed: verified on 0.1.4
   - log: 2026-09-28T11:40:01Z @kj reopened: reopened: layout B changes the tab; readability needs new renders; evidence retired: my-browser renders of the tab on JupyterLab Light, JupyterLab Dark and Galaxa Steel and Titanium light and dark: headings, markdown, rows, type colours and badges legible on every theme
   - log: 2026-09-28T14:17:19Z @kj closed: verified on 0.1.11
+- [-] `ACC-THEME-91` **Uncoloured page readable on every theme** - HIGH; an html entry frame paints the browser's Canvas colour behind its page, so a page that sets no colours shows black text on white on light, dark and Galaxa themes, as a browser tab shows it
+  - test: Galata authoring.spec.ts: dark theme, page with no colours; contrast of page text against frame background at least 4.5
+  - test-tags: FUNCTIONAL
+  - log: 2026-10-16T17:12:53Z @kj added
+  - log: 2026-10-16T17:25:18Z @kj rejected: not needed: an uncoloured page already shows black on white on dark themes, because Chromium paints its own canvas when the frame's colour scheme differs from the page's; the Canvas background was reverted (DEF-VIEW-33)
 
 ## Two-column layout `LAYOUT`
 
@@ -550,6 +568,13 @@ the tab as drawn on board B of the design canvas: entry cards left, Notification
   - test-tags: FUNCTIONAL
   - log: 2026-10-07T07:58:35Z @kj added
   - log: 2026-10-07T08:19:09Z @kj closed
+- [x] `ACC-LAYOUT-93` **Columns have accessible names** - MEDIUM; the two focusable columns are regions with a name a screen reader announces on focus: the entries column carries the tab label (Welcome by default, or the configured label), the Notifications column carries Notifications
+  - evidence: on 1.0.63: Jest columns.spec.ts both columns are regions named by the tab label and Notifications, the name follows a later label (64/64); Galata columns.spec.ts column names finds each region by name, focus lands on it (76/76); review rounds 2 and 3 clean
+  - test: Jest: both columns have role region and the two names, the entries name follows a changed tab label; Galata: getByRole region by each name finds the column that takes the focus
+  - test-tags: UNIT, FUNCTIONAL
+  - mechanism: 2026-10-16T18:12:08Z @kj panel.ts sets role region and aria-label on the two column elements; the entries aria-label follows title.label through the title changed signal
+  - log: 2026-10-16T18:12:08Z @kj added
+  - log: 2026-10-16T18:47:52Z @kj closed
 
 ## Agent CLI `CLI`
 
@@ -575,13 +600,19 @@ the jupyterlab-galaxahub-motd command and its agent skill: the motd read from a 
   - log: 2026-09-29T18:26:36Z @kj closed: verified on 0.8.6
   - log: 2026-09-29T19:21:16Z @kj reopened: review round 7 DEFER-R1-01: evidence cites the superseded config-file mechanism; evidence retired: make test on 0.8.6: test_each_subcommand_reads_its_hub_path_with_the_token, URLs from a jupyter_server_config.json in the patched config path
   - log: 2026-09-29T19:21:16Z @kj closed: verified on source after 0.8.8
-- [x] `ACC-CLI-42` **show prints the whole motd** - HIGH; show prints the terminal text, then each rich entry under its label (markdown body, or the absolute url of an html page), then the notifications newest first
-  - evidence: make test on 0.1.13: pytest jupyterlab_galaxahub_motd_extension/tests/test_cli.py::test_show_prints_the_whole_motd passed - terminal text, then ## analysts with its markdown, ## ops with the absolute url, then ## Notifications newest first, in that order
+- [x] `ACC-CLI-42` **show prints the whole motd** - HIGH; show prints the terminal text, then each rich entry under its label: the markdown body with each command button as [button "<text>" runs <command id>], or for an html page "HTML page: open it with Message of the day: Open in the lab"; then the notifications newest first; --json unchanged
+  - evidence: on 1.0.63: pytest test_show_prints_the_whole_motd and test_rich_prints_the_entries_as_show_does_and_json_keeps_them pass (61/61): buttons print as [button "<text>" runs <id>], also two-line and upper-case ones, html entries as the HTML page line, --json unchanged; review rounds 2 and 3 clean
+  - mechanism: 2026-10-16T18:12:34Z @kj entries_text in cli.py replaces each <button> carrying data-commandlinker-command in a markdown body with [button "<its text>" runs <command id>] and prints the fixed HTML page line for an html entry; read_entries and the JSON keep body and url
   - test: pytest with a stub hub: assert the three parts in that order and their content
   - test-tags: UNIT
   - log: 2026-09-28T14:50:00Z @kj added
   - log: 2026-09-28T15:32:04Z @kj closed
   - log: 2026-10-01T23:50:25Z @kj amended text "show prints the terminal text, then each rich entry under its group name (markdown body, or the absolute url of an html page), then the notifications newest first" -> "show prints the terminal text, then each rich entry under its label (markdown body, or the absolute url of an html page), then the notifications newest first"
+  - log: 2026-10-16T18:12:18Z @kj reopened: reopened: show printed raw command-button markup and the lab-internal hub url (http://hub:8000/...), both unreadable or unusable in a terminal; evidence retired: make test on 0.1.13: pytest jupyterlab_galaxahub_motd_extension/tests/test_cli.py::test_show_prints_the_whole_motd passed - terminal text, then ## analysts with its markdown, ## ops with the absolute url, then ## Notifications newest first, in that order
+  - log: 2026-10-16T18:12:22Z @kj amended text "show prints the terminal text, then each rich entry under its label (markdown body, or the absolute url of an html page), then the notifications newest first" -> "show prints the terminal text, then each rich entry under its label: the markdown body with each command button as [button "<text>" -> <command id>], or for an html page "HTML page: open it with Message of the day: Open in the lab"; then the notifications newest first; --json unchanged"
+  - log: 2026-10-16T18:12:32Z @kj amended text "show prints the terminal text, then each rich entry under its label: the markdown body with each command button as [button "<text>" -> <command id>], or for an html page "HTML page: open it with Message of the day: Open in the lab"; then the notifications newest first; --json unchanged" -> "show prints the terminal text, then each rich entry under its label: the markdown body with each command button as [button "<text>" runs <command id>], or for an html page "HTML page: open it with Message of the day: Open in the lab"; then the notifications newest first; --json unchanged"
+  - log: 2026-10-16T18:12:34Z @kj mechanism updated "2026-10-16T18:12:14Z @kj entries_text in cli.py replaces each <button> carrying data-commandlinker-command in a markdown body with [button "<its text>" -> <command id>] and prints the fixed HTML page line for an html entry; read_entries and the JSON keep body and url" -> "entries_text in cli.py replaces each <button> carrying data-commandlinker-command in a markdown body with [button "<its text>" runs <command id>] and prints the fixed HTML page line for an html entry; read_entries and the JSON keep body and url"
+  - log: 2026-10-16T18:47:53Z @kj closed
 - [x] `ACC-CLI-43` **One feed per subcommand** - MEDIUM; terminal, rich and notifications each print only their own feed; terminal prints the text verbatim, escape sequences kept
   - evidence: make test on 0.1.13: pytest jupyterlab_galaxahub_motd_extension/tests/test_cli.py::test_one_feed_per_subcommand passed - terminal output equals the stub text byte for byte, escape sequences kept; rich and notifications hold only their own feed
   - test: pytest with a stub hub: each subcommand's output holds its feed and none of the other two
@@ -707,7 +738,7 @@ the jupyterlab-galaxahub-motd command and its agent skill: the motd read from a 
   - test-tags: UNIT
   - log: 2026-09-29T19:53:49Z @kj added
   - log: 2026-09-29T19:55:42Z @kj closed
-- [x] `ACC-CLI-65` **CLI follows the notificationWindow setting and the motd-only rule** - HIGH; notifications and show print only rows inside the lab's notificationWindow setting, which the CLI reads from the running lab (24h by default); show exits 1 when the hub holds no terminal text and no rich entry, even with notifications
+- [x] `ACC-CLI-65` **CLI follows the notificationWindow setting and the motd-only rule** - HIGH; notifications and show print only rows inside the running lab's notificationWindow setting (24h by default); show exits 1 when the hub holds no terminal text and no rich entry, even with notifications, and leaves the Notifications part out when that feed answers 404 or an error or cannot be reached
   - evidence: pytest 49/49 on 1.0.2: test_notification_window_and_notifications_alone_are_no_motd lists 24h by default, 3d and 7d, show exits 1 with only notifications; Galata 49/49 on 1.0.2: CLI follows the setting stored in the lab
   - related: ACC-VIEW-64 - same 7-day window; ACC-START-2 - same motd-only rule; ACC-CLI-47 - exit 1
   - test: pytest with a stub lab and hub: 24h default, 3d, 7d; show with only notifications exits 1; Galata: the CLI follows a setting stored in the lab
@@ -716,6 +747,7 @@ the jupyterlab-galaxahub-motd command and its agent skill: the motd read from a 
   - log: 2026-09-29T21:47:36Z @kj amended title "CLI follows the 7-day and motd-only rules" -> "CLI follows the notificationWindow setting and the motd-only rule"; text "notifications and show print only rows of the last 7 days; show exits 1 when the hub holds no terminal text and no rich entry, even with notifications" -> "notifications and show print only rows inside the lab's notificationWindow setting, which the CLI reads from the running lab (24h by default); show exits 1 when the hub holds no terminal text and no rich entry, even with notifications"
   - log: 2026-09-29T21:47:36Z @kj edited test "pytest with a stub hub: an 8-day-old row is left out; show with only notifications exits 1" -> "pytest with a stub lab and hub: 24h default, 3d, 7d; show with only notifications exits 1; Galata: the CLI follows a setting stored in the lab"; test-tags "UNIT" -> "UNIT, FUNCTIONAL"
   - log: 2026-09-30T08:58:08Z @kj closed
+  - log: 2026-10-16T21:42:00Z @kj amended text "notifications and show print only rows inside the lab's notificationWindow setting, which the CLI reads from the running lab (24h by default); show exits 1 when the hub holds no terminal text and no rich entry, even with notifications" -> "notifications and show print only rows inside the running lab's notificationWindow setting (24h by default); show exits 1 when the hub holds no terminal text and no rich entry, even with notifications, and leaves the Notifications part out when that feed answers 404 or an error or cannot be reached"
 
 ## Server settings `SERVER`
 
@@ -727,12 +759,14 @@ The two hub URLs the lab's Jupyter config sets for the extension
   - test-tags: UNIT
   - log: 2026-09-29T18:16:55Z @kj added
   - log: 2026-09-29T18:26:36Z @kj closed: verified on 0.8.6
-- [x] `ACC-SERVER-54` **One empty setting stops all three routes** - CRITICAL; when either setting is empty, all three routes answer 204 and call no URL, so the tab stays closed
+- [x] `ACC-SERVER-54` **One empty setting stops all three routes** - CRITICAL; when either setting is empty, no route calls a URL: the terminal and notifications routes answer 204, and the rich route answers as ACC-LOCAL-67, ACC-LOCAL-68 and ACC-LOCAL-70 state
   - evidence: make test on 0.8.6: test_empty_setting_answers_204 for motd_api_url, notifications_api_url and both left out: three routes 204, stub records no request; red when empty() checks motd_api_url only
-  - test: pytest with a stub hub, each setting left out in turn and both: three routes answer 204, the stub records no request
+  - test: pytest with a stub hub, each setting left out in turn and both: terminal and notifications answer 204, rich answers the built-in page, the stub records no request
   - test-tags: UNIT
   - log: 2026-09-29T18:16:55Z @kj added
   - log: 2026-09-29T18:26:36Z @kj closed: verified on 0.8.6
+  - log: 2026-10-16T21:42:43Z @kj amended text "when either setting is empty, all three routes answer 204 and call no URL, so the tab stays closed" -> "when either setting is empty, no route calls a URL: the terminal and notifications routes answer 204, and the rich route answers as ACC-LOCAL-67, ACC-LOCAL-68 and ACC-LOCAL-70 state"
+  - log: 2026-10-16T21:49:40Z @kj edited test "pytest with a stub hub, each setting left out in turn and both: three routes answer 204, the stub records no request" -> "pytest with a stub hub, each setting left out in turn and both: terminal and notifications answer 204, rich answers the built-in page, the stub records no request"
 - [x] `ACC-SERVER-55` **Settings read from both config files** - HIGH; the settings apply from jupyter_server_config and from jupyter_lab_config
   - evidence: installed 0.8.6, one lab per JUPYTER_CONFIG_DIR against a stub hub: jupyter_lab_config.py, jupyter_server_config.py and .json answer rich 200 with 2 entries; jupyter_server_config.d/motd.json and no file answer 204
   - test: lab started with JUPYTER_CONFIG_DIR holding only jupyter_lab_config.py reaches the stub hub; the Galata suite sets them in its server config file
@@ -816,3 +850,39 @@ The local HTML page the lab config names, shown when the hub gives no welcome en
   - log: 2026-09-30T07:46:08Z @kj added
   - log: 2026-09-30T07:48:26Z @kj amended text "with fallback_html empty, the rich route answers the extension's own page /jupyterlab-galaxahub-motd-extension/about/index.html in every case of ACC-LOCAL-67; the page states what the extension does, the lab config settings, the lab settings and the hub API it reads, with no script and no external file" -> "with fallback_html empty, the rich route answers the extension's own page /jupyterlab-galaxahub-motd-extension/about/index.html in every case of ACC-LOCAL-67; the page states the extension version, what it does, the lab config settings, the lab settings and the hub API it reads, with no script and no external file"
   - log: 2026-09-30T08:58:09Z @kj closed
+
+## Authoring skill `AUTHOR`
+
+the agent skill for writing a motd post: markdown with command buttons, HTML packages, the hub content policy, images and sound
+
+- [x] `ACC-AUTHOR-86` **Authoring skill ships** - HIGH; skill jupyterlab-galaxahub-motd-authoring in .agents/skills beside the CLI skill; name equals its directory; pip installs it under share/jupyter/agents/skills; SKILL.md links references for markdown, HTML packages, the content policy, images and sound, and every link resolves
+  - evidence: make install 1.0.57: diff -r of share/jupyter/agents/skills/jupyterlab-galaxahub-motd-authoring against the source differs only in a stray .pyc (DEF-TEST-31); pytest test_authoring_skill.py 5 passed: name, links, shared-data entry, policy, no bytecode
+  - test: pytest test_authoring_skill.py: name equals directory, reference links resolve, pyproject shared-data entry; after make install: the installed SKILL.md equals the source
+  - test-tags: UNIT
+  - log: 2026-10-16T16:07:35Z @kj added
+  - log: 2026-10-16T16:17:25Z @kj edited test "pytest: frontmatter name equals directory, every reference link resolves, the installed copy equals the source" -> "pytest test_authoring_skill.py: name equals directory, reference links resolve, pyproject shared-data entry; after make install: the installed SKILL.md equals the source"
+  - log: 2026-10-16T16:42:39Z @kj closed
+- [x] `ACC-AUTHOR-87` **Command button in a markdown entry** - HIGH; a button with data-commandlinker-command and data-commandlinker-args in a markdown entry runs its command after the reader confirms the lab's Run Command dialog; Cancel runs nothing; &#39; in the args reaches the command as an apostrophe; an a element with the same attributes runs nothing
+  - evidence: Galata authoring.spec.ts on 1.0.56: Run Command? dialog with Cancel and Run; Cancel ran nothing; Run showed the toast It's <ready> & installed from escaped args; a link with the attributes and a button with broken JSON opened no dialog; full suite 74 passed
+  - test: Galata authoring.spec.ts: press the button, Cancel, press again, run; the notification text; the link runs nothing
+  - test-tags: FUNCTIONAL
+  - log: 2026-10-16T16:07:42Z @kj added
+  - log: 2026-10-16T16:22:13Z @kj closed
+- [x] `ACC-AUTHOR-88` **Skill statements match the sources** - MEDIUM; every statement of the skill about the hub matches GalaxaHub 4.5.58 (content_policy.py, store.py, handlers.py, policy.py, extension.py), and every statement about the tab matches src/panel.ts, src/fit.ts and the JupyterLab 4.6 sanitizer and command linker
+  - evidence: checked against GalaxaHub origin/main 4.5.58: content_policy.py header and parse, store.py upload checks, extension.py 100 MiB cap and 24 h reap, handlers.py file route, policy.py caps; panel.ts sandbox, fit.ts; JupyterLab 4.6.4 sanitizer and command linker
+  - test: review of each statement against the named sources
+  - test-tags: MANUAL
+  - log: 2026-10-16T16:07:46Z @kj added
+  - log: 2026-10-16T16:17:34Z @kj closed
+- [x] `ACC-AUTHOR-89` **README names the authoring skill** - LOW; README says where the authoring skill is and gives the ln -s line that links it into the agent skills directory
+  - evidence: grep README.md: section Writing a motd post links .agents/skills/jupyterlab-galaxahub-motd-authoring/SKILL.md and gives the ln -s line into ~/.agents/skills
+  - test: grep README.md for the skill path and its ln -s line
+  - test-tags: MANUAL
+  - log: 2026-10-16T16:07:48Z @kj added
+  - log: 2026-10-16T16:17:27Z @kj closed
+- [x] `ACC-AUTHOR-90` **Standard content policy** - HIGH; an HTML package served with the hub header for Allow scripts on plus the skill's standard content policy runs inline and file scripts, fetches a package file, shows a blob image and saves a generated file and a package file in the tab; the default header blocks the blob image
+  - evidence: Galata authoring.spec.ts on 1.0.56: standard header ran inline and file scripts, fetched data.json and a data: address, loaded a 40 px blob image and blob sound, saved notes.txt and generated.txt; default header blocked blob image, blob sound and data fetch; full suite 74 passed
+  - test: Galata authoring.spec.ts: package routed with both headers; script marks, fetched text, image width, two downloads
+  - test-tags: FUNCTIONAL
+  - log: 2026-10-16T16:07:54Z @kj added
+  - log: 2026-10-16T16:22:15Z @kj closed

@@ -145,13 +145,13 @@ of the lab image read it, and the tab does not.
 This section states what the extension does with each hub status and which cache headers the hub
 sends. The proxy passes the hub's `Content-Type`, `Etag` and `Cache-Control` headers to the browser.
 
-| Hub status                                | Extension action                                            |
-| ----------------------------------------- | ----------------------------------------------------------- |
-| 200                                       | uses the body as the current rows                           |
-| 304                                       | keeps the rows it holds                                     |
-| 404                                       | treats the hub as having no motd, and the proxy answers 204 |
-| no connection, timeout, empty URL setting | same as 404                                                 |
-| any other status, including 403 and 500   | marks the pull as failed and keeps the rows it holds        |
+| Hub status                                | Extension action                                                                                                        |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| 200                                       | uses the body as the current rows                                                                                       |
+| 304                                       | keeps the rows it holds                                                                                                 |
+| 404                                       | treats the hub as having no motd: the proxy answers the local or built-in page for rich and 204 for notifications       |
+| no connection, timeout, empty URL setting | same as 404                                                                                                             |
+| any other status, including 403 and 500   | rich: the proxy answers the local or built-in page; notifications: marks the pull as failed and keeps the rows it holds |
 
 - **Etag** - optional, and when the hub sends it, the next pull sends it back as `If-None-Match`
 - **304 answer** - optional, because the proxy answers the browser 304 when a 200 answer carries
@@ -174,8 +174,10 @@ This section states what the hub serves for an `html` welcome entry. The browser
   `frame-ancestors 'self'` allows it when hub and lab share one origin, as in the default
   JupyterHub proxy layout
 - **Blocked frame** - `X-Frame-Options: DENY` or `frame-ancestors 'none'` leaves the frame empty
-- **Sandbox** - the frame has `allow-same-origin allow-popups allow-popups-to-escape-sandbox`, and
+- **Sandbox** - the frame has `allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-downloads`, and
   `allow-scripts` while `c.GalaxaHubMotd.html_allow_scripts` is on, which is the default
+- **Downloads** - `allow-downloads` lets a package save a generated file from the Welcome frame;
+  a page still needs to start the download itself
 - **Scripts** - with the setting on, a script in the page runs; on the lab's origin it has the
   access of the lab page itself, so the hub must let only an administrator write a page. With the
   setting off, no script in the page runs

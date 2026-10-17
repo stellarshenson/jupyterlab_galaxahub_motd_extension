@@ -25,6 +25,10 @@ export class StubHub {
   rich: IStubAnswer = { status: 200, body: { entries: [] } };
   notifications: IStubAnswer = { status: 200, body: { notifications: [] } };
   /**
+   * How long the rich route holds its answer, as a hub that accepts the call and is slow.
+   */
+  richDelayMs = 0;
+  /**
    * The html package pages, by the url path an html entry names.
    */
   pages = new Map<string, string>();
@@ -34,6 +38,7 @@ export class StubHub {
   reset(): void {
     this.rich = { status: 200, body: { entries: [] } };
     this.notifications = { status: 200, body: { notifications: [] } };
+    this.richDelayMs = 0;
     this.pages.clear();
     this.counts.clear();
   }
@@ -94,8 +99,14 @@ export class StubHub {
       return;
     }
     switch (path) {
-      case 'extensions/motd/rich':
-        return this.send(res, this.rich);
+      case 'extensions/motd/rich': {
+        if (!this.richDelayMs) {
+          return this.send(res, this.rich);
+        }
+        const answer = this.rich;
+        setTimeout(() => this.send(res, answer), this.richDelayMs);
+        return;
+      }
       case 'user-notifications':
         return this.send(res, this.notifications);
       case 'extensions/motd/terminal':

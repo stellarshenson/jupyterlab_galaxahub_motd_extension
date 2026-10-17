@@ -1,5 +1,3 @@
-import { ReadonlyPartialJSONObject } from '@lumino/coreutils';
-
 import { ISignal, Signal } from '@lumino/signaling';
 
 import { Feed, IAnswer } from './request';
@@ -208,33 +206,6 @@ export function firstLoadOfServerStart(
   }
   localStorage.setItem(key, serverStart);
   return true;
-}
-
-/**
- * The settings with their defaults filled in; pollMinutes is a whole number of at least 0, and
- * notificationWindow one of its choices.
- */
-export function readSettings(
-  composite: ReadonlyPartialJSONObject
-): IMotdSettings {
-  const bool = (value: unknown, fallback: boolean) =>
-    typeof value === 'boolean' ? value : fallback;
-  const minutes = composite.pollMinutes;
-  const span = composite.notificationWindow;
-  return {
-    openOnStart: bool(composite.openOnStart, DEFAULT_SETTINGS.openOnStart),
-    reopenOnBroadcast: bool(
-      composite.reopenOnBroadcast,
-      DEFAULT_SETTINGS.reopenOnBroadcast
-    ),
-    pollMinutes:
-      typeof minutes === 'number' && minutes > 0 ? Math.floor(minutes) : 0,
-    notificationWindow:
-      typeof span === 'string' &&
-      Object.keys(NOTIFICATION_WINDOWS_MS).includes(span)
-        ? (span as NotificationWindow)
-        : DEFAULT_SETTINGS.notificationWindow
-  };
 }
 
 /**

@@ -4,7 +4,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { DEFAULT_SETTINGS, readSettings } from '../model';
+import { DEFAULT_SETTINGS } from '../model';
 
 const ROOT = path.resolve(__dirname, '..', '..');
 
@@ -51,43 +51,6 @@ describe('schema/plugin.json', () => {
       fromSchema[key] = (property as { default: unknown }).default;
     }
     expect(fromSchema).toEqual(DEFAULT_SETTINGS);
-  });
-});
-
-describe('readSettings', () => {
-  it('fills the defaults for missing keys', () => {
-    expect(readSettings({})).toEqual(DEFAULT_SETTINGS);
-  });
-
-  it('reads the given values', () => {
-    expect(
-      readSettings({
-        openOnStart: false,
-        reopenOnBroadcast: true,
-        pollMinutes: 5,
-        notificationWindow: '7d'
-      })
-    ).toEqual({
-      openOnStart: false,
-      reopenOnBroadcast: true,
-      pollMinutes: 5,
-      notificationWindow: '7d'
-    });
-  });
-
-  it('lists the last 24 hours for a notificationWindow that is not a choice', () => {
-    expect(readSettings({ notificationWindow: '2d' }).notificationWindow).toBe(
-      '24h'
-    );
-    expect(readSettings({ notificationWindow: 7 }).notificationWindow).toBe(
-      '24h'
-    );
-  });
-
-  it('never polls on a negative, fractional-below-one or non-number interval', () => {
-    expect(readSettings({ pollMinutes: -3 }).pollMinutes).toBe(0);
-    expect(readSettings({ pollMinutes: 0.5 }).pollMinutes).toBe(0);
-    expect(readSettings({ pollMinutes: '10' }).pollMinutes).toBe(0);
   });
 });
 

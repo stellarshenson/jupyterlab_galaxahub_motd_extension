@@ -13,13 +13,12 @@ import { ISettingRegistry } from '@jupyterlab/settingregistry';
 
 import { ITranslator, nullTranslator } from '@jupyterlab/translation';
 
-// eslint-disable-next-line jupyter/prefer-lazy-imports -- activation builds the model at once
 import {
   DEFAULT_SETTINGS,
+  IMotdSettings,
   MotdModel,
   firstLoadOfServerStart,
   isNewBroadcast,
-  readSettings,
   silenceLine
 } from './model';
 // eslint-disable-next-line jupyter/prefer-lazy-imports -- activation builds the tab at once
@@ -84,10 +83,18 @@ const plugin: JupyterFrontEndPlugin<void> = {
       ),
       describedBy: { args: { type: 'object', properties: {} } },
       execute: async () => {
+        // a tab with cards opens before the pull, so a hub that is slow to answer delays only
+        // the redraw; a 204 or a failed pull keeps the cards
+        const shown = model.rich.rows.length > 0;
+        if (shown) {
+          open();
+        }
         await model.pull();
         if (model.hasContent) {
-          open();
-        } else {
+          if (!shown) {
+            open();
+          }
+        } else if (!panel.isAttached) {
           console.log(silenceLine(model.rich));
         }
       }
@@ -142,7 +149,9 @@ const plugin: JupyterFrontEndPlugin<void> = {
         try {
           const loaded = await settingRegistry.load(PLUGIN_ID);
           const apply = () => {
-            settings = readSettings(loaded.composite);
+            // the registry checks the user settings against schema/plugin.json and fills the
+            // defaults, so the composite is complete and valid
+            settings = loaded.composite as unknown as IMotdSettings;
             panel.pollMinutes = settings.pollMinutes;
             panel.notificationWindow = settings.notificationWindow;
           };

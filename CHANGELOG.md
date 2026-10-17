@@ -4,6 +4,41 @@
 
 <!-- <END NEW CHANGELOG ENTRY> -->
 
+## [1.0.74] - 2026-10-17
+
+### Added
+
+- The Notifications column redraws once a minute while the tab is open: relative times follow the clock, and a notification older than the `notificationWindow` setting leaves the list; a text selection in the column holds the redraw
+- The entries column and the Notifications column are regions with names a screen reader announces: the entries column carries the tab label, the other is named `Notifications`
+
+### Changed
+
+- `Message of the day: Open` opens a tab that holds cards before it pulls, so a hub that is slow to answer delays only the redraw
+- The CLI text output prints a command button as `[button "<text>" runs <command id>]` and an html entry as a pointer to `Message of the day: Open`, in place of the raw markup and the hub URL; `--json` is unchanged
+- The html entry frame allows downloads
+- The built-in page says the lab shows no message of the day from the hub, which is true when the hub has no entry, is not configured or cannot be reached
+- The authoring skill writes `$` as `&#36;` and `\` as `&#92;` in a command button, gives the sound recipe one button that starts, pauses and resumes, requires relative addresses in an HTML package and says that `serve.py` runs until stopped
+- The README link commands use `mkdir -p` and `ln -sfn`, so running them twice gives the same result
+
+### Removed
+
+- The extension's own check of its settings, which the JupyterLab setting registry already makes against `schema/plugin.json`
+- The unused `@lumino/coreutils` dependency
+
+### Fixed
+
+- `show` prints the terminal text and the entries when only the notifications feed fails, and leaves the Notifications part out; before, it printed nothing and exited with 1 or 4
+- A tab closed and opened again shows current notification times
+- A pull that replaces a card holding the keyboard focus moves the focus to the entries column
+- A pull keeps a text selection in the Notifications column
+- The wheel ships no bytecode file inside the authoring skill
+
+## [1.0.56] - 2026-10-15
+
+### Added
+
+- The agent skill `jupyterlab-galaxahub-motd-authoring` for writing motd posts: markdown entries with command buttons, HTML pages and packages, content policies, images and sound; it ships beside the CLI skill
+
 ## [1.0.55] - 2026-10-07
 
 ### Changed

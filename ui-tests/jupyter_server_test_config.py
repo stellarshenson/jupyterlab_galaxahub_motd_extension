@@ -5,11 +5,26 @@ opens the server to the world and provide access to JupyterLab
 JavaScript objects through the global window variable.
 """
 import os
+from pathlib import Path
 from tempfile import mkdtemp
 
+import jupyterlab.galata
 from jupyterlab.galata import configure_jupyter_server
 
 configure_jupyter_server(c)
+
+# Serve the bundle built from this checkout ahead of any installed copy. Without this,
+# a local UI run can silently exercise an older extension from site-packages.
+bundle = Path(__file__).resolve().parents[1] / "jupyterlab_galaxahub_motd_extension" / "labextension"
+test_extensions = Path(mkdtemp(prefix="galata-labextensions-"))
+(test_extensions / "jupyterlab_galaxahub_motd_extension").symlink_to(
+    bundle, target_is_directory=True
+)
+c.LabServerApp.extra_labextensions_path = [
+    str(test_extensions),
+    str(Path(jupyterlab.galata.__file__).parent),
+]
+
 # configure_jupyter_server moves the workspaces and the server root, not the user settings;
 # without this a settings write to the test server lands in ~/.jupyter/lab/user-settings
 c.LabApp.user_settings_dir = mkdtemp(prefix="galata-settings-")

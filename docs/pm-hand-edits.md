@@ -1,0 +1,2 @@
+- 2026-10-16T18:12:42Z @kj acc-crit.md f3b5ac01 sha256:1480112c4c1e016458e43130efc20ab9a978b9aef6db5841b69024f1e6cac89a: three ACC-CLI-42 log lines quote a superseded wording with the forbidden U+2192 arrow; replace it with ASCII -> in those lines only, no other change
+- 2026-10-16T21:19:12Z @kj defects.md a37eeb5f sha256:b8aafcf1af7357a171991d49b17d8db23dce9a330ebc4ad30a7e76f34c379518: DEF-VIEW-46 reject log line repeats its verb (rejected: rejected:); pm-tools has no command to reword a log line

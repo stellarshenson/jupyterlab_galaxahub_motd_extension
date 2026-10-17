@@ -6,9 +6,11 @@ proxy makes. The two hub URLs come from the running lab server this terminal bel
 whatever configured that lab applies.
 """
 import argparse
+import html
 import http.client
 import json
 import os
+import re
 import sys
 import urllib.error
 import urllib.parse
@@ -28,6 +30,14 @@ HUB_FAILED = 4
 PLUGIN_ID = "jupyterlab_galaxahub_motd_extension:plugin"
 # the choices of the tab's notificationWindow setting, schema/plugin.json
 NOTIFICATION_WINDOWS = {"24h": timedelta(hours=24), "3d": timedelta(days=3), "7d": timedelta(days=7)}
+# what the text output prints for an html entry: its hub url names the hub's address inside the
+# lab, which a browser cannot open, and the page needs the hub's authentication
+HTML_PAGE = "HTML page: open it with Message of the day: Open in the lab"
+# a <button> element: its attributes, where a quoted value may hold >, and its inner markup, which
+# may run over several lines; tag and attribute names are matched in any case, as html reads them
+BUTTON = re.compile(r"""<button\b((?:"[^"]*"|'[^']*'|[^"'>])*)>(.*?)</button>""", re.S | re.I)
+# one attribute of a tag: its name and its double-quoted, single-quoted or bare value
+ATTRIBUTE = re.compile(r"""([^\s"'>/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+)))?""")
 
 
 class Stop(Exception):
@@ -173,10 +183,22 @@ def read_notifications(motd, window):
     return sorted((r for r in kept if time(r) >= since), key=time, reverse=True)
 
 
+def button_text(button):
+    """[button "<text>" runs <command id>] for a <button> that runs a lab command, which a terminal
+    cannot press; any other <button> as it is."""
+    attributes = {name.lower(): "".join(value) for name, *value in ATTRIBUTE.findall(button[1])}
+    if "data-commandlinker-command" not in attributes:
+        return button[0]
+    # the text as one line, as the lab shows it
+    text = " ".join(html.unescape(re.sub(r"<[^>]*>", "", button[2])).split())
+    return f'[button "{text}" runs {html.unescape(attributes["data-commandlinker-command"])}]'
+
+
 def entries_text(entries):
     # an entry with no label is printed with no heading
     return "\n\n".join(
-        (f"## {e['label']}\n\n" if e["label"] else "") + e.get("body", e.get("url")).rstrip("\n")
+        (f"## {e['label']}\n\n" if e["label"] else "")
+        + (BUTTON.sub(button_text, e["body"]).rstrip("\n") if e["kind"] == "markdown" else HTML_PAGE)
         for e in entries)
 
 
@@ -189,8 +211,13 @@ def notification_lines(notifications):
 
 def cmd_show(args):
     hub = args.motd
-    motd = {"terminal": read_terminal(hub), "entries": read_entries(hub),
-            "notifications": read_notifications(hub, notification_window())}
+    motd = {"terminal": read_terminal(hub), "entries": read_entries(hub), "notifications": []}
+    window = notification_window()
+    # a failed or missing broadcasts feed leaves its part out
+    try:
+        motd["notifications"] = read_notifications(hub, window)
+    except Stop:
+        pass
     # notifications alone are no motd
     if not motd["terminal"] and not motd["entries"]:
         raise Stop(NO_MOTD, "no motd: the hub holds no terminal text and no rich entry for this user")
@@ -281,7 +308,9 @@ Print the whole message of the day in three parts, in this order:
   as `notifications` prints it
 
 A part the hub holds nothing for is left out. Exits 1 when the hub holds no terminal text
-and no rich entry, whatever the notifications, or when any of the three feeds answers 404.
+and no rich entry, whatever the notifications, or when the terminal or rich feed answers
+404. A notifications feed that answers 404 or an error, or cannot be reached, leaves the
+Notifications part out.
 """,
         f"""
 examples:
@@ -311,8 +340,10 @@ examples:
         "rich", cmd_rich, "the rich entries, each under its label",
         """
 Print each rich entry of the user's groups, in the hub's order: a `## <label>` heading
-and a blank line (neither for an entry with no label), then the markdown body, or for an
-html entry the url of its page on the hub, made absolute against motd_api_url. That is the
+and a blank line (neither for an entry with no label), then the markdown body, each command
+button in it as [button "<text>" runs <command id>], or for an html entry the line
+"HTML page: open it with Message of the day: Open in the lab". --json gives the body as
+stored and the url of the page on the hub, made absolute against motd_api_url. That is the
 hub address inside the lab, which a browser may not reach, and the hub answers it only to
 an authenticated caller; the page itself is read in the lab's Message of the day tab.
 Entries are separated by a blank line. Exits 1 when no group of the user carries a rich

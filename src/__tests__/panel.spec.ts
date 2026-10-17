@@ -263,7 +263,7 @@ describe('MotdPanel drawing', () => {
       '/hub/api/extensions/motd/rich/p1/index.html'
     );
     expect(frame.getAttribute('sandbox')).toBe(
-      'allow-same-origin allow-popups allow-popups-to-escape-sandbox'
+      'allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-downloads'
     );
     panel.dispose();
   });
@@ -276,7 +276,7 @@ describe('MotdPanel drawing', () => {
     await panel.render();
 
     expect(panel.node.querySelector('iframe')!.getAttribute('sandbox')).toBe(
-      'allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-scripts'
+      'allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-downloads allow-scripts'
     );
     panel.dispose();
   });
