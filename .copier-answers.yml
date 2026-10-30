@@ -8,7 +8,7 @@ has_ai_rules: false
 has_binder: false
 has_settings: true
 kind: frontend-and-server
-labextension_name: jupyterlab_galaxahub_motd_extension
+labextension_name: '@stellarshenson/jupyterlab-galaxahub-motd-extension'
 project_short_description: jupyterlab_galaxahub_motd_extension
 python_name: jupyterlab_galaxahub_motd_extension
 repository: https://github.com/stellarshenson/jupyterlab_galaxahub_motd_extension

@@ -21,7 +21,7 @@ import * as path from 'path';
 
 import { STUB_TOKEN, StubHub, TERMINAL_TEXT } from './stub-hub';
 
-const PLUGIN = 'jupyterlab_galaxahub_motd_extension:plugin';
+const PLUGIN = '@stellarshenson/jupyterlab-galaxahub-motd-extension:plugin';
 const TAB = 'Message of the day';
 const LINE = 'Message of the day:';
 const STUB_PORT = process.env.MOTD_STUB_PORT!;

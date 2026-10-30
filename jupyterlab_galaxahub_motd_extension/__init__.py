@@ -13,7 +13,7 @@ from .routes import GalaxaHubMotd, setup_route_handlers
 def _jupyter_labextension_paths():
     return [{
         "src": "labextension",
-        "dest": "jupyterlab_galaxahub_motd_extension"
+        "dest": "@stellarshenson/jupyterlab-galaxahub-motd-extension"
     }]
 
 

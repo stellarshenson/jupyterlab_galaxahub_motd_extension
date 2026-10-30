@@ -17,9 +17,9 @@ configure_jupyter_server(c)
 # a local UI run can silently exercise an older extension from site-packages.
 bundle = Path(__file__).resolve().parents[1] / "jupyterlab_galaxahub_motd_extension" / "labextension"
 test_extensions = Path(mkdtemp(prefix="galata-labextensions-"))
-(test_extensions / "jupyterlab_galaxahub_motd_extension").symlink_to(
-    bundle, target_is_directory=True
-)
+linked = test_extensions / "@stellarshenson" / "jupyterlab-galaxahub-motd-extension"
+linked.parent.mkdir()
+linked.symlink_to(bundle, target_is_directory=True)
 c.LabServerApp.extra_labextensions_path = [
     str(test_extensions),
     str(Path(jupyterlab.galata.__file__).parent),

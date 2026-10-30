@@ -27,7 +27,7 @@ from .routes import NAMESPACE, GalaxaHubMotd
 PROG = "jupyterlab-galaxahub-motd"
 NO_MOTD = 1
 HUB_FAILED = 4
-PLUGIN_ID = "jupyterlab_galaxahub_motd_extension:plugin"
+PLUGIN_ID = "@stellarshenson/jupyterlab-galaxahub-motd-extension:plugin"
 # the choices of the tab's notificationWindow setting, schema/plugin.json
 NOTIFICATION_WINDOWS = {"24h": timedelta(hours=24), "3d": timedelta(days=3), "7d": timedelta(days=7)}
 # what the text output prints for an html entry: its hub url names the hub's address inside the

@@ -1,7 +1,7 @@
 {
-  "name": "jupyterlab_galaxahub_motd_extension-ui-tests",
+  "name": "@stellarshenson/jupyterlab-galaxahub-motd-extension-ui-tests",
   "version": "1.0.0",
-  "description": "JupyterLab jupyterlab_galaxahub_motd_extension Integration Tests",
+  "description": "JupyterLab @stellarshenson/jupyterlab-galaxahub-motd-extension Integration Tests",
   "private": true,
   "scripts": {
     "start": "jupyter lab --config jupyter_server_test_config.py",

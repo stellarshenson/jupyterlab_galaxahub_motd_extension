@@ -25,7 +25,7 @@ import {
 import { MotdPanel } from './panel';
 import { fetchFeed } from './request';
 
-const PLUGIN_ID = 'jupyterlab_galaxahub_motd_extension:plugin';
+const PLUGIN_ID = '@stellarshenson/jupyterlab-galaxahub-motd-extension:plugin';
 const COMMAND_OPEN = 'galaxahub-motd:open';
 
 /**
@@ -49,7 +49,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
     translator: ITranslator | null
   ) => {
     console.log(
-      'JupyterLab extension jupyterlab_galaxahub_motd_extension is activated!'
+      'JupyterLab extension @stellarshenson/jupyterlab-galaxahub-motd-extension is activated!'
     );
 
     const model = new MotdModel((feed, etag) =>
