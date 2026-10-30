@@ -53,10 +53,6 @@ fields = ["description", "authors", "urls", "keywords"]
 artifacts = ["jupyterlab_galaxahub_motd_extension/labextension"]
 exclude = [".github", "binder"]
 
-[tool.hatch.build.targets.wheel]
-# shared-data ships the labextension; this second copy took the upload past the 102400-byte memory limit of the pypiserver 2.3.2 that Check Release uses
-exclude =["jupyterlab_galaxahub_motd_extension/labextension"]
-
 [tool.hatch.build.targets.wheel.shared-data]
 "jupyterlab_galaxahub_motd_extension/labextension" = "share/jupyter/labextensions/@stellarshenson/jupyterlab-galaxahub-motd-extension"
 "install.json" = "share/jupyter/labextensions/@stellarshenson/jupyterlab-galaxahub-motd-extension/install.json"
@@ -96,6 +92,9 @@ before-build-npm = [
     "jlpm build:prod"
 ]
 before-build-python = ["jlpm clean:all"]
+# The mock PyPI of the check, pypiserver 2.3.2 on Python 3.13, answers 400 when metadata plus a file part held in memory pass 102400 bytes.
+# Newer pypiserver prints "Listening on" to stderr and jupyter-releaser waits for it on stdout, so the limit is raised in place.
+before-publish-assets = ["""python -c "import pathlib, pypiserver; [f.write_text(f.read_text().replace('MEMFILE_MAX = 102400', 'MEMFILE_MAX = 2 ** 30')) for f in pathlib.Path(pypiserver.__file__).parent.rglob('bottle.py')]" """]
 
 [tool.check-wheel-contents]
 ignore = ["W002"]
