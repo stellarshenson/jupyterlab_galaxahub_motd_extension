@@ -2,6 +2,19 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## [1.0.78] - 2026-10-30
+
+### Changed
+
+- Raise the upload limit of the check release mock PyPI
+- Replace the pypiserver upgrade with a smaller wheel
+- Clear the check release upload and the link check
+- Upgrade to extension template v4.6.5 and Makefile 1.46
+
+### Fixed
+
+- Take the scoped @stellarshenson/jupyterlab-galaxahub-motd-extension npm name
+
 <!-- <END NEW CHANGELOG ENTRY> -->
 
 ## [1.0.76] - 2026-10-17
