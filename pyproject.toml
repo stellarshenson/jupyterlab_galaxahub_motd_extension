@@ -53,6 +53,10 @@ fields = ["description", "authors", "urls", "keywords"]
 artifacts = ["jupyterlab_galaxahub_motd_extension/labextension"]
 exclude = [".github", "binder"]
 
+[tool.hatch.build.targets.wheel]
+# shared-data ships the labextension; this second copy took the upload past the 102400-byte memory limit of the pypiserver 2.3.2 that Check Release uses
+exclude =["jupyterlab_galaxahub_motd_extension/labextension"]
+
 [tool.hatch.build.targets.wheel.shared-data]
 "jupyterlab_galaxahub_motd_extension/labextension" = "share/jupyter/labextensions/@stellarshenson/jupyterlab-galaxahub-motd-extension"
 "install.json" = "share/jupyter/labextensions/@stellarshenson/jupyterlab-galaxahub-motd-extension/install.json"
@@ -92,8 +96,6 @@ before-build-npm = [
     "jlpm build:prod"
 ]
 before-build-python = ["jlpm clean:all"]
-# pypiserver 2.3.2, required by jupyter-releaser on Python 3.13, answers 400 when an upload holds over 102400 bytes in memory
-before-publish-assets = ["python -m pip install --upgrade pypiserver"]
 
 [tool.check-wheel-contents]
 ignore = ["W002"]
