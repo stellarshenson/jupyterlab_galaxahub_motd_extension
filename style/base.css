@@ -9,8 +9,9 @@
   font-weight: bold;
 }
 
-/* the tab has no icon; the lab keeps 18 px before the label of every tab for one */
-.jp-MotdPanel-tab .lm-TabBar-tabIcon {
+/* the tab without the hub's favicon has no icon; the lab keeps 18 px before the label of every
+   tab for one */
+.jp-MotdPanel-tab .lm-TabBar-tabIcon:empty {
   display: none;
 }
 

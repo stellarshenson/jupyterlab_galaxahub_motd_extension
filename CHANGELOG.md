@@ -2,6 +2,19 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## [1.0.104] - 2026-11-03
+
+### Added
+
+- The Message of the day tab shows the hub's favicon as its icon, loaded from `static/favicon.ico` under the hub prefix: the GalaxaHub branding icon in the default deployment
+- The icon has the size and place of the other tab icons, also when the favicon loads after the tab opens
+- The Open Tabs list of the running sidebar shows the same favicon for the tab
+
+### Changed
+
+- A lab with no hub prefix sends no favicon request and its tab has no icon, as before; a favicon that does not load leaves the tab without an icon box
+- `@jupyterlab/ui-components` is a declared dependency again
+
 ## [1.0.93] - 2026-11-03
 
 ### Added

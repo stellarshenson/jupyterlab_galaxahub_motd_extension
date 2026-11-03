@@ -32,6 +32,10 @@ export class StubHub {
    * The html package pages, by the url path an html entry names.
    */
   pages = new Map<string, string>();
+  /**
+   * The svg the hub's static/favicon.ico answers; null answers 404.
+   */
+  favicon: string | null = null;
   private counts = new Map<string, number>();
   private server: http.Server | null = null;
 
@@ -40,11 +44,12 @@ export class StubHub {
     this.notifications = { status: 200, body: { notifications: [] } };
     this.richDelayMs = 0;
     this.pages.clear();
+    this.favicon = null;
     this.counts.clear();
   }
 
   /**
-   * How many requests reached a path under /hub/api/.
+   * How many requests reached a path: one under /hub/api/ without that prefix, another in full.
    */
   count(path: string): number {
     return this.counts.get(path) ?? 0;
@@ -91,6 +96,14 @@ export class StubHub {
     if (page !== undefined) {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       res.end(page);
+      return;
+    }
+    // the hub serves its static files to anyone
+    if (url === '/hub/static/favicon.ico') {
+      res.writeHead(this.favicon === null ? 404 : 200, {
+        'Content-Type': 'image/svg+xml'
+      });
+      res.end(this.favicon ?? '');
       return;
     }
     if (req.headers.authorization !== `token ${STUB_TOKEN}`) {

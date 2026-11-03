@@ -19,7 +19,9 @@ when the hub has none.
 
 - **Welcome tab on start** - opens the Message of the day tab and makes it current when the hub
   carries at least one welcome entry for the user; notifications alone never open it. The tab
-  has a bold label and no icon
+  has a bold label, and its icon is the hub's favicon, `static/favicon.ico` under the hub
+  prefix, also in the Open Tabs list of the running sidebar; a lab outside a hub, or a favicon
+  that does not load, gives the tab no icon
 - **Once per server start** - the tab opens by itself on the first load of the lab after each lab
   server start; a later load, a browser refresh included, opens no tab, and the palette command
   opens it at any time

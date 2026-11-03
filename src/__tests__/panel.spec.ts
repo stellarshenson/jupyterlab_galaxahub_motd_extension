@@ -1,11 +1,15 @@
 /**
- * The panel's drawing of the model and its polling (ACC-VIEW-6 to 11, ACC-CONFIG-28,
- * ACC-LAYOUT-32, 33, 35 and 36).
+ * The panel's drawing of the model and its polling (ACC-VIEW-6 to 11, ACC-VIEW-80, ACC-VIEW-101,
+ * ACC-CONFIG-28, ACC-LAYOUT-32, 33, 35 and 36).
  */
 import * as fs from 'fs';
 import * as path from 'path';
 
+import { PageConfig } from '@jupyterlab/coreutils';
+
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
+
+import { LabIcon, fileIcon } from '@jupyterlab/ui-components';
 
 import { MessageLoop } from '@lumino/messaging';
 
@@ -293,12 +297,122 @@ describe('MotdPanel drawing', () => {
     panel.dispose();
   });
 
-  it('marks its tab for the stylesheet and sets no icon (ACC-VIEW-80)', () => {
-    const { model } = modelAnswering([], []);
-    const panel = new MotdPanel(model, fakeRendermime().registry);
-    expect(panel.title.className).toBe('jp-MotdPanel-tab');
-    expect(panel.title.icon).toBeUndefined();
-    panel.dispose();
+  describe('tab icon (ACC-VIEW-80)', () => {
+    // jsdom loads no image, so each Image the panel makes is kept and its load fired by hand
+    let images: HTMLImageElement[];
+    beforeEach(() => {
+      images = [];
+      jest.spyOn(window, 'Image').mockImplementation(() => {
+        const image = document.createElement('img');
+        images.push(image);
+        return image;
+      });
+    });
+    afterEach(() => {
+      jest.restoreAllMocks();
+      PageConfig.setOption('hubPrefix', '');
+      PageConfig.setOption('hubHost', '');
+    });
+
+    it('marks its tab for the stylesheet and sets no icon without a hub prefix (ACC-VIEW-80)', () => {
+      const { model } = modelAnswering([], []);
+      const panel = new MotdPanel(model, fakeRendermime().registry);
+      expect(panel.title.className).toBe('jp-MotdPanel-tab');
+      expect(images).toEqual([]);
+      expect(panel.title.icon).toBeUndefined();
+      panel.dispose();
+    });
+
+    it('the title icon points at <hubPrefix>static/favicon.ico once it loads (ACC-VIEW-80)', () => {
+      PageConfig.setOption('hubPrefix', '/hub/');
+      const { model } = modelAnswering([], []);
+      const panel = new MotdPanel(model, fakeRendermime().registry);
+      expect(images.map(image => image.getAttribute('src'))).toEqual([
+        '/hub/static/favicon.ico'
+      ]);
+      expect(panel.title.icon).toBeUndefined();
+      // the shell gives a tab added with no icon this class, as LabShell._addToMainArea does
+      panel.title.iconClass = 'jp-Icon';
+      images[0].dispatchEvent(new Event('load'));
+      expect(panel.title.iconClass).toBe('');
+      const host = document.createElement('div');
+      // the tab bar renders the icon again on each redraw of the tab
+      panel.title.icon!.render(host);
+      panel.title.icon!.render(host);
+      const shown = host.querySelectorAll('image');
+      expect(shown).toHaveLength(1);
+      expect(shown[0].getAttribute('href')).toBe('/hub/static/favicon.ico');
+      // decorative
+      expect(host.querySelector('svg')!.getAttribute('aria-hidden')).toBe(
+        'true'
+      );
+      // sized as the shell sizes the icon of a tab added with one
+      const added = document.createElement('div');
+      fileIcon.bindprops({ stylesheet: 'mainAreaTab' }).render(added);
+      expect(host.className).toBe(added.className);
+      panel.dispose();
+    });
+
+    it('the title icon is a LabIcon that shows <hubPrefix>static/favicon.ico once it loads (ACC-VIEW-101)', () => {
+      PageConfig.setOption('hubPrefix', '/hub/');
+      const { model } = modelAnswering([], []);
+      const panel = new MotdPanel(model, fakeRendermime().registry);
+      images[0].dispatchEvent(new Event('load'));
+      // the Open Tabs list of the running sidebar shows a title icon only when it is a LabIcon
+      expect(panel.title.icon).toBeInstanceOf(LabIcon);
+      const shown = (panel.title.icon as LabIcon)
+        .element()
+        .querySelectorAll('image');
+      expect(shown).toHaveLength(1);
+      expect(shown[0].getAttribute('href')).toBe('/hub/static/favicon.ico');
+      panel.dispose();
+    });
+
+    it('carries the favicon url only as the address of the image (ACC-VIEW-101)', () => {
+      // quotes, percent escapes LabIcon decodes, a stray percent, markup and an entity
+      const hubPrefix =
+        '/hub/"onload="alert(1)"%22onerror%3D%22alert(2)%22%zz<script>&amp;/';
+      PageConfig.setOption('hubPrefix', hubPrefix);
+      const { model } = modelAnswering([], []);
+      const panel = new MotdPanel(model, fakeRendermime().registry);
+      images[0].dispatchEvent(new Event('load'));
+      const svg = (panel.title.icon as LabIcon).element().querySelector('svg')!;
+      expect(Array.from(svg.querySelectorAll('*'), el => el.localName)).toEqual(
+        ['image']
+      );
+      const image = svg.querySelector('image')!;
+      expect(image.getAttributeNames().sort()).toEqual([
+        'height',
+        'href',
+        'width'
+      ]);
+      expect(image.getAttribute('href')).toBe(`${hubPrefix}static/favicon.ico`);
+      expect(
+        svg.getAttributeNames().filter(name => name.startsWith('on'))
+      ).toEqual([]);
+      panel.dispose();
+    });
+
+    it('puts the hub host before the hub prefix (ACC-VIEW-80)', () => {
+      PageConfig.setOption('hubPrefix', '/hub/');
+      PageConfig.setOption('hubHost', 'https://hub.example.org');
+      const { model } = modelAnswering([], []);
+      const panel = new MotdPanel(model, fakeRendermime().registry);
+      expect(images.map(image => image.getAttribute('src'))).toEqual([
+        'https://hub.example.org/hub/static/favicon.ico'
+      ]);
+      panel.dispose();
+    });
+
+    it('sets no icon when the favicon does not load (ACC-VIEW-80)', () => {
+      PageConfig.setOption('hubPrefix', '/hub/');
+      const { model } = modelAnswering([], []);
+      const panel = new MotdPanel(model, fakeRendermime().registry);
+      expect(images).toHaveLength(1);
+      images[0].dispatchEvent(new Event('error'));
+      expect(panel.title.icon).toBeUndefined();
+      panel.dispose();
+    });
   });
 
   it('labels its tab Welcome until the lab page config gives a label (ACC-SERVER-66)', () => {

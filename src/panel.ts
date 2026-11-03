@@ -1,8 +1,10 @@
-import { Time } from '@jupyterlab/coreutils';
+import { PageConfig, Time } from '@jupyterlab/coreutils';
 
 import { IRenderMime, IRenderMimeRegistry } from '@jupyterlab/rendermime';
 
 import { TranslationBundle, nullTranslator } from '@jupyterlab/translation';
+
+import { LabIcon } from '@jupyterlab/ui-components';
 
 import { Message } from '@lumino/messaging';
 
@@ -124,8 +126,29 @@ export class MotdPanel extends Widget {
     this.id = 'galaxahub-motd';
     this.title.label = trans.__('Welcome');
     // the stylesheet makes the tab's label bold by this class and removes the room the lab keeps
-    // for an icon
+    // for an icon while the tab has none
     this.title.className = 'jp-MotdPanel-tab';
+    // the tab's icon is the hub's favicon, set once it has loaded: a lab outside a hub, or a
+    // favicon that does not load, leaves the tab without an icon
+    const hubPrefix = PageConfig.getOption('hubPrefix');
+    if (hubPrefix) {
+      const url = `${PageConfig.getOption('hubHost')}${hubPrefix}static/favicon.ico`;
+      const favicon = new Image();
+      favicon.addEventListener('load', () => {
+        // a LabIcon, because the Open Tabs list of the running sidebar shows no other kind; the
+        // url is escaped for the attribute, % too, because LabIcon URI-decodes its svg
+        const href = url.replace(/[&<"%]/g, c => `&#${c.charCodeAt(0)};`);
+        // the shell binds this stylesheet, which sizes a tab icon, only to an icon the tab has
+        // when it is added
+        this.title.icon = new LabIcon({
+          name: 'jupyterlab-galaxahub-motd-extension:favicon',
+          svgstr: `<svg xmlns="${SVG_NS}" viewBox="0 0 16 16"><image href="${href}" width="16" height="16"/></svg>`
+        }).bindprops({ stylesheet: 'mainAreaTab' });
+        // the shell gave the iconless tab jp-Icon, whose 16 px minimum outgrows the 14 px icon box
+        this.title.iconClass = '';
+      });
+      favicon.src = url;
+    }
     this.title.closable = true;
     this.addClass('jp-MotdPanel');
     // the shell's current widget follows focus, so the panel must be able to take it
