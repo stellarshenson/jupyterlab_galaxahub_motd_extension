@@ -13,8 +13,9 @@ describe('schema/plugin.json', () => {
     fs.readFileSync(path.join(ROOT, 'schema', 'plugin.json'), 'utf-8')
   );
 
-  it('declares the four settings with their defaults', () => {
+  it('declares the five settings with their defaults', () => {
     expect(Object.keys(schema.properties).sort()).toEqual([
+      'clearedNotifications',
       'notificationWindow',
       'openOnStart',
       'pollMinutes',
@@ -42,6 +43,12 @@ describe('schema/plugin.json', () => {
         { const: '7d', title: 'Last 7 days' }
       ],
       default: '7d'
+    });
+    expect(schema.properties.clearedNotifications).toMatchObject({
+      type: 'array',
+      items: { type: 'string' },
+      title: 'Cleared notifications',
+      default: []
     });
   });
 

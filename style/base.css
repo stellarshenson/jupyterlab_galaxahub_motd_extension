@@ -183,6 +183,7 @@
 
 .jp-MotdPanel-title {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   margin-bottom: 10px;
@@ -199,6 +200,20 @@
   color: var(--jp-ui-font-color2);
   font-size: 12px;
   line-height: 18px;
+}
+
+/* a text button at the end of the title row */
+.jp-MotdPanel-clear {
+  margin-left: auto;
+  padding: 0 4px;
+  border: none;
+  border-radius: 3px;
+  background: none;
+  color: var(--jp-ui-font-color1);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 18px;
+  cursor: pointer;
 }
 
 .jp-MotdPanel-list {
@@ -299,4 +314,31 @@
 .jp-MotdPanel-audience::after {
   margin: 0 5px;
   content: '\00b7';
+}
+
+/* always visible at the end of the card, so a keyboard user sees it; the text keeps the rest of
+   the width */
+.jp-MotdPanel-remove {
+  flex-shrink: 0;
+  box-sizing: border-box;
+  width: 20px;
+  height: 20px;
+  padding: 3px;
+  border: none;
+  border-radius: 3px;
+  background: none;
+  color: var(--jp-ui-font-color1);
+  cursor: pointer;
+}
+
+.jp-MotdPanel-removeIcon {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.jp-MotdPanel-clear:focus-visible,
+.jp-MotdPanel-remove:focus-visible {
+  outline: 2px solid var(--jp-brand-color1);
+  outline-offset: 1px;
 }

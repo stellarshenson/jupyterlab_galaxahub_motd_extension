@@ -154,6 +154,30 @@ const plugin: JupyterFrontEndPlugin<void> = {
             settings = loaded.composite as unknown as IMotdSettings;
             panel.pollMinutes = settings.pollMinutes;
             panel.notificationWindow = settings.notificationWindow;
+            panel.clearedNotifications = settings.clearedNotifications;
+          };
+          // one save at a time, each from a fresh read of the stored file: set writes this page's
+          // copy of the whole file, so a stale copy would undo what another page of the lab saved
+          let saves: Promise<void> = Promise.resolve();
+          panel.saveCleared = pressed => {
+            const save = saves
+              .then(async () => {
+                await settingRegistry.reload(PLUGIN_ID);
+                await loaded.set('clearedNotifications', [
+                  ...new Set([...settings.clearedNotifications, ...pressed])
+                ]);
+              })
+              .catch(reason => {
+                // with no autoClose the lab keeps the message in its notification list and shows
+                // no toast
+                Notification.error(
+                  trans.__('The cleared notifications could not be saved'),
+                  { autoClose: 5000 }
+                );
+                throw reason;
+              });
+            saves = save.catch(() => undefined);
+            return save;
           };
           apply();
           loaded.changed.connect(apply);

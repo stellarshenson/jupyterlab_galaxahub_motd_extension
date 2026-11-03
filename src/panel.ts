@@ -16,6 +16,7 @@ import {
   MotdModel,
   NotificationWindow,
   RichEntry,
+  notificationKey,
   notificationView
 } from './model';
 
@@ -146,6 +147,12 @@ export class MotdPanel extends Widget {
     );
     this._notifications.setAttribute('role', 'region');
     this._notifications.setAttribute('aria-label', trans.__('Notifications'));
+    // the focus moves to the next Remove when a row leaves, so a held Enter would press each one
+    this._notifications.addEventListener('keydown', event => {
+      if (event.repeat && event.key === 'Enter') {
+        event.preventDefault();
+      }
+    });
     // the element that scrolls a stacked tab: the stylesheet cannot give the tab itself a rule
     // by the tab's width
     const columns = document.createElement('div');
@@ -161,6 +168,12 @@ export class MotdPanel extends Widget {
    * cards are drawn.
    */
   htmlAllowScripts = false;
+
+  /**
+   * Adds the pressed keys to the stored cleared notifications; without it the tab draws no Clear
+   * and no Remove button.
+   */
+  saveCleared: ((keys: string[]) => Promise<void>) | null = null;
 
   /**
    * Whether the lab config names a notifications URL; without one the tab has no Notifications
@@ -185,6 +198,19 @@ export class MotdPanel extends Widget {
   set notificationWindow(span: NotificationWindow) {
     this._notificationWindow = span;
     this._drawNotifications();
+  }
+
+  /**
+   * The keys of the notifications the column leaves out; a change redraws the column, also while
+   * text in it is selected, so a pressed row leaves at once. Equal keys draw nothing, so a change
+   * of another setting keeps a text selection in the column.
+   */
+  set clearedNotifications(keys: string[]) {
+    if (JSON.stringify(keys) === JSON.stringify(this._cleared)) {
+      return;
+    }
+    this._cleared = keys;
+    this._drawNotifications(true);
   }
 
   /**
@@ -373,35 +399,74 @@ export class MotdPanel extends Widget {
   /**
    * Draw the Notifications column. The tab has the column while the lab config names a
    * notifications URL and the column lists at least one notification; without the column the
-   * cards take the full width.
+   * cards take the full width. `force` draws also while text in the column is selected.
    */
-  private _drawNotifications(): void {
+  private _drawNotifications(force = false): void {
     // a redraw replaces the rows and so removes a text selection in them: a draw while one is
     // there is skipped, and the next minute catches up
     const selection = document.getSelection();
     const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
     if (
+      !force &&
       range &&
       !range.collapsed &&
       range.intersectsNode(this._notifications)
     ) {
       return;
     }
+    const left = [...this._cleared, ...this._pressed];
     const rows = notificationView(
-      this._model.notifications.rows,
+      this._model.notifications.rows.filter(
+        row => !left.includes(notificationKey(row))
+      ),
       this._notificationWindow
     );
     const hidden = !this._notificationsUrl || rows.length === 0;
     // a hidden column cannot keep the focus, so the column the page keys scroll takes it
     const refocus =
       hidden && this._notifications.contains(document.activeElement);
+    // the draw replaces the buttons, and a replaced button that holds the focus drops it to the
+    // page body: the focus goes to the same button, else to the one now in its place
+    const buttons = () =>
+      Array.from(this._notifications.querySelectorAll('button'));
+    const index = buttons().indexOf(
+      document.activeElement as HTMLButtonElement
+    );
+    const key = buttons()[index]?.dataset.key;
     this.toggleClass('jp-mod-noNotifications', hidden);
     this._notifications.replaceChildren(
       ...(rows.length ? this._notificationsContent(rows) : [])
     );
     if (refocus) {
       this._focusColumn();
+    } else if (index >= 0) {
+      const drawn = buttons();
+      (
+        drawn.find(button => button.dataset.key === key) ??
+        drawn[Math.min(index, drawn.length - 1)]
+      ).focus({ preventScroll: true });
     }
+  }
+
+  /**
+   * Leave out the rows of the `pressed` keys and save the keys. The rows leave at once; a failed
+   * save returns them.
+   */
+  private _clear(pressed: string[]): void {
+    // shortcut: the setting gains one key per pressed row, add a floor by the oldest feed time at
+    // about 1000 keys
+    this._pressed.push(...pressed);
+    this._drawNotifications(true);
+    const settled = () => {
+      this._pressed = this._pressed.filter(key => !pressed.includes(key));
+    };
+    this.saveCleared!(pressed).then(settled, reason => {
+      settled();
+      this._drawNotifications(true);
+      console.error(
+        `Message of the day: cleared notifications not saved - ${reason}`
+      );
+    });
   }
 
   private _notificationsContent(rows: INotificationView[]): HTMLElement[] {
@@ -412,6 +477,24 @@ export class MotdPanel extends Widget {
     count.className = 'jp-MotdPanel-count';
     count.textContent = String(rows.length);
     title.appendChild(count);
+    if (this.saveCleared) {
+      const clear = document.createElement('button');
+      clear.type = 'button';
+      clear.className = 'jp-MotdPanel-clear';
+      clear.textContent = this._trans.__('Clear');
+      clear.setAttribute(
+        'aria-label',
+        this._trans.__('Clear all notifications')
+      );
+      // in a stacked tab the title row moves down when a row leaves, so the second click of a
+      // double click on Remove can land here
+      clear.addEventListener('click', event => {
+        if (event.detail < 2) {
+          this._clear(rows.map(notificationKey));
+        }
+      });
+      title.appendChild(clear);
+    }
     const list = document.createElement('ul');
     list.className = 'jp-MotdPanel-list';
     for (const row of rows) {
@@ -450,6 +533,29 @@ export class MotdPanel extends Widget {
         item.appendChild(label);
       }
       item.appendChild(text);
+      if (this.saveCleared) {
+        const key = notificationKey(row);
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'jp-MotdPanel-remove';
+        remove.dataset.key = key;
+        remove.title = this._trans.__('Remove');
+        remove.setAttribute(
+          'aria-label',
+          this._trans.__('Remove notification: %1', row.message)
+        );
+        remove.appendChild(
+          icon(['M6 6l12 12', 'M18 6 6 18'], 'jp-MotdPanel-removeIcon')
+        );
+        // the next row moves up under the pointer, so the second click of a double click would
+        // press its Remove; a keyboard click has detail 0
+        remove.addEventListener('click', event => {
+          if (event.detail < 2) {
+            this._clear([key]);
+          }
+        });
+        item.appendChild(remove);
+      }
       list.appendChild(item);
     }
     return [title, list];
@@ -480,6 +586,9 @@ export class MotdPanel extends Widget {
   private _notificationsUrl = true;
   private _notificationWindow: NotificationWindow =
     DEFAULT_SETTINGS.notificationWindow;
+  private _cleared = DEFAULT_SETTINGS.clearedNotifications;
+  // the keys whose save has not finished: the save's read assigns a list without them
+  private _pressed: string[] = [];
   private _timer = 0;
   // the minute interval that redraws the Notifications column while the tab is open
   private _clock = 0;

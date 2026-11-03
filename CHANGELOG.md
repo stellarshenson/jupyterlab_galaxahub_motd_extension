@@ -2,6 +2,18 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## [1.0.93] - 2026-11-03
+
+### Added
+
+- The Notifications column has a Clear button that removes every listed row, and each row has a Remove button that removes that row alone; both are buttons the Tab key reaches, and the keyboard focus moves to the next Remove button when its row leaves
+- A cleared or removed row does not appear again after a pull, a poll, a browser reload, a lab server restart or a longer `notificationWindow`; a later broadcast with the same text is listed
+- Lab setting `clearedNotifications`: the rows cleared or removed in this lab, one `ts`, newline, `message` string per row; removing an item in the Settings Editor lists that row again
+- Each press reads the setting, adds its rows and writes it, one save at a time, so two browser pages of one lab keep each other's cleared rows and other settings
+- A double click or a held Enter on Remove removes one row
+- A save that fails returns the rows and shows an error notification
+- The CLI `notifications` and `show` leave out the cleared rows, in text and with `--json`; `notifications` exits 1 when only cleared rows are left
+
 ## [1.0.81] - 2026-10-31
 
 ### Changed

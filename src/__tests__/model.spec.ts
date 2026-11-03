@@ -11,6 +11,7 @@ import {
   firstLoadOfServerStart,
   hasContent,
   isNewBroadcast,
+  notificationKey,
   notificationRows,
   notificationView,
   richRows,
@@ -246,6 +247,20 @@ describe('isNewBroadcast', () => {
 
   it('is false for a message already pulled before the notification', () => {
     expect(isNewBroadcast([later, ROW], [later, ROW], 'new one')).toBe(false);
+  });
+});
+
+describe('notificationKey', () => {
+  it('is the time and the message of the row, on two lines', () => {
+    expect(notificationKey({ ts: 'the time', message: 'the message' })).toBe(
+      'the time\nthe message'
+    );
+  });
+
+  it('tells apart two rows with the same message and another time', () => {
+    expect(notificationKey(ROW)).not.toBe(
+      notificationKey({ ...ROW, ts: 'another time' })
+    );
   });
 });
 

@@ -304,6 +304,52 @@ def test_notification_window_and_notifications_alone_are_no_motd(capsys, hub):
     assert _one_line(err) and "last 7d" in err and "notificationWindow" in err
 
 
+def _key(row):
+    """The key of a row in the tab's clearedNotifications setting."""
+    return f"{row['ts']}\n{row['message']}"
+
+
+def test_cleared_rows_are_left_out(capsys, hub):
+    # ACC-CLI-100-CLEARED: a row cleared or removed in the tab is not listed, in text and --json
+    older, newest, middle = NOTIFICATIONS["notifications"]
+    hub.tab["clearedNotifications"] = [_key(middle)]
+    for command in ("notifications", "show"):
+        code, out, _ = run(capsys, command)
+        assert code == 0 and "Newest broadcast" in out and "Older broadcast" in out, command
+        assert "Middle broadcast" not in out, command
+        code, out, _ = run(capsys, command, "--json")
+        assert code == 0, command
+        assert [n["message"] for n in json.loads(out)["notifications"]] == [newest["message"], older["message"]], command
+
+
+def test_a_cleared_message_with_a_new_time_is_listed(capsys, hub):
+    # the hub feed gives no id, so a row is its time and its message
+    again = {**NOTIFICATIONS["notifications"][2], "ts": _ago(2)}
+    hub.answers["user-notifications"] = (200, JSON, json.dumps({"notifications": [again]}).encode())
+    hub.tab["clearedNotifications"] = [_key(NOTIFICATIONS["notifications"][2])]
+    code, out, _ = run(capsys, "notifications")
+    assert code == 0 and "Middle broadcast" in out
+
+
+def test_only_cleared_rows_left(capsys, hub):
+    hub.tab["clearedNotifications"] = [_key(row) for row in NOTIFICATIONS["notifications"]]
+    code, out, err = run(capsys, "notifications")
+    assert (code, out) == (1, "")
+    assert _one_line(err) and "left to list" in err and "last 7d" in err and "notificationWindow" in err
+    # show still has its terminal text and its entries, and no Notifications part
+    code, out, _ = run(capsys, "show")
+    assert code == 0 and "## analysts" in out and "## Notifications" not in out
+    assert json.loads(run(capsys, "show", "--json")[1])["notifications"] == []
+
+
+def test_cleared_rows_take_no_second_read_of_the_lab(capsys, hub):
+    hub.tab["clearedNotifications"] = [_key(NOTIFICATIONS["notifications"][0])]
+    for command in ("notifications", "show"):
+        hub.lab_requests.clear()
+        assert run(capsys, command)[0] == 0, command
+        assert [path for path, _ in hub.lab_requests] == [SETTINGS_PATH, TAB_SETTINGS_PATH], command
+
+
 def test_rich_entry_with_no_label_has_no_heading(capsys, hub):
     # ACC-VIEW-73: group is not read; a missing or blank label prints no heading and is emitted empty
     hub.answers["extensions/motd/rich"] = (200, JSON, json.dumps({"entries": [

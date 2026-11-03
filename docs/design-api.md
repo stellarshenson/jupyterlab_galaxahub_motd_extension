@@ -130,6 +130,9 @@ one `notifications` list.
   `in-progress`, and the tab shows any other value as `default`
 - **`audience`** - `direct` marks a broadcast that named the user, which the tab labels Direct,
   and the tab labels every other value All users
+- **Cleared rows** - this API is read-only, so the lab keeps the rows cleared or removed in the
+  tab in its `clearedNotifications` user setting, one `ts`, newline, `message` string per row, and
+  the tab and the CLI leave those rows out
 
 ### 3.3 Terminal text
 

@@ -34,6 +34,13 @@
         { "const": "7d", "title": "Last 7 days" }
       ],
       "default": "7d"
+    },
+    "clearedNotifications": {
+      "type": "array",
+      "items": { "type": "string" },
+      "title": "Cleared notifications",
+      "description": "The notifications cleared or removed in the tab. Remove an item to list that notification again.",
+      "default": []
     }
   },
   "additionalProperties": false

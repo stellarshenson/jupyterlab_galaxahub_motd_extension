@@ -17,4 +17,5 @@ Runs in lab terminal. Asks running lab server (`JUPYTER_SERVER_URL`, set in ever
 - Parse `--json`, not text
 - Lab startup script: call CLI (`jupyterlab-galaxahub-motd terminal 2>/dev/null`). Never fetch motd API yourself, never put its URL or token in script
 - Html entry: text output names the tab, `--json` gives url only. Page needs hub auth. Send user to Message of the day tab (`Message of the day: Open`). Never put token on a command line to fetch it
+- `notifications`, `show`: rows user cleared or removed in tab are left out (lab setting `clearedNotifications`). A missing row may be cleared, not unsent
 - Read-only. Hub admin sets motd in group policy and sends broadcasts from hub. Nothing to change here

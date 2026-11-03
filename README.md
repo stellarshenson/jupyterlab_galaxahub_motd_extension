@@ -45,7 +45,8 @@ when the hub has none.
 - **Notifications catch-up** - the broadcasts of the last 7 days, 3 days or 24 hours (a setting)
   sent to all users and those naming the user, newest first, each a card tinted in its type's
   colour, with the type's icon, the relative time and an all or direct marker; while the tab is
-  open the column redraws once a minute, so the times follow the clock
+  open the column redraws once a minute, so the times follow the clock, and the Clear button and
+  each row's Remove button remove rows, which stay removed in this lab after a pull or a reload
 - **Palette command** - `Message of the day: Open` pulls again and reopens the one tab; the tab
   closes, and the command opens nothing, only when `fallback_html` names a file that does not exist
 - **Token stays on the server** - a server extension calls the hub with the lab's API token and
@@ -67,12 +68,13 @@ pip install jupyterlab_galaxahub_motd_extension
 
 ## Settings
 
-| Setting              | Default | Effect                                                                               |
-| -------------------- | ------- | ------------------------------------------------------------------------------------ |
-| `openOnStart`        | `true`  | open the tab once per lab server start; `c.GalaxaHubMotd.open_on_start` must be on   |
-| `reopenOnBroadcast`  | `false` | reopen the tab when a live broadcast arrives through the notifications extension     |
-| `pollMinutes`        | `0`     | pull again on this interval while the tab is open; `0` never polls                   |
-| `notificationWindow` | `7d`    | how far back Notifications lists broadcasts: `24h`, `3d` or `7d`; the CLI follows it |
+| Setting                | Default | Effect                                                                                            |
+| ---------------------- | ------- | ------------------------------------------------------------------------------------------------- |
+| `openOnStart`          | `true`  | open the tab once per lab server start; `c.GalaxaHubMotd.open_on_start` must be on                |
+| `reopenOnBroadcast`    | `false` | reopen the tab when a live broadcast arrives through the notifications extension                  |
+| `pollMinutes`          | `0`     | pull again on this interval while the tab is open; `0` never polls                                |
+| `notificationWindow`   | `7d`    | how far back Notifications lists broadcasts: `24h`, `3d` or `7d`; the CLI follows it              |
+| `clearedNotifications` | `[]`    | the rows cleared or removed in the tab; remove an item to list that row again; the CLI follows it |
 
 ## Server configuration
 
@@ -260,7 +262,8 @@ no motd, or a hub that fails, stdout stays empty.
 
 `show` prints a command button as `[button "<text>" runs <command id>]` and an html entry as a
 pointer to `Message of the day: Open`. A notifications feed that fails leaves only the
-Notifications part out of `show`.
+Notifications part out of `show`. `show` and `notifications` leave out the rows cleared or removed
+in the tab.
 
 `jupyterlab-galaxahub-motd --help` lists the commands, the configuration, the environment
 variables and the exit codes, and each command's `--help` carries examples.

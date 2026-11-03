@@ -48,6 +48,7 @@ export interface IMotdSettings {
   reopenOnBroadcast: boolean;
   pollMinutes: number;
   notificationWindow: NotificationWindow;
+  clearedNotifications: string[];
 }
 
 /**
@@ -66,7 +67,8 @@ export const DEFAULT_SETTINGS: IMotdSettings = {
   openOnStart: true,
   reopenOnBroadcast: false,
   pollMinutes: 0,
-  notificationWindow: '7d'
+  notificationWindow: '7d',
+  clearedNotifications: []
 };
 
 /**
@@ -179,6 +181,13 @@ export function notificationView(
 }
 
 /**
+ * What tells one broadcast from another: the hub feed gives no id, so its time and its message.
+ */
+export function notificationKey(row: { ts: string; message: string }): string {
+  return `${row.ts}\n${row.message}`;
+}
+
+/**
  * Whether `message` arrived as a row the previous answer did not carry - that is, the lab
  * notification carrying it is a broadcast the hub recorded for this user.
  */
@@ -187,9 +196,9 @@ export function isNewBroadcast(
   after: INotificationRow[],
   message: string
 ): boolean {
-  const seen = new Set(before.map(r => `${r.ts}\n${r.message}`));
+  const seen = new Set(before.map(notificationKey));
   return after.some(
-    r => r.message === message && !seen.has(`${r.ts}\n${r.message}`)
+    r => r.message === message && !seen.has(notificationKey(r))
   );
 }
 

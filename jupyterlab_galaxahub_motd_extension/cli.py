@@ -94,11 +94,14 @@ def settings():
     return motd
 
 
-def notification_window():
-    """The tab's notificationWindow setting in the running lab: the user's choice, else its default.
-    The lab answers user settings that break the schema as none, so the value is one of the choices."""
+def notification_settings():
+    """The tab's notificationWindow and clearedNotifications settings in the running lab: for each
+    the user's value, else its default. The lab answers user settings that break the schema as
+    none, so each value is valid."""
     def read(tab):
-        return tab["settings"].get("notificationWindow", tab["schema"]["properties"]["notificationWindow"]["default"])
+        properties = tab["schema"]["properties"]
+        return tuple(tab["settings"].get(name, properties[name]["default"])
+                     for name in ("notificationWindow", "clearedNotifications"))
 
     return lab_read(read, "lab/api/settings", PLUGIN_ID)
 
@@ -166,8 +169,9 @@ def read_entries(motd):
     return entries
 
 
-def read_notifications(motd, window):
-    """The broadcasts inside `window`, newest first; a row whose time cannot be read is left out."""
+def read_notifications(motd, window, cleared):
+    """The broadcasts inside `window`, newest first; a row whose time cannot be read and a row
+    whose key is in `cleared`, the tab's clearedNotifications setting, are left out."""
     def time(row):
         try:
             return datetime.fromisoformat(str(row["ts"]).replace("Z", "+00:00")).timestamp()
@@ -180,7 +184,8 @@ def read_notifications(motd, window):
         for r in rows(motd, "notifications", "notifications")
         if isinstance(r, dict) and isinstance(r.get("message"), str)
     ]
-    return sorted((r for r in kept if time(r) >= since), key=time, reverse=True)
+    listed = (r for r in kept if time(r) >= since and f"{r['ts']}\n{r['message']}" not in cleared)
+    return sorted(listed, key=time, reverse=True)
 
 
 def button_text(button):
@@ -212,10 +217,10 @@ def notification_lines(notifications):
 def cmd_show(args):
     hub = args.motd
     motd = {"terminal": read_terminal(hub), "entries": read_entries(hub), "notifications": []}
-    window = notification_window()
+    window, cleared = notification_settings()
     # a failed or missing broadcasts feed leaves its part out
     try:
-        motd["notifications"] = read_notifications(hub, window)
+        motd["notifications"] = read_notifications(hub, window, cleared)
     except Stop:
         pass
     # notifications alone are no motd
@@ -255,10 +260,10 @@ def cmd_rich(args):
 
 
 def cmd_notifications(args):
-    window = notification_window()
-    notifications = read_notifications(args.motd, window)
+    window, cleared = notification_settings()
+    notifications = read_notifications(args.motd, window, cleared)
     if not notifications:
-        raise Stop(NO_MOTD, f"no motd: the hub holds no notification of the last {window} for this user "
+        raise Stop(NO_MOTD, f"no motd: no notification is left to list for the last {window} "
                             "(the lab's notificationWindow setting)")
     print(json.dumps({"notifications": notifications}) if args.json else notification_lines(notifications))
     return 0
@@ -287,7 +292,7 @@ environment:
 exit status:
   0  the motd is on stdout
   1  no motd: a GalaxaHubMotd setting is empty, the hub answered 404 (it does not carry the
-     feed), or the hub holds nothing for this user
+     feed), or nothing is left to list for this user
   2  an argument the parser rejects
   4  the lab server or the hub refused the token (403), answered another error status, or
      cannot be reached; or JUPYTER_SERVER_URL is unset
@@ -304,10 +309,10 @@ Print the whole message of the day in three parts, in this order:
 
   the terminal text, as `terminal` prints it
   each rich entry under a `## <label>` heading, as `rich` prints it
-  `## Notifications`, then one line per broadcast of the lab's notificationWindow setting,
-  as `notifications` prints it
+  `## Notifications`, then one line per broadcast of the lab's notificationWindow setting
+  that was not cleared in the tab, as `notifications` prints it
 
-A part the hub holds nothing for is left out. Exits 1 when the hub holds no terminal text
+A part with nothing to print is left out. Exits 1 when the hub holds no terminal text
 and no rich entry, whatever the notifications, or when the terminal or rich feed answers
 404. A notifications feed that answers 404 or an error, or cannot be reached, leaves the
 Notifications part out.
@@ -364,7 +369,8 @@ Print the broadcasts the hub recorded for the user - those sent to all users and
 the user - one line per broadcast, newest first, as far back as the lab's notificationWindow
 setting reaches: 24h, 3d or 7d (default). Each line holds four fields separated by a tab: time
 (ISO 8601), type, audience (all or direct), message. Whitespace inside a message, line breaks
-included, prints as one space. Exits 1 when the hub holds none inside that span.
+included, prints as one space. A broadcast cleared or removed in the tab, which the lab's
+clearedNotifications setting holds, is left out. Exits 1 when none is left to list.
 """,
         f"""
 examples:
