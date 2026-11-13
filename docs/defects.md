@@ -381,6 +381,13 @@ The Galata and pytest harness around the extension
   - root-cause: 2026-10-16T16:42:20Z @kj exec_module of a SourceFileLoader writes bytecode; .gitignore keeps **pycache** out of git but hatch shared-data copies ignored files
   - log: 2026-10-16T16:42:20Z @kj added
   - log: 2026-10-16T16:42:37Z @kj closed
+- [x] `DEF-TEST-50-SKILL-INSTALLED` **Skill test reads the installed wheel** - MAJOR; test_pip_install_ships_the_skill reads <sys.prefix>/share/jupyter/agents/skills/jupyterlab-galaxahub-motd-extension/SKILL.md; make publish runs test before install, so a new release environment has no wheel: FileNotFoundError, release of 1.0.105 stopped before any upload
+  - evidence: test asserts pyproject shared-data map and the repository SKILL.md; pytest -k skill 2 passed in the fleet environment with no wheel installed; build_test.py 2026-11-13: Jest 93, pytest 66, Galata 93 passed
+  - repro: new environment without the wheel, then make test
+  - test-tags: UNIT
+  - root-cause: 2026-11-13T10:30:25Z @kj the test compared the copy under sys.prefix with the repository copy; the canonical Makefile publish target is 'check_dependencies test install', and release.py made a new environment
+  - log: 2026-11-13T10:30:25Z @kj added
+  - log: 2026-11-13T17:58:14Z @kj closed
 
 ## Live broadcasts `LIVE`
 

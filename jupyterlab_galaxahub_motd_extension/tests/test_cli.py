@@ -15,6 +15,7 @@ import socket
 import subprocess
 import sys
 import threading
+import tomllib
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -588,7 +589,9 @@ def test_agent_skill():
 
 
 def test_pip_install_ships_the_skill():
-    # ACC-CLI-63: the wheel puts SKILL.md under the environment, outside the Python package
+    # ACC-CLI-63: the wheel puts SKILL.md under the environment, outside the Python package.
+    # Read from the wheel's shared-data map: make publish runs the tests before the install
     name = "jupyterlab-galaxahub-motd-extension"
-    installed = Path(sys.prefix, "share", "jupyter", "agents", "skills", name, "SKILL.md")
-    assert installed.read_text() == (ROOT / ".agents" / "skills" / name / "SKILL.md").read_text()
+    wheel = tomllib.loads((ROOT / "pyproject.toml").read_text())["tool"]["hatch"]["build"]["targets"]["wheel"]
+    assert wheel["shared-data"][f".agents/skills/{name}"] == f"share/jupyter/agents/skills/{name}"
+    assert (ROOT / ".agents" / "skills" / name / "SKILL.md").is_file()
