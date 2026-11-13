@@ -2,6 +2,12 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## [1.0.105] - 2026-11-13
+
+### Changed
+
+Maintenance release
+
 ## [1.0.104] - 2026-11-03
 
 ### Added
